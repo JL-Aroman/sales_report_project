@@ -1,0 +1,60 @@
+Warnings
+
+1. warning_type:
+	Qué representa:
+		Representa el tipo de advertencia detectada.
+	Ejemplos:
+		- inconsistent_product_name
+		- future_date
+		- extra_spaces
+		- inconsistent_category
+	Sirve para clasificar la advertencia y saber qué tipo de revisión necesita el usuario.
+
+2. field:
+	Qué representa:
+		Representa el campo o columna relacionada con la advertencia.
+	Ejemplos:
+		- producto
+		- categoría
+		- fecha
+		- producto_id
+	Si la advertencia afecta más de una columna, se puede indicar la columna más importante.
+
+
+3. message:
+	Qué representa:
+		Representa el mensaje claro que verá el usuario final en el reporte.
+	Ejemplo:
+		- El producto_id L1-003 aparece con nombres diferentes.
+	Debe ser entendible para el usuario, no demasiado técnico.
+
+4. affected_value:
+	Qué representa:
+		Representa el valor principal afectado por la advertencia.
+	Ejemplo:
+		L1-003
+	En este caso, el valor afectado es el producto_id
+
+5. details:
+	Qué representa:
+		Representa información adicional para explicar mejor la advertencia.
+	Ejemplo:
+		Nombres encontrados
+			- León Geométrico
+			- Leon geométrico
+	Otro ejemplo:
+		Categorías encontradas:
+			- Artesanía
+			- Decoración
+
+Con el CSV actual habría una advertencia clara:
+	warning_type: inconsistent_product_name
+	field: product
+	message: El producto_id L1-003 aparece con nombres diferentes
+	affected_value: L1-003
+	details:
+		- León Geométrico
+		- León geométrico
+
+Eso significa:
+	El sistema sí puede calcular las métricas agrupando producto_id, pero el usuario debe revisar la escritura del nombre del producto.

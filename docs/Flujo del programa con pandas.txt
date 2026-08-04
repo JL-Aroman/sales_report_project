@@ -1,0 +1,53 @@
+Flujo del programa con pandas:
+Flujo del programa con pandas:
+
+1. El usuario:
+   Ejecuta el programa e indica la ruta del archivo CSV de ventas.
+
+2. main.py:
+   Recibe la ruta del archivo y coordina el proceso general.
+   No lee, no valida datos internos, no calcula métricas y no genera el reporte manualmente.
+
+3. validator.py:
+   Valida el archivo antes de leerlo.
+   Revisa que la ruta exista, que sea un archivo, que tenga extensión .csv, que no esté vacío y que pueda abrirse.
+
+4. csv_reader.py:
+   Lee el archivo CSV usando pandas.
+   En este punto aparece el DataFrame crudo.
+   Este DataFrame representa la tabla original cargada desde el archivo.
+
+5. validator.py:
+   Valida el contenido del DataFrame crudo.
+   Revisa columnas obligatorias, valores vacíos, precios, cantidades, fechas, producto_id y posibles inconsistencias.
+   Después separa:
+   - DataFrame de filas válidas.
+   - DataFrame de filas inválidas.
+   - Lista de errores.
+   - Lista de advertencias.
+
+6. analyzer.py:
+   Recibe únicamente el DataFrame de filas válidas.
+   Calcula las métricas principales:
+   - total de filas leídas
+   - total de filas válidas
+   - total de filas inválidas
+   - ingreso total
+   - unidades vendidas
+   - producto más vendido
+   - producto con mayor ingreso
+   - categoría con mayor ingreso
+   - resumen por producto
+   - resumen por categoría
+
+7. reporter.py:
+   Recibe las métricas, errores y advertencias.
+   Construye el reporte automático de ventas en formato de texto legible.
+
+8. file_manager.py:
+   Crea la carpeta reports/ si no existe.
+   Guarda el reporte final como archivo .txt.
+   Devuelve la ruta donde quedó guardado.
+
+9. main.py:
+   Muestra al usuario un mensaje final indicando si el reporte fue generado correctamente, generado con advertencias o si ocurrió un error.

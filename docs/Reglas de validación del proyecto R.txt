@@ -1,0 +1,316 @@
+Reglas de validación del proyecto: Reporte Automático de Ventas
+Reglas nuevas para producto_id:
+
+1. producto_id:
+
+   * Debe:
+
+     * Existir en cada fila.
+     * Ser obligatorio.
+     * Identificar de forma estable a un producto.
+     * Repetirse cuando se trate del mismo producto.
+     * Tener un formato claro, por ejemplo ART-001, ART-002, ART-003.
+   * No debe:
+
+     * Estar vacío.
+     * Tener solo espacios.
+     * Cambiar para el mismo producto.
+     * Usarse para productos diferentes.
+     * Tener caracteres extraños.
+
+2. Agrupación por producto:
+
+   * Las métricas por producto se calcularán usando producto_id como identificador principal.
+   * El nombre del producto se usará principalmente para mostrar información en el reporte.
+   * Si el mismo producto_id aparece con nombres diferentes, el sistema debe reportarlo como advertencia.
+   * Si el mismo producto_id aparece con categorías diferentes, el sistema debe reportarlo como advertencia o posible error de datos.
+
+3. Columnas obligatorias actualizadas:
+
+   * producto_id
+   * producto
+   * categoria
+   * precio
+   * cantidad
+   * fecha
+
+
+1. producto:
+
+   * Debe:
+
+     * Existir en cada fila.
+     * Tener un nombre válido.
+     * Permitir letras, acentos y espacios entre palabras.
+     * Limpiarse de espacios extra al inicio y al final.
+     * Convertirse internamente a minúsculas para comparación.
+   * No debe:
+
+     * Estar vacío.
+     * Tener solo espacios.
+     * Tener números.
+     * Tener caracteres extraños.
+     * Tener espacios innecesarios al inicio o al final.
+
+2. categoria:
+
+   * Debe:
+
+     * Existir en cada fila.
+     * Tener una categoría válida.
+     * Permitir letras, acentos y espacios entre palabras.
+     * Limpiarse de espacios extra al inicio y al final.
+     * Convertirse internamente a minúsculas para comparación.
+   * No debe:
+
+     * Estar vacía.
+     * Tener solo espacios.
+     * Tener números.
+     * Tener caracteres extraños.
+     * Tener espacios innecesarios al inicio o al final.
+
+3. precio:
+
+   * Debe:
+
+     * Existir en cada fila.
+     * Recibirse inicialmente como texto desde el archivo CSV.
+     * Poder convertirse a número.
+     * Aceptar números enteros o decimales.
+     * Ser mayor que 0.
+   * No debe:
+
+     * Estar vacío.
+     * Tener letras.
+     * Tener caracteres extraños.
+     * Tener espacios extra.
+     * Tener valores negativos.
+     * Tener valor igual a 0.
+
+4. cantidad:
+
+   * Debe:
+
+     * Existir en cada fila.
+     * Recibirse inicialmente como texto desde el archivo CSV.
+     * Poder convertirse a número entero.
+     * Ser mayor que 0.
+   * No debe:
+
+     * Estar vacía.
+     * Tener letras.
+     * Tener caracteres extraños.
+     * Tener decimales en la versión 1.0.
+     * Tener valores negativos.
+     * Tener valor igual a 0.
+
+5. fecha:
+
+   * Debe:
+
+     * Existir en cada fila.
+     * Tener el formato YYYY-MM-DD.
+     * Representar una fecha real del calendario.
+     * Servir para agrupar ventas por día.
+   * No debe:
+
+     * Estar vacía.
+     * Tener letras.
+     * Tener caracteres extraños.
+     * Tener otro formato diferente a YYYY-MM-DD.
+     * Tener fechas imposibles, como 2026-02-30.
+
+6. encabezados del archivo:
+
+   * El archivo será válido si contiene todos los encabezados obligatorios:
+    
+     * procucto_id
+     * producto
+     * categoria
+     * precio
+     * cantidad
+     * fecha
+   * El archivo será inválido si falta uno o más encabezados obligatorios.
+
+7. fila completa:
+
+   * Una fila será válida si:
+
+     * Tiene procucto_id válido.
+     * Tiene producto válido.
+     * Tiene categoria válida.
+     * Tiene precio válido.
+     * Tiene cantidad válida.
+     * Tiene fecha válida.
+   * Una fila será inválida si:
+
+     * Algún campo obligatorio está vacío.
+     * El precio no puede convertirse a número.
+     * La cantidad no puede convertirse a número entero.
+     * La fecha no tiene el formato correcto.
+     * La fecha no representa una fecha real.
+     * Hay letras en columnas numéricas.
+     * Hay caracteres inválidos en producto, categoria, precio, cantidad o fecha.
+
+
+Métricas de la versión 1.0: Reporte Automático de Ventas
+
+1. Total de filas leídas:
+
+   * Qué significa:
+     Representa la cantidad total de filas de datos encontradas en el archivo CSV, sin contar la fila de encabezados.
+   * Cómo se calcula:
+     Se cuenta cada fila de venta leída después del encabezado, sin importar si la fila es válida o inválida.
+
+2. Total de filas válidas:
+
+   * Qué significa:
+     Representa la cantidad de filas que cumplen correctamente con todas las reglas de validación del proyecto.
+   * Cómo se calcula:
+     Se revisa cada fila del archivo. Si la fila tiene producto, categoria, precio, cantidad y fecha válidos, se agrega al conjunto de filas válidas.
+
+3. Total de filas inválidas:
+
+   * Qué significa:
+     Representa la cantidad de filas que no pueden usarse para calcular métricas porque tienen datos incompletos, incorrectos o con formato inválido.
+   * Cómo se calcula:
+     Se cuentan todas las filas que incumplen una o más reglas de validación. Estas filas no se usan para las métricas, pero sí se reportan al usuario en la sección de errores.
+
+4. Ingreso total:
+
+   * Qué significa:
+     Representa la suma total del dinero generado por todas las ventas válidas del archivo.
+   * Cómo se calcula:
+     Primero se calcula el ingreso de cada fila válida multiplicando precio por cantidad. Después se suma el ingreso de todas las filas válidas.
+   * Fórmula:
+     Ingreso total = suma de precio × cantidad en todas las filas válidas.
+
+5. Total de unidades vendidas:
+
+   * Qué significa:
+     Representa la cantidad total de artículos vendidos, tomando en cuenta solamente las filas válidas.
+   * Cómo se calcula:
+     Se suma el valor de la columna cantidad en todas las filas válidas.
+   * Fórmula:
+     Total de unidades vendidas = suma de cantidad en todas las filas válidas.
+
+6. Producto más vendido:
+
+   * Qué significa:
+     Representa el producto que acumuló la mayor cantidad de unidades vendidas.
+   * Cómo se calcula:
+     Se agrupan las filas válidas por producto_id. Después se suma la cantidad vendida de cada producto. El producto_id con la suma más alta será el producto más vendido.
+
+7. Producto con mayor ingreso:
+
+   * Qué significa:
+     Representa el producto que generó más dinero en total.
+   * Cómo se calcula:
+     Se agrupan las filas válidas por producto_id. Para cada producto se suma el resultado de precio por cantidad en todas sus ventas válidas. El producto_id con el ingreso acumulado más alto será el producto con mayor ingreso.
+
+8. Categoría con mayor ingreso:
+
+   * Qué significa:
+     Representa la categoría que generó más dinero en total.
+   * Cómo se calcula:
+     Se agrupan las filas válidas por categoria. Para cada categoría se suma el resultado de precio por cantidad en todas sus ventas válidas. La categoría con el ingreso acumulado más alto será la categoría con mayor ingreso.
+
+Regla general:
+Todas las métricas se calculan únicamente con filas válidas. Las filas inválidas no se eliminan silenciosamente; deben registrarse y mostrarse en el reporte final para que el usuario sepa qué datos fueron excluidos y por qué.
+
+
+
+REPORTE AUTOMÁTICO DE VENTAS
+
+1. INFORMACIÓN GENERAL
+
+Archivo analizado: ventas.csv
+Fecha de generación: YYYY-MM-DD
+
+Total de filas leídas: 10
+Total de filas válidas: 4
+Total de filas inválidas: 6
+
+Columnas obligatorias detectadas:
+- producto_id
+- producto
+- categoria
+- precio
+- cantidad
+- fecha
+
+
+2. MÉTRICAS PRINCIPALES
+
+Ingreso total: $4350.00
+Total de unidades vendidas: 19
+
+Producto más vendido:
+- ID: L1-003
+- Producto: León Geometrico
+- Unidades vendidas: 12
+
+Producto con mayor ingreso:
+- ID: L1-003
+- Producto: León Geometrico
+- Ingreso generado: $3000.00
+
+Categoría con mayor ingreso:
+- Categoría: Artesanía
+- Ingreso generado: $3400.00
+
+
+3. ERRORES DETECTADOS
+
+Línea 6:
+- Error: producto vacío.
+
+Línea 7:
+- Error: categoria vacía.
+
+Línea 8:
+- Error: precio vacío.
+
+Línea 9:
+- Error: cantidad vacía.
+
+Línea 10:
+- Error: formato de fecha inválido. Se esperaba YYYY-MM-DD.
+
+Línea 11:
+- Error: producto_id vacío.g
+
+
+4. ADVERTENCIAS DETECTADAS
+
+Advertencia 1:
+- El producto_id L1-003 aparece con nombres diferentes:
+  - León Geometrico
+  - Leon geometrico
+- Sugerencia: revisar la escritura del nombre del producto.
+
+
+5. CONCLUSIONES
+
+Conclusión 1:
+El archivo fue leído correctamente y se analizaron 4 filas válidas de un total de 10 filas.
+
+Conclusión 2:
+Se encontraron 6 filas inválidas. Estas filas no fueron usadas para calcular métricas.
+
+Conclusión 3:
+El producto con mayor rendimiento fue L1-003 - León Geometrico, con 12 unidades vendidas y $3000.00 de ingreso generado.
+
+Conclusión 4:
+La categoría con mayor ingreso fue Artesanía, con $3400.00 generados.
+
+Conclusión 5:
+Se recomienda corregir las filas inválidas y unificar la escritura de productos con el mismo producto_id.
+
+
+6. ESTADO FINAL DEL REPORTE
+
+Estado: Finalizado con advertencias
+
+Mensaje final:
+El reporte fue generado correctamente, pero algunas filas fueron excluidas por errores de validación.

@@ -1,0 +1,62 @@
+validation_result debe contener:
+
+1. df_valid_rows:
+   Qué representa:
+   Representa el DataFrame con todas las filas válidas después de aplicar las reglas de validación del proyecto.
+
+   Estas filas ya pueden usarse de forma segura para calcular métricas como ingreso total, unidades vendidas, producto más vendido y categoría con mayor ingreso.
+
+2. df_invalid_rows:
+   Qué representa:
+   Representa el DataFrame con las filas inválidas detectadas durante la validación.
+
+   Una fila inválida es aquella que no cumple una o más reglas obligatorias, por ejemplo:
+
+   * producto_id vacío
+   * producto vacío
+   * categoria vacía
+   * precio vacío
+   * precio no numérico
+   * cantidad vacía
+   * cantidad no entera
+   * fecha vacía
+   * fecha con formato incorrecto
+
+   Estas filas no deben usarse para calcular métricas, pero sí deben aparecer en el reporte final.
+
+3. errors:
+   Qué representa:
+   Representa la lista de errores detectados en el contenido del DataFrame.
+
+   Cada error debe indicar, como mínimo:
+
+   * número de línea
+   * columna afectada
+   * descripción del error
+
+   Ejemplo:
+   Línea 8 | precio | precio vacío
+
+4. warnings:
+   Qué representa:
+   Representa la lista de advertencias detectadas durante la validación.
+
+   Una advertencia indica un problema que el usuario debe revisar, pero que no necesariamente invalida la fila.
+
+   Ejemplo:
+   El producto_id L1-003 aparece con nombres diferentes:
+
+   * León Geometrico
+   * Leon geometrico
+
+5. total_rows:
+   Qué representa:
+   Representa el número total de filas de datos leídas desde el CSV, sin contar el encabezado.
+
+6. total_valid_rows:
+   Qué representa:
+   Representa el número total de filas que cumplieron todas las reglas obligatorias de validación.
+
+7. total_invalid_rows:
+   Qué representa:
+   Representa el número total de filas que incumplieron una o más reglas obligatorias y que fueron excluidas del análisis.

@@ -1,0 +1,252 @@
+Funciones principales del proyecto: Reporte Automático de Ventas con pandas
+
+1. main.py
+
+Funciones que debería tener:
+
+* run()
+
+Responsabilidad:
+Coordinar todo el flujo del programa.
+
+Debe encargarse de:
+
+* Obtener la ruta del archivo CSV.
+* Llamar a validate_csv_file().
+* Llamar a read_csv_file().
+* Llamar a validate_dataframe().
+* Llamar a analyze_sales().
+* Llamar a create_report().
+* Llamar a save_report().
+* Mostrar el mensaje final al usuario.
+
+main.py no debe:
+
+* Leer directamente el CSV.
+* Normalizar datos.
+* Validar filas.
+* Calcular métricas.
+* Construir manualmente el reporte.
+* Guardar directamente el archivo.
+
+2. csv_reader.py
+
+Funciones que debería tener:
+
+* read_csv_file(file_path) -> DataFrame
+
+Responsabilidad:
+Leer el archivo CSV validado y devolver un DataFrame crudo.
+
+Entrada:
+
+* file_path: ruta validada del archivo CSV.
+
+Salida:
+
+* df_raw: DataFrame crudo leído desde el archivo.
+
+Este módulo no debe validar datos internos ni calcular métricas.
+
+3. validator.py
+
+Funciones que debería tener:
+
+* validate_csv_file(file_path) -> Path
+
+Responsabilidad:
+Validar la ruta y el archivo antes de leerlo.
+
+Debe revisar:
+
+* ruta no vacía
+
+* archivo existente
+
+* que sea archivo y no carpeta
+
+* extensión .csv
+
+* archivo no vacío
+
+* archivo legible
+
+* normalize_dataframe(df_raw) -> DataFrame
+
+Responsabilidad:
+Limpiar datos básicos antes de validar.
+
+Debe normalizar:
+
+* espacios extra
+
+* producto_id
+
+* producto
+
+* categoria
+
+* precio
+
+* cantidad
+
+* fecha
+
+* validate_dataframe(df_raw) -> validation_result
+
+Responsabilidad:
+Validar el contenido del DataFrame.
+
+Debe devolver:
+
+* df_valid_rows
+* df_invalid_rows
+* errors
+* warnings
+* total_rows
+* total_valid_rows
+* total_invalid_rows
+
+Debe revisar:
+
+* columnas obligatorias
+* valores vacíos
+* producto_id válido
+* producto válido
+* categoria válida
+* precio numérico
+* cantidad entera
+* fecha válida
+* inconsistencias entre producto_id y producto
+* inconsistencias entre producto_id y categoria
+
+4. analyzer.py
+
+Funciones que debería tener:
+
+* analyze_sales(validation_result) -> analysis_result
+
+Responsabilidad:
+Orquestar todos los cálculos del análisis usando únicamente las filas válidas.
+
+Funciones internas sugeridas:
+
+* calculate_total_income(df_valid_rows) -> float
+
+Responsabilidad:
+Calcular el ingreso total.
+
+* calculate_total_units_sold(df_valid_rows) -> int
+
+Responsabilidad:
+Calcular el total de unidades vendidas.
+
+* create_product_summary(df_valid_rows) -> DataFrame
+
+Responsabilidad:
+Crear una tabla agrupada por producto_id.
+
+* create_category_summary(df_valid_rows) -> DataFrame
+
+Responsabilidad:
+Crear una tabla agrupada por categoria.
+
+* get_best_selling_product(product_summary) -> dict
+
+Responsabilidad:
+Obtener el producto con más unidades vendidas.
+
+* get_highest_income_product(product_summary) -> dict
+
+Responsabilidad:
+Obtener el producto con mayor ingreso generado.
+
+* get_highest_income_category(category_summary) -> dict
+
+Responsabilidad:
+Obtener la categoría con mayor ingreso generado.
+
+analyzer.py debe devolver:
+
+* total_rows
+* total_valid_rows
+* total_invalid_rows
+* total_income
+* total_units_sold
+* best_selling_product
+* highest_income_product
+* highest_income_category
+* product_summary
+* category_summary
+
+5. reporter.py
+
+Funciones que debería tener:
+
+* create_report(analysis_result, errors, warnings, source_filename, generation_date) -> str
+
+Responsabilidad:
+Crear el reporte final en texto.
+
+Debe construir:
+
+* información general
+* métricas principales
+* errores detectados
+* advertencias detectadas
+* resumen por producto
+* resumen por categoría
+* conclusiones
+* estado final del reporte
+
+reporter.py no debe calcular métricas nuevas ni guardar archivos.
+
+6. file_manager.py
+
+Funciones que debería tener:
+
+* save_report(report_text, output_folder, output_filename) -> Path
+
+Responsabilidad:
+Guardar el reporte en archivo .txt.
+
+Debe encargarse de:
+
+* crear la carpeta reports/ si no existe
+* guardar el texto del reporte
+* evitar sobrescrituras accidentales
+* devolver la ruta del reporte guardado
+
+7. errors.py
+
+Clases de error que debería tener:
+
+Clase base:
+
+* AppError(Exception)
+
+Errores de archivo:
+
+* EmptyPathError(AppError)
+* FileNotFoundAppError(AppError)
+* InvalidFilePathError(AppError)
+* InvalidFileExtensionError(AppError)
+* EmptyFileError(AppError)
+* FileReadError(AppError)
+
+Errores de estructura:
+
+* MissingColumnsError(AppError)
+* EmptyHeadersError(AppError)
+* InvalidCSVStructureError(AppError)
+* EmptyDataFrameError(AppError)
+
+Errores de procesamiento:
+
+* DataValidationError(AppError)
+* NoValidRowsError(AppError)
+
+Errores de reporte:
+
+* ReportGenerationError(AppError)
+* ReportSaveError(AppError)

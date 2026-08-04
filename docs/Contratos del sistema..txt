@@ -1,0 +1,143 @@
+Contratos del sistema.
+
+main.py:
+	Recibe:
+		Nada al inicio, porque es el punto de entrada del programa.
+		Pero durante la ejecución obtiene:
+			ruta del archivo csv
+		Envía a otros módulos
+		Envía la ruta a:
+			validator.py
+			csv_reader.py
+		Después envía datos entre módulos.
+		Devuelve
+		No necesita devolver algo importante. Su trabajo es coordinar.
+		Idea central
+			main.py no trabaja datos.
+			main.py dirige el tráfico.
+
+validator.py -- validación de archivo:
+	Recibe:
+		ruta_csv
+	Valida:
+		- que la ruta no esté vacía.
+		- que el archivo exista.
+		- que sea archivo.
+		- que sea .csv.
+		- que no esté vacío.
+		- que pueda leerse.
+	Devuelve
+	Si todo está bien:
+		ruta_csv validada
+	Si algo falla:
+		error personalizado.
+
+csv_reader.py:
+	Recibe:
+		ruta_csv validada
+	Hace
+	Lee el CSV con pandas.
+	Devuelve
+		DataFrame crudo
+	Este DataFrame todavía puede tener errores.
+	ejemplo conceptual:
+		df_raw
+
+validato.py -- validación del DataFrame
+	Recibe:
+		DataFrame crudo
+	Valida:
+		- columnas obligatorias
+		- producto_id vacío
+		- producto vacío
+		- categoría vacía
+		- precio vacío
+		- precio no numérico
+		- cantidad vacía
+		- cantidad no entera
+		- fecha vacía
+		- fecha con formato incorrecto
+		- producto_id repetido con nombres diferentes
+	Devuelve
+	Debe devolver un paquete de validación
+	Conceptualmente:
+		resultado_validacion
+	Ese resultado debe contener:
+		df_valid_rows
+		df_invalid_rows
+		errores
+		advertencias
+		total_filas_leidas
+		total_filas_validas
+		total_filas_invalidas
+
+analyzer.py:
+	Recibe:
+		df_valid_rows
+		total_filas_leidas
+		total_filas_validas
+		total_filas_invalidas
+	Hace
+	Calcula métricas usando solo filas válidas.
+	Devuelve
+	Un paquete de métricas:
+		resultado_analisis
+	Debe contener:
+		ingreso_total
+		total_unidades_vendidas
+		producto_mas_vendido
+		producto_mayor_ingreso
+		categoria_mayor_ingreso
+		resumen_por_producto
+		resumen_por_categoria
+
+reporter.py:
+	Recibe:
+		resultado_analisis
+		errores
+		advertencias
+		nombre_archivo
+		fecha_generacion
+	Hace
+	Construye el reporte completo como texto.
+	Devuelve
+		reporte_texto
+	Ejemplo conceptual:
+		"REPORTE AUTOMÁTICO DE VENTAS..."
+
+file_manager.py
+	Recibe:
+		reporte_texto
+		nombre_archivo_salida
+	Hace
+	Guarda el reporte en la carpeta reports/.
+	Devuelve
+		ruta_reporte_guardado
+
+Resumen visual
+main.py
+  ↓ ruta_csv
+
+validator.py
+  ↓ ruta validada
+
+csv_reader.py
+  ↓ df_raw
+
+validator.py
+  ↓ df_valid_rows
+  ↓ df_invalid_rows
+  ↓ errores
+  ↓ advertencias
+
+analyzer.py
+  ↓ resultado_analisis
+
+reporter.py
+  ↓ reporte_texto
+
+file_manager.py
+  ↓ ruta_reporte_guardado
+
+main.py
+  ↓ mensaje final al usuario

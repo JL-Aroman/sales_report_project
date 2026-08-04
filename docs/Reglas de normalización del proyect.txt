@@ -1,0 +1,91 @@
+Reglas de normalización del proyecto: Reporte Automático de Ventas
+
+Normalizar significa limpiar o preparar los datos antes de validarlos o analizarlos.
+
+La normalización no debe ocultar errores graves. Si un dato no puede limpiarse o convertirse correctamente, debe registrarse como error y la fila debe considerarse inválida.
+
+1. producto_id:
+   Cómo se debe normalizar:
+
+   * Debe limpiarse de espacios extra al inicio y al final.
+   * Puede conservarse en mayúsculas, porque los identificadores suelen manejarse mejor así.
+   * Si llega en minúsculas, puede convertirse a mayúsculas para mantener consistencia.
+   * No debe modificarse más allá de limpieza básica.
+
+   Ejemplo:
+   " L1-003 " → "L1-003"
+
+2. producto:
+   Cómo se debe normalizar:
+
+   * Debe limpiarse de espacios extra al inicio y al final.
+   * Deben eliminarse espacios dobles innecesarios entre palabras.
+   * Para mostrarlo en el reporte, se debe conservar una versión presentable.
+   * Para comparaciones internas, puede usarse una versión en minúsculas.
+
+   Ejemplo para mostrar:
+   " León Geométrico " → "León Geométrico"
+
+   Ejemplo para comparación:
+   "LEÓN GEOMÉTRICO" → "león geométrico"
+
+3. categoria:
+   Cómo se debe normalizar:
+
+   * Debe limpiarse de espacios extra al inicio y al final.
+   * Deben eliminarse espacios dobles innecesarios entre palabras.
+   * Para mostrarla en el reporte, se debe conservar una versión presentable.
+   * Para agrupaciones internas, puede usarse una versión normalizada en minúsculas.
+
+   Ejemplo para mostrar:
+   " Cerámica" → "Cerámica"
+
+   Ejemplo para comparación:
+   "CERÁMICA" → "cerámica"
+
+4. precio:
+   Cómo se debe normalizar:
+
+   * Debe limpiarse de espacios extra al inicio y al final.
+   * Debe convertirse de texto a número decimal.
+   * Si no puede convertirse a número, debe registrarse como error.
+   * Debe conservarse como valor numérico para poder calcular ingresos.
+
+   Ejemplo:
+   " 250 " → 250.0
+
+5. cantidad:
+   Cómo se debe normalizar:
+
+   * Debe limpiarse de espacios extra al inicio y al final.
+   * Debe convertirse de texto a número entero.
+   * Si no puede convertirse a entero, debe registrarse como error.
+   * En la versión 1.0 no se aceptan cantidades decimales.
+
+   Ejemplo:
+   " 10 " → 10
+
+6. fecha:
+   Cómo se debe normalizar:
+
+   * Debe limpiarse de espacios extra al inicio y al final.
+   * Debe validarse con el formato YYYY-MM-DD.
+   * Debe convertirse a una fecha real para poder agrupar o analizar ventas por día.
+   * Si no tiene el formato correcto o no representa una fecha real, debe registrarse como error.
+
+   Ejemplo:
+   " 2026-07-11 " → 2026-07-11
+
+
+
+
+
+
+
+
+
+
+
+
+
+
