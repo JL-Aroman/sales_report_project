@@ -1,9 +1,0 @@
-Nombres de variables claros y conceptuales.
-
-df_raw              → DataFrame original leído del CSV
-df_valid_rows       → DataFrame con filas válidas
-df_invalid_rows     → DataFrame con filas inválidas
-validation_result   → resultado completo de validación
-analysis_result     → resultado completo del análisis
-report_text         → reporte final en texto
-report_path         → ruta del reporte guardado
