@@ -8,8 +8,8 @@ the validation process modular, maintainable, and easy to extend. The main
 validation function coordinates these helpers, separates valid and invalid records,
 collects errors and warnings, and prepares valid sales data for analysis.
 
-Optional fields, such as `ciudad`, are normalized when present without
-being required for the core validation workflow.
+Optional fields, such as `ciudad` and `metodo_pago`, are normalized when
+present without being required for the core validation workflow.
 """
 
 from pathlib import Path
@@ -84,8 +84,9 @@ def normalize_dataframe(df_raw: pd.DataFrame) -> pd.DataFrame:
     DataFrame unchanged.
 
     The required sales columns are normalized according to their expected
-    format. If the optional `ciudad` column is present, its leading, trailing,
-    and repeated internal whitespace is also normalized.
+    format. If the optional `ciudad` or `metodo_pago` columns are present,
+    their leading, trailing, and repeated internal whitespace is also
+    normalized.
 
     Args:
         df_raw: Raw DataFrame containing salse records as strings.
@@ -102,6 +103,8 @@ def normalize_dataframe(df_raw: pd.DataFrame) -> pd.DataFrame:
     df_normalized["fecha"] = df_normalized["fecha"].str.replace(r"\s+", "", regex=True)
     if "ciudad" in df_normalized:
         df_normalized["ciudad"] = df_normalized["ciudad"].str.replace(r"\s+", " ", regex=True).str.strip()
+    if "metodo_pago" in df_normalized:
+        df_normalized["metodo_pago"] = df_normalized["metodo_pago"].str.replace(r"\s+", " ", regex=True).str.strip()
     return df_normalized
 
 def validated_empty_values(df_normalized: pd.DataFrame) -> Dict[str,Any]:
@@ -350,8 +353,9 @@ def validate_dataframe(df_raw: pd.DataFrame) -> Dict[str, Any]:
     appropriate pandas data types. Non-critical product-name inconsistencies
     are collected separately as warnings.
 
-    Optional columns that are not part of `REQUIRED_COLUMNS` are preserved
-    and may be normalized when supported by `normalize_dataframe()`.
+    Optional columns that are not part of `REQUIRED_COLUMNS`, such as
+    `ciudad` and `metodo_pago`, are preserved and normalized when supported
+    by `normalize_dataframe()`
 
     Args:
         df_raw: Raw pandas DataFrame containing sales records as string.

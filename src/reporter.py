@@ -9,7 +9,8 @@ report function coordinates these helpers and combines their output into a
 complete sales report.
 
 The report can also include Top 5 product rankings and optional city-based
-sales information when city data is available in the analysis result.
+and payment-method-based sales information when these fields are available
+in the analysis result.
 """
 
 from datetime import date
@@ -148,9 +149,39 @@ def get_highest_income_city(analysis_result: Dict[str, Any]) -> str:
         summary_city = f"""
 {highest_income_city["ciudad"]}
 Income: ${highest_income_city["ingreso_total"]:,.2f}
-Units sold: {highest_income_city["unidades_vendidas"]}"""
+Units sold: {highest_income_city["unidades_vendidas"]}
+"""
         summary.append(summary_city)
     return "\n".join(summary)
+
+def get_highest_income_payment_method(analysis_result: Dict[str, Any]) -> str:
+    """Generate the highest-income payment method section.
+
+    Reads the payment method records stored in `highest_income_payment_method`
+    and formats their names, total generated income, and total units sold.
+
+    If multiple payment methods share the highest inocme, every tied payment
+    method is included in the section.
+
+    Args:
+        analysis_result: Dictionary containing the sales analysis results,
+            including the highest-income payment method records.
+
+    Returns:
+        A formatted string containing all payment methods tied for the 
+        highest generated income.
+    """
+    list_highest_income_payment_method = analysis_result["highest_income_payment_method"]
+    summry = []
+    summry.append("HIGHEST INCOME PAYMENT METHOD")
+    for highest_income_pyment_method in list_highest_income_payment_method:
+        summry_paymet_method = f"""
+{highest_income_pyment_method["metodo_pago"]}
+Income: ${highest_income_pyment_method["ingreso_total"]:,.2f}
+Units sold: {highest_income_pyment_method["unidades_vendidas"]}"""
+        summry.append(summry_paymet_method)
+    return "\n".join(summry)
+
 
 def get_top_5_best_selling_products(analysis_result: Dict[str, Any]) -> str:
     """Generate the Top 5 best-selling products section.
@@ -262,10 +293,31 @@ def get_city_summary(analysis_result: Dict[str, Any]) -> str:
         A formatted string containing the aggregated city summary.
     """
     city_summary_for_display = analysis_result["city_summary"].copy()
-    city_summary_for_display["ingreso_total"] =city_summary_for_display["ingreso_total"].map(lambda x: f"${x:,.2f}")
+    city_summary_for_display["ingreso_total"] = city_summary_for_display["ingreso_total"].map(lambda x: f"${x:,.2f}")
     summary = []
     summary.append("CITY SUMMARY")
     summary.append(f"\n{city_summary_for_display.to_string(index=False)}\n")
+    return "\n".join(summary)
+
+def get_payment_method_summary(analysis_result: Dict[str, Any]) -> str:
+    """Generate the payment method summary section.
+
+    Creates a display copy of the payment method summary DataFrame and formats 
+    the `ingreso_total` column as currency before converting the data into a
+    plain-text table without the pandas index.
+
+    Args:
+        analysis_result: Dictionary containing the `payment_method_summary`
+            DataFrame produced by the sales analysis process.
+
+    Returns:
+        A formatted string containing the aggregated payment method summary.
+    """
+    payment_method_summary_for_display = analysis_result["payment_method_summary"].copy()
+    payment_method_summary_for_display["ingreso_total"] = payment_method_summary_for_display["ingreso_total"].map(lambda x: f"${x:,.2f}")
+    summary = []
+    summary.append("PAYMENT METHOD SUMMARY")
+    summary.append(f"\n{payment_method_summary_for_display.to_string(index=False)}\n")
     return "\n".join(summary)
 
 def get_errors(errors: List[Dict[str, Any]]) -> str:
@@ -342,11 +394,15 @@ def generate_report(
 
     Creates the report header and includes the source filename and generation
     date. It then coordinates the report helper functions to add general
-    metrics, highest-performing recors, Top 5 products rankings, product
-    and category summaries, validation errors, and warnings.
+    metrics, highest-perfoming records, Top 5 product rankings, product
+    and category summaries, optional city and pyment method summaries,
+    validation errors, and warnings.
 
     When city analysis is available, the report also includes the
     highest-income city and the complete city summary.
+
+    When payment method analysis is available, the report also includes the 
+    highest-income payment method and the complete payment method summary.
 
     Args:
         analysis_result: Dicnionary containing the metrics, summaries, and 
@@ -370,12 +426,16 @@ Generated at: {date.today()}""")
     summary.append(get_highest_income_category(analysis_result))
     if "highest_income_city" in analysis_result.keys():
         summary.append(get_highest_income_city(analysis_result))
+    if "highest_income_payment_method" in analysis_result.keys():
+        summary.append(get_highest_income_payment_method(analysis_result))
     summary.append(get_top_5_best_selling_products(analysis_result))
     summary.append(get_top_5_highest_income_products(analysis_result))
     summary.append(get_product_summary(analysis_result))
     summary.append(get_category_summary(analysis_result))
     if "city_summary" in analysis_result.keys():
         summary.append(get_city_summary(analysis_result))
+    if "payment_method_summary" in analysis_result.keys():
+        summary.append(get_payment_method_summary(analysis_result))
     summary.append(get_errors(errors))
     summary.append(get_warnings(warnings))
     return "\n".join(summary)

@@ -150,7 +150,7 @@ It validates the input file path, normalizes string values inside pandas `DataFr
 
 Each validation rule is implemented in a separate helper function. This modular structure makes the validation process easier to maintain, test, and extend.
 
-The module also supports optional fields, such as `ciudad`, which are preserved and normalized when present without being required for the core validation workflow.
+The moudle also supports optional fields, such as `ciudad` and `metodo_pago`, wich are preserved and normalized when present without being required for the core validation workflow.
 
 - `validate_csv_file()`
 - `normalize_dataframe()`
@@ -186,7 +186,8 @@ The `normalize_dataframe()` function creates a copy of the raw `DataFrame` and a
 6. Replaces repeated withespaces inside `categoria` with a single space.
 7. Remove all withespaces form `price`, `cantidad`, and, `fecha`
 8. If the optional `ciudad` column is present, removes leading and trailing whitespaces and replaces repeated internal whitespaces with a single space.
-9. Returns a new normalized `DataFrame` without modifying the original one.
+9. If the optional `metodo_pago` column is present, removes leading and trailing whitespaces and replaces repeated internal whitespaces with a single space.
+10. Returns a new normalized `DataFrame` without modifying the original one.
 
 
 #### Independent Validation Functions
@@ -243,9 +244,10 @@ The validation process expects the following columns:
 
 #### Optional Columns
 
-The current version supports the following optional column:
+The current version supports the following optional columns:
 
 - `ciudad`
+- `metodo_pago`
 
 #### Validation Result
 
@@ -350,6 +352,7 @@ The module currently provides the following functions:
 - `get_city_summary()`
 - `get_top_5_best_selling_products()`
 - `get_top_5_highest_income_products()`
+- `get_payment_method_summary()`
 
 #### Income Calculation
 
@@ -406,6 +409,20 @@ The city summary contains following fields:
 
 City analysis is optional and is only performed when the `ciudad` column is present.
 
+#### Payment Method Summary
+
+The `get_payment_method_summary()` function groups valid sales records by `metodo_pago` when the optional payment method column is available.
+
+It excludes empty payment method values and calculates the total units sold and total income for each payment method.
+
+The payment method summary contains the following fields:
+
+- `metodo_pato`
+- `unidades_vendidas`
+- `ingreso_total`
+
+Payment method analysis is optional and is only performed when the `metodo_pago` column is present.
+
 #### Maximum-Value Records
 
 The `get_records_with_max_value()` function identifies all records containing the maximum value in a specified column.
@@ -416,6 +433,7 @@ This reusable function is used to determine:
 - The product or products with the highest total income.
 - The category or categories with the highest total income.
 - The city or cities with the highest total income when city data is available.
+- The payment method or payment methods with the highest total income when payment method data is available.
 
 If multiple records share the maximum value, all tied records are included in the result.
 
@@ -447,9 +465,11 @@ It performs the following operations:
 11. Identifies the category or categories with the highest income.
 12. Creates the Top 5 best-selling products ranking.
 13. Cretaes the Top 5 highest-income products ranking.
-14. If the optional `ciudad` column is present, create the city summary.
-15. Identifies the city or citites with highest income when city data is available.
-16. Returns the complete analysis result.
+14. If the optional `ciudad` column is present, creates the city summary.
+15. Identifies the city or cities with th highest income then city data is available.
+16. If the optional `metodo_pago` column is present, creates the payment method summary.
+17. Identifies the payment method or payment methods with the highest income when payment method data is available.
+18. Returns the complete analysis result.
 
 #### Analysis Result
 
@@ -473,6 +493,11 @@ When the optional `ciudad` column is present, the analysis result also contains:
 - `city_summary`: A pandas `DataFrame` containing aggregated results for each city.
 - `highest_income_city`: A list containing the city or cities with the highest total income.
 
+When the optional `metodo_pago` column is present, the analysis result also contains:
+
+- `payment_method_summary`: A pandas `DataFrame` containing aggregated results for each payment method.
+- `highest_income_payment_method`: A list containing the payment method or payment methods with the highes total income.
+
 #### Input and Output
 
 ##### Analysis Helper Functions
@@ -483,7 +508,7 @@ When the optional `ciudad` column is present, the analysis result also contains:
 ##### `analyze_sales()`
 
 - **Input:** A dictionary containing valid sales rows and validation totals.
-- **Output:** A dictionary containing general sales metrics, product summaries, category summaries, Top 5 product rankings, highest-performing records, and optional city analysis result.
+- **Output:** A dictionary containing general sales metrics, product summries, category summaries, Top 5 product rankings, highest-performing records, and optional ciy and payment method analysis result.
 
 #### Related Exceptions
 
@@ -497,7 +522,7 @@ The sales report generation module converts sales analysis results, validation e
 
 Each report section is generated by an independent helper function. This modular structure makes the reporting workflow easier to maintain, test, modify, and extend.
 
-The report can also include Top 5 product rankings and optional city-base salse infomation when city data is available.
+The report can also include Top 5 product rankings and optional city-based and payment-method-based information when these data are available.
 
 The module currently provides the following functions:
 
@@ -514,6 +539,8 @@ The module currently provides the following functions:
 - `get_top_5_best_selling_products()`
 - `get_top_5_highest_income_products()`
 - `get_city_summary()`
+- `get_highest_income_payment_method()`
+- `get_payment_method_summary()`
 
 #### General Summary
 
@@ -578,6 +605,20 @@ If multiple citites share the highest income, all tied cities, are included.
 
 This section is only generated when city analysis is available.
 
+#### Highest-Income Payment Method
+
+The `get_highest_income_payment_method()` function formats the payment method or payment methods that generated the highest total income.
+
+For each payment method, the section includes:
+
+- `metodo_pato`
+- `ingreso_total`
+- `unidades_vendidas`
+
+If multiple payment methods share the highest income, all tied payment methods are included.
+
+This section is only generated when payment method analysis is available.
+
 #### Top Product Rankings
 
 The module generates two Top 5 product ranking sections:
@@ -587,17 +628,20 @@ The module generates two Top 5 product ranking sections:
 
 Each ranking includes the product position, identifier, name, units sold, and total income.
 
-#### Product, Category, and City Summaries
+#### Product, Category, City and Payment Method Summaries
 
 The module converts the aggregated pandas `DataFrame` objects into plain-text tables.
 
 - `get_product_summary()`: Generates the complete product summary table.
 - `get_category_summary()`: Generates the complete category summary table.
 - `get_city_summary()`: Generates the complete city summary table when city data is available.
+- `get_payment_method_summary()`: Generates the complete payment method summary table when payment method data is available.
 
 The `ingreso_total` values are formmated as corruncy before the summaries are converted into plain-text tables.
 
 The city summary is optional and is only included when `city_summary` is available in the analysis result.
+
+The payment method summary is optional and is only included when `payment_method_summary` is available in the analysis result.
 
 The pandas indexes are excluded from the generated tables.
 
@@ -657,14 +701,16 @@ It performs the following operations:
 6. Adds the highest-income product section.
 7. Adds the highest-income category section.
 8. Adds the highest-income city section when city data is available.
-9. Adds the Top 5 best-selling products section.
-10. Adds the Top 5 highest-income products section.
-11. Adds the complete product summary.
-12. Adds the complete category summary.
-13. Add the complete city summary when city data is available.
-14. Adds the validation errors sections.
-15. Adds the validation warnings section.
-16. Combines all sections into a sinble plain-text report.
+9. Adds the highest-income payment method section when payment method data is available-
+10. Adds the Top 5 best-selling products section.
+11. Adds the Top 5 highest-income products section.
+12. Adds the complete product summary.
+13. Adds the complete category summary.
+14. Add the complete city summary when city data is available.
+15. Adds the complete payment method summary when payment method data is available.
+16. Adds the validation errors sections.
+17. Adds the validation warnings section.
+18. Combines all sections into a sinble plain-text report.
 
 #### Report Structure
 
@@ -677,19 +723,21 @@ The generated report contains the following sections:
 5. `HIGHEST INCOME PRODUCT`
 6. `HIGHEST INCOME CATEGORY`
 7. `HIGHEST INCOME CITY` when city data is available.
-8. `TOP 5 BEST SELLING PRODUCTS`
-9. `TOP 5 HIGHEST INCOME PRODUCTS`
-10. `PRODUCT SUMMARY`
-11. `CATEGORY SUMMARY`
-12. `CITY SUMMARY` when city data is available.
-13. `VALIDATIONS ERRORS`
-14. `WARNINGS`
+8. `HIGHEST INCOME PAYMENT METHOD` when payment method data is available.
+9. `TOP 5 BEST SELLING PRODUCTS`
+10. `TOP 5 HIGHEST INCOME PRODUCTS`
+11. `PRODUCT SUMMARY`
+12. `CATEGORY SUMMARY`
+13. `CITY SUMMARY` when city data is available.
+14. `PAYMENT METHOD SUMMARY`when payment method data is available.
+15. `VALIDATIONS ERRORS`
+16. `WARNINGS`
 
 #### Input and Output
 
 ##### Report Helper Functions
 
-- **Input:** Sales analysis results, including general metrics, rankings, summaries, validation errors, or validation warnings.
+- **Input:** Sales analyis results, including general metrics, rankings, product, category, city, and payment method summaries, validation errors, or validation warnings.
 - **Output:** A formatted string containing a specific report section.
 
 ##### `generate_report()`

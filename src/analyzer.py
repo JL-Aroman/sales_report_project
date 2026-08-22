@@ -1,7 +1,8 @@
 """Sales data analysis module.
 
 This module processes previously validated sales records and calculates
-general sales metrics, product, category, and optional city summaries.
+general sales metrics, product, category, and optional city and payment
+method summaries.
 
 Each analysis operation is impolemented in a separate helper function to
 keep the analysis workflow modular, maintaiable, and easy to extend.
@@ -156,13 +157,45 @@ def get_city_summary(df_analysis: pd.DataFrame) -> pd.DataFrame:
         "cantidad": "sum",
         "ingreso_fila": "sum"
     }).reset_index()
-
     df_city_summary = df_city_summary.rename(columns={
         "cantidad": "unidades_vendidas",
         "ingreso_fila": "ingreso_total"
     })
     df_city_summary = df_city_summary.sort_values(by="ingreso_total", ascending=False).reset_index(drop=True)
     return df_city_summary
+
+def get_payment_method_summary(df_analysis: pd.DataFrame) -> pd.DataFrame:
+    """Create an aggregated sales summary grouped by payment method.
+
+    Filters out records with empty `metodo_pago` values and groups the 
+    remaining sales records by payment method. It calculates the total
+    units sold and total income for each payment method.
+
+    The resulting records are sorted form highest ot lowest total income.
+
+    Args:
+        df_analysis: Data Frame containing valid sales records, the optional
+            `metodo_pago` column, and the calculated `ingreso_fila` column.
+
+    Returns:
+        A DataFrame containing one row per payment method with the followin columns:
+
+        - `metodo_pago`: Payment method associated with the sales recordsds.
+        - `unidades_vendidas`: Total units sold using the payment method.
+        - `ingreso_total`: Total income generated using the payment method.
+    """
+    df_payment_method = df_analysis[df_analysis["metodo_pago"].str.strip() != ""]
+    df_payment_method = df_payment_method.groupby("metodo_pago").agg({
+        "metodo_pago": "first",
+        "cantidad": "sum",
+        "ingreso_fila": "sum"
+    })
+    df_payment_method = df_payment_method.rename(columns={
+        "cantidad": "unidades_vendidas",
+        "ingreso_fila": "ingreso_total"
+    })
+    df_payment_method = df_payment_method.sort_values(by="ingreso_total", ascending=False).reset_index(drop=True)
+    return df_payment_method
 
 
 def get_records_with_max_value(df: pd.DataFrame, column_name : str) -> List[Dict[str, Any]]:
@@ -236,6 +269,10 @@ def analyze_sales(validation_result: Dict[str, Any]) -> Dict[str, Any]:
     the function also creates a city summary and identifies the city or cities
     with the highest total income.
 
+    If the optional `metodo_pago` column is available, the function also
+    creates a payment method summary and identifies the payment method or 
+    payment methods with the highest total income.
+
     Args:
         validation_result: (Dictionary produced by the validation process.
             It must contain the following keys:
@@ -270,6 +307,13 @@ def analyze_sales(validation_result: Dict[str, Any]) -> Dict[str, Any]:
         - `city_summary`: DataFrame containing aggregated sales results for each city.
         - `highest_income_city`: List containing the city or cities with the highest total income.
 
+        When the optional `metodo_pago` column is available, the result contains:
+        
+        - `payment_method_summary`: DataFrame containing aggregated sales results
+          for each payment method.
+        - `highest_income_payment_method`: List containing the payment method or
+          payment methods with the highest total income.
+
 
     Raises:
         NoValidRowsError: If no valid sales records are available for analysis.
@@ -299,4 +343,7 @@ def analyze_sales(validation_result: Dict[str, Any]) -> Dict[str, Any]:
     if "ciudad" in df_analysis.columns:
         analysis_result["city_summary"] = get_city_summary(df_analysis)
         analysis_result["highest_income_city"] = get_records_with_max_value(analysis_result["city_summary"], "ingreso_total")
+    if "metodo_pago" in df_analysis.columns:
+        analysis_result["payment_method_summary"] = get_payment_method_summary(df_analysis)
+        analysis_result["highest_income_payment_method"] = get_records_with_max_value(analysis_result["payment_method_summary"], "ingreso_total")
     return analysis_result

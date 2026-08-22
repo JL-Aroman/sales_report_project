@@ -1,17 +1,17 @@
-producto_id,producto,categoria,precio,cantidad,fecha,ciudad
-L1-003,León Geometrico,Artesanía,250,10,2026-07-11,Guadalajara
-L1-003,Leon geometrico,Artesanía,250,2,2026-07-11
-L2-001,Florero doble, Cerámica,190,5,2026-07-11,Tonalá
-G1-001,Buda Gordo,Artesanía,200,2,2026-07-11
-L1-002,,Artesanía,150,5,2026-07-11,Zapopan
-L1-001,Anubis figura,,350,1,2026-07-11
-Y1-013,Mascara silencio,Artesanía,,4,2026-07-11,Tlaquepaque
-L1-009,Buda meditando,Artesanía,150,,2026-11-12
-N1-009,Busto Apolo,Artesanía,200,8,07-12-2026,Guadalajara
-,Alas Doradas,Artesanía,160,3,2026-07-11
-A1-001, Indio Sentado, Artesanía,839,2,2026-07-11,Tonalá
-A1-002,Gato baset,Artesanía,1030,2,2026-07-11
-Y1-002,Cabeza León Rey,Artesanía,399,1,2026-07-11,Zapopan
-Y1-020,Cráneo Azteca, Artesanía,299,3,2026-07-11
-N1-004,David platead,Artesanía,450,5,2026-07-11,Tlaquepaque
-G1-001,Cabeza Dragon,Artesanía,499,3,2026-07-11
+producto_id,producto,categoria,precio,cantidad,fecha,ciudad,metodo_pago
+L1-003,León Geometrico,Artesanía,250,10,2026-07-11,Guadalajara,Efectivo
+L1-003,Leon geometrico,Artesanía,250,2,2026-07-11,,Efectivo
+L2-001,Florero doble, Cerámica,190,5,2026-07-11,Tonalá,
+G1-001,Buda Gordo,Artesanía,200,2,2026-07-11,,Tarjeta
+L1-002,,Artesanía,150,5,2026-07-11,Zapopan,
+L1-001,Anubis figura,,350,1,2026-07-11,,Transferencia
+Y1-013,Mascara silencio,Artesanía,,4,2026-07-11,Tlaquepaque,Mercado Pago
+L1-009,Buda meditando,Artesanía,150,,2026-11-12,,Mercado Pago
+N1-009,Busto Apolo,Artesanía,200,8,07-12-2026,Guadalajara,PayPal
+,Alas Doradas,Artesanía,160,3,2026-07-11,,PayPal
+A1-001, Indio Sentado, Artesanía,839,2,2026-07-11,Tonalá,Efectivo
+A1-002,Gato baset,Artesanía,1030,2,2026-07-11,,
+Y1-002,Cabeza León Rey,Artesanía,399,1,2026-07-11,Zapopan,Tarjeta
+Y1-020,Cráneo Azteca, Artesanía,299,3,2026-07-11,,Transferencia
+N1-004,David platead,Artesanía,450,5,2026-07-11,Tlaquepaque,Transferencia
+G1-001,Cabeza Dragon,Artesanía,499,3,2026-07-11,,Tarjeta
