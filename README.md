@@ -146,11 +146,11 @@ The module currently handles errors related to:
 
 The file validation and data normalization module prepares the input CSV file and its raw sales data for the processing workflow.
 
-It validates the input file path, normalizes string values inside pandas `DataFrame` objects, applies independent validation rules, separates valid and invalid records, and collects errors and warnings.
+It validates the input file path, normalizes string values inside pandas `DataFrame` objects, applies independent validation rules, separates valid and invalid records and collects errors and warnings.
 
 Each validation rule is implemented in a separate helper function. This modular structure makes the validation process easier to maintain, test, and extend.
 
-The module currently provides the following functions:
+The module also supports optional fields, such as `ciudad`, which are preserved and normalized when present without being required for the core validation workflow.
 
 - `validate_csv_file()`
 - `normalize_dataframe()`
@@ -176,16 +176,18 @@ The `validate_csv_file()` function performs the following checks:
 
 #### Data Normalization Process
 
-The `normalize_dataframe()` function creates a copy of the raw `DataFrame` and applies the following normalization rules:
+The `normalize_dataframe()` function creates a copy of the raw `DataFrame` and applies the following normalization rules.
 
-1. Removes all whitespace from `producto_id`.
+1. Removes all whitespace form `producto_id`.
 2. Converts `producto_id` values to uppercase.
-3. Removes leading and trailing whitespace from `producto`.
-4. Replaces repeated whitespace inside `producto` with a single space.
-5. Removes leading and trailing whitespace from `categoria`.
-6. Replaces repeated whitespace inside `categoria` with a single space.
-7. Removes all whitespace from `precio`, `cantidad`, and `fecha`.
-8. Returns a new normalized `DataFrame` without modifying the original one.
+3. Remove leading and trailing whitspace form `producto`.
+4. Replaces repeatd whitespace inside `producto` with a single space.
+5. Remove leading and trailing whitespace form `categoria`.
+6. Replaces repeated withespaces inside `categoria` with a single space.
+7. Remove all withespaces form `price`, `cantidad`, and, `fecha`
+8. If the optional `ciudad` column is present, removes leading and trailing whitespaces and replaces repeated internal whitespaces with a single space.
+9. Returns a new normalized `DataFrame` without modifying the original one.
+
 
 #### Independent Validation Functions
 
@@ -215,19 +217,20 @@ It performs the following operations:
 1. Verifies that the input `DataFrame` is not empty.
 2. Confirms that all required columns are present.
 3. Normalizes the raw sales data.
-4. Executes the empty-value validation.
-5. Executes the price validation.
-6. Executes the quantity validation.
-7. Executes the date validation.
-8. Collects all detected errors and invalid row indexes.
-9. Removes duplicate invalid indexes.
-10. Separates valid and invalid rows.
-11. Converts valid prices and quantities into numeric values.
-12. Converts valid dates into pandas datetime values.
-13. Detects warnings in valid sales records.
-14. Returns the complete validation result.
+4. Preserves supported optional columns when present.
+5. Executes the empty-value validation.
+6. Executes the price validation.
+7. Executes the quantity validation.
+8. Executes the date validation.
+9. Collects all detected errors and invalid row indexes.
+10. Removes duplicate invalid indexes.
+11. Separates valid and invalid rows.
+12. Converts valid prices and quantities into numeric values.
+13. Converts valid dates into pandas datetime values.
+14. Detects warnings in valid sales records.
+15. Returns the complete validation result.
 
-#### Expected Columns
+#### Required Columns
 
 The validation process expects the following columns:
 
@@ -237,6 +240,12 @@ The validation process expects the following columns:
 - `precio`
 - `cantidad`
 - `fecha`
+
+#### Optional Columns
+
+The current version supports the following optional column:
+
+- `ciudad`
 
 #### Validation Result
 
@@ -250,6 +259,8 @@ The `validate_dataframe()` function returns a dictionary containing:
 - `total_valid_rows`: The number of records that passed validation.
 - `total_invalid_rows`: The number of records containing errors.
 
+Optional columns present in the original CSV file are preserved in the resulting valid and invalid `DataFrame` objects.
+
 #### Input and Output
 
 ##### `validate_csv_file()`
@@ -260,7 +271,7 @@ The `validate_dataframe()` function returns a dictionary containing:
 ##### `normalize_dataframe()`
 
 - **Input:** A raw pandas `DataFrame` containing sales data as strings.
-- **Output:** A new pandas `DataFrame` containing normalized string values.
+- **Output:** A new `DataFrame` containing normalized string values while preserving supported optional columns.
 
 ##### Validation Helper Functions
 
@@ -336,6 +347,9 @@ The module currently provides the following functions:
 - `get_category_summary()`
 - `get_records_with_max_value()`
 - `analyze_sales()`
+- `get_city_summary()`
+- `get_top_5_best_selling_products()`
+- `get_top_5_highest_income_products()`
 
 #### Income Calculation
 
@@ -376,6 +390,22 @@ The category summary contains the following fields:
 - `unidades_vendidas`
 - `ingreso_total`
 
+#### City Summary
+
+The `get_city_summary()` function groups valid sales records by `ciudad` when the optional city column is available.
+
+It excludes empty city values and calculates the total units sold and total income for each city.
+
+The city summary is sorted from highest to lowest total income.
+
+The city summary contains following fields:
+
+- `ciudad`
+- `unidades_vendidas`
+- `ingreso_total`
+
+City analysis is optional and is only performed when the `ciudad` column is present.
+
 #### Maximum-Value Records
 
 The `get_records_with_max_value()` function identifies all records containing the maximum value in a specified column.
@@ -385,8 +415,18 @@ This reusable function is used to determine:
 - The product or products with the highest number of units sold.
 - The product or products with the highest total income.
 - The category or categories with the highest total income.
+- The city or cities with the highest total income when city data is available.
 
 If multiple records share the maximum value, all tied records are included in the result.
+
+#### Top Product Rankings
+
+The also generates Top 5 products rankings:
+
+- `get_top_5_best_selling_products()`: Returns up to five products with the highest number of units sold. Total income is used as a secondary sorting criterion.
+- `get_top_5_highest_income_products()`: Returns up to five products with th highest total income.
+
+Both functions return the selected products as lists of dictionaries.
 
 #### Sales Analysis Process
 
@@ -405,7 +445,11 @@ It performs the following operations:
 9. Identifies the best-selling product or products.
 10. Identifies the product or products with the highest income.
 11. Identifies the category or categories with the highest income.
-12. Returns the complete analysis result.
+12. Creates the Top 5 best-selling products ranking.
+13. Cretaes the Top 5 highest-income products ranking.
+14. If the optional `ciudad` column is present, create the city summary.
+15. Identifies the city or citites with highest income when city data is available.
+16. Returns the complete analysis result.
 
 #### Analysis Result
 
@@ -421,18 +465,25 @@ The `analyze_sales()` function returns a dictionary containing:
 - `best_selling_product`: A list containing the product or products with the highest number of units sold.
 - `highest_income_product`: A list containing the product or products with the highest total income.
 - `highest_income_category`: A list containing the category or categories with the highest total income.
+- `top_5_best_selling_products`: A list containing up to five products with the highest number of units sold.
+- `top_5_highest_income_products`: A list containing up to five products with the highest total income.
+
+When the optional `ciudad` column is present, the analysis result also contains:
+
+- `city_summary`: A pandas `DataFrame` containing aggregated results for each city.
+- `highest_income_city`: A list containing the city or cities with the highest total income.
 
 #### Input and Output
 
 ##### Analysis Helper Functions
 
 - **Input:** A pandas `DataFrame` containing valid sales records or aggregated sales information and, when required, the name of the column to evaluate.
-- **Output:** A calculated value, an aggregated `DataFrame`, or a list of records containing a maximum value.
+- **Output:** A calculated value, and aggregated `DataFrame`, a list of records containing a maximum value, or a Top 5 product ranking.
 
 ##### `analyze_sales()`
 
 - **Input:** A dictionary containing valid sales rows and validation totals.
-- **Output:** A dictionary containing general sales metrics, product summaries, category summaries, and highest-performing records.
+- **Output:** A dictionary containing general sales metrics, product summaries, category summaries, Top 5 product rankings, highest-performing records, and optional city analysis result.
 
 #### Related Exceptions
 
@@ -446,6 +497,8 @@ The sales report generation module converts sales analysis results, validation e
 
 Each report section is generated by an independent helper function. This modular structure makes the reporting workflow easier to maintain, test, modify, and extend.
 
+The report can also include Top 5 product rankings and optional city-base salse infomation when city data is available.
+
 The module currently provides the following functions:
 
 - `get_general_summary()`
@@ -457,6 +510,10 @@ The module currently provides the following functions:
 - `get_errors()`
 - `get_warnings()`
 - `generate_report()`
+- `get_highest_income_city()`
+- `get_top_5_best_selling_products()`
+- `get_top_5_highest_income_products()`
+- `get_city_summary()`
 
 #### General Summary
 
@@ -507,12 +564,40 @@ For each category, the section includes:
 
 If multiple categories share the highest income, all tied categories are included.
 
-#### Product and Category Summaries
+#### Highest-Income City
+
+The `get_highest_income_city()` function fromats the city or cities that generated the highest total income.
+
+For each city, the section includes:
+
+- `ciudad`
+- `ingreso_total`
+- `unidades_vendidas`
+
+If multiple citites share the highest income, all tied cities, are included. 
+
+This section is only generated when city analysis is available.
+
+#### Top Product Rankings
+
+The module generates two Top 5 product ranking sections:
+
+- `get_top_5_best_selling_products()`: Formats up to five products with the higest number of units sold.
+- `get_top_5_highest_income_products()`: Formats up to five products with the highest total income.
+
+Each ranking includes the product position, identifier, name, units sold, and total income.
+
+#### Product, Category, and City Summaries
 
 The module converts the aggregated pandas `DataFrame` objects into plain-text tables.
 
 - `get_product_summary()`: Generates the complete product summary table.
 - `get_category_summary()`: Generates the complete category summary table.
+- `get_city_summary()`: Generates the complete city summary table when city data is available.
+
+The `ingreso_total` values are formmated as corruncy before the summaries are converted into plain-text tables.
+
+The city summary is optional and is only included when `city_summary` is available in the analysis result.
 
 The pandas indexes are excluded from the generated tables.
 
@@ -571,11 +656,15 @@ It performs the following operations:
 5. Adds the best-selling product section.
 6. Adds the highest-income product section.
 7. Adds the highest-income category section.
-8. Adds the complete product summary.
-9. Adds the complete category summary.
-10. Adds the validation errors section.
-11. Adds the validation warnings section.
-12. Combines all sections into a single plain-text report.
+8. Adds the highest-income city section when city data is available.
+9. Adds the Top 5 best-selling products section.
+10. Adds the Top 5 highest-income products section.
+11. Adds the complete product summary.
+12. Adds the complete category summary.
+13. Add the complete city summary when city data is available.
+14. Adds the validation errors sections.
+15. Adds the validation warnings section.
+16. Combines all sections into a sinble plain-text report.
 
 #### Report Structure
 
@@ -587,16 +676,20 @@ The generated report contains the following sections:
 4. `BEST SELLING PRODUCT`
 5. `HIGHEST INCOME PRODUCT`
 6. `HIGHEST INCOME CATEGORY`
-7. `PRODUCT SUMMARY`
-8. `CATEGORY SUMMARY`
-9. `VALIDATION ERRORS`
-10. `WARNINGS`
+7. `HIGHEST INCOME CITY` when city data is available.
+8. `TOP 5 BEST SELLING PRODUCTS`
+9. `TOP 5 HIGHEST INCOME PRODUCTS`
+10. `PRODUCT SUMMARY`
+11. `CATEGORY SUMMARY`
+12. `CITY SUMMARY` when city data is available.
+13. `VALIDATIONS ERRORS`
+14. `WARNINGS`
 
 #### Input and Output
 
 ##### Report Helper Functions
 
-- **Input:** Sales analysis results, validation errors, or validation warnings.
+- **Input:** Sales analysis results, including general metrics, rankings, summaries, validation errors, or validation warnings.
 - **Output:** A formatted string containing a specific report section.
 
 ##### `generate_report()`

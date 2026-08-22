@@ -7,6 +7,9 @@ Each report section is gnerated by an independent helper function to keep
 the reportin workflow modular, maintainable, and easy to extend. The main
 report function coordinates these helpers and combines their output into a
 complete sales report.
+
+The report can also include Top 5 product rankings and optional city-based
+sales information when city data is available in the analysis result.
 """
 
 from datetime import date
@@ -122,6 +125,88 @@ Income: ${highest_income_category["ingreso_total"]:,.2f}
         summary.append(summary_category)
     return "\n".join(summary)
 
+def get_highest_income_city(analysis_result: Dict[str, Any]) -> str:
+    """Generate the highest-income city section.
+
+    Reads the city records stored in `highest_income_city` and formats 
+    their names, total generated income, and total units sold.
+
+    If multiple cities share the highest income, every tied city is included in the section.
+
+    Args: 
+        analysis_result: Dictionary containing the sale sanalysis results,
+            including the highest-income city records.
+
+    Returns:
+        A formatted string containing all cities tied for the highest 
+        generated income.
+    """
+    list_highest_income_city = analysis_result["highest_income_city"]
+    summary = []
+    summary.append("HIGHEST INCOME CITY")
+    for highest_income_city in list_highest_income_city:
+        summary_city = f"""
+{highest_income_city["ciudad"]}
+Income: ${highest_income_city["ingreso_total"]:,.2f}
+Units sold: {highest_income_city["unidades_vendidas"]}"""
+        summary.append(summary_city)
+    return "\n".join(summary)
+
+def get_top_5_best_selling_products(analysis_result: Dict[str, Any]) -> str:
+    """Generate the Top 5 best-selling products section.
+
+    Reads the ranked records stored in `top_5_best_selling_products` and
+    formats each product with its ranking position, identifier, name, 
+    units sold, and total income.
+
+    The section contains up to five products.
+
+    Args:
+        analysis_result: Dictionary conatining the sales analysis results,
+            including the Top 5 best-selling products.
+
+    Returns:
+        A formatted string containing the Top 5 best-selling products.
+    """
+    top_5_best_selling_products = analysis_result["top_5_best_selling_products"]
+    summary = []
+    summary.append("TOP 5 BEST SELLING PRODUCTS\n")
+    for index in range(len(top_5_best_selling_products)):
+        top_5 = top_5_best_selling_products[index]
+        summary_top_5 = f"""
+{index + 1}. {top_5["producto_id"]} - {top_5["producto"]} | Units sold: {top_5["unidades_vendidas"]} | Income: ${top_5["ingreso_total"]:,.2f}""".strip()
+        summary.append(summary_top_5)
+    summary = "\n".join(summary)
+    return "\n" + summary.strip()
+
+def get_top_5_highest_income_products(analysis_result: Dict[str, Any]) -> str:
+    """Generate the Top 5 highest-income products section.
+
+    Read the ranked records stored in `top_5_highest_income_products` and
+    formats each product with its ranking position, identifier, name,
+    total income, and units sold.
+
+    The section contains up to five products.
+
+    Args:
+        analysis_result: Dictionary containing the sales analysis results,
+            including the Top 5 highest-income products.
+
+    Returns:
+        A formatted string containing the Top 5 highest-income products.
+    """
+    top_5_highest_income_products = analysis_result["top_5_highest_income_products"]
+    summary = []
+    summary.append("TOP 5 HIGHEST INCOME PRODUCTS\n")
+    for index in range(len(top_5_highest_income_products)):
+        top_5 = top_5_highest_income_products[index]
+        summary_top_5 = f"""
+{index + 1}. {top_5["producto_id"]} - {top_5["producto"]} | Income: ${top_5["ingreso_total"]:,.2f} | Units sold: {top_5["unidades_vendidas"]}
+""".strip()
+        summary.append(summary_top_5)
+    summary = "\n".join(summary)
+    return "\n" + summary.strip() + "\n"
+
 def get_product_summary(analysis_result: Dict[str, Any]) -> str:
     """Generate the product summry section.
 
@@ -135,9 +220,11 @@ def get_product_summary(analysis_result: Dict[str, Any]) -> str:
     Returns:
         a formatted string containing the aggregated product summary.
     """
+    product_summary_for_display = analysis_result["product_summary"].copy()
+    product_summary_for_display["ingreso_total"] = product_summary_for_display["ingreso_total"].map(lambda x: f"${x:,.2f}")
     summary = []
     summary.append("PRODUCT SUMMARY")
-    summary.append(f"\n{analysis_result['product_summary'].to_string(index=False)}\n")
+    summary.append(f"\n{product_summary_for_display.to_string(index=False)}\n")
     return "\n".join(summary)
 
 def get_category_summary(analysis_result: Dict[str, Any]) -> str:
@@ -153,9 +240,32 @@ def get_category_summary(analysis_result: Dict[str, Any]) -> str:
     Returns:
         A formatted string containig the aggregated category summary.
     """
+    category_summary_for_display = analysis_result["category_summary"].copy()
+    category_summary_for_display["ingreso_total"] = category_summary_for_display["ingreso_total"].map(lambda x: f"${x:,.2f}")
     summary = []
     summary.append("CATEGORY SUMMARY")
-    summary.append(f"\n{analysis_result['category_summary'].to_string(index=False)}\n")
+    summary.append(f"\n{category_summary_for_display.to_string(index=False)}\n")
+    return "\n".join(summary)
+
+def get_city_summary(analysis_result: Dict[str, Any]) -> str:
+    """Generate the city summary section.
+
+    Creates a display copy of the city summary DataFrame and formats the
+    `ingreso_total` column as currency before converting the data into a
+    plain-text table without the pandas index.
+
+    Args:
+        analysis_result: Dictionary containing the `city_summary`
+            DataFrame produced by the sales analysis process.
+
+    Returns:
+        A formatted string containing the aggregated city summary.
+    """
+    city_summary_for_display = analysis_result["city_summary"].copy()
+    city_summary_for_display["ingreso_total"] =city_summary_for_display["ingreso_total"].map(lambda x: f"${x:,.2f}")
+    summary = []
+    summary.append("CITY SUMMARY")
+    summary.append(f"\n{city_summary_for_display.to_string(index=False)}\n")
     return "\n".join(summary)
 
 def get_errors(errors: List[Dict[str, Any]]) -> str:
@@ -232,8 +342,11 @@ def generate_report(
 
     Creates the report header and includes the source filename and generation
     date. It then coordinates the report helper functions to add general
-    metrics, highest-performing records, product and category summaries,
-    validation errors, and warnings.
+    metrics, highest-performing recors, Top 5 products rankings, product
+    and category summaries, validation errors, and warnings.
+
+    When city analysis is available, the report also includes the
+    highest-income city and the complete city summary.
 
     Args:
         analysis_result: Dicnionary containing the metrics, summaries, and 
@@ -255,8 +368,14 @@ Generated at: {date.today()}""")
     summary.append(get_best_selling_product(analysis_result))
     summary.append(get_highest_income_product(analysis_result))
     summary.append(get_highest_income_category(analysis_result))
+    if "highest_income_city" in analysis_result.keys():
+        summary.append(get_highest_income_city(analysis_result))
+    summary.append(get_top_5_best_selling_products(analysis_result))
+    summary.append(get_top_5_highest_income_products(analysis_result))
     summary.append(get_product_summary(analysis_result))
     summary.append(get_category_summary(analysis_result))
+    if "city_summary" in analysis_result.keys():
+        summary.append(get_city_summary(analysis_result))
     summary.append(get_errors(errors))
     summary.append(get_warnings(warnings))
     return "\n".join(summary)

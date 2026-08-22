@@ -1,12 +1,14 @@
 """Sales data analysis module.
 
 This module processes previously validated sales records and calculates
-genaral sales metrics, product summaries, and category summaries.
+general sales metrics, product, category, and optional city summaries.
 
-Each analysis operation is implemented in a separated helper function to 
-keep the analysis workflow modular, maintainable, and easy to extend.
-The main analysis function coordinates these helpers and returns a
-structured dictionary ready for report generation.
+Each analysis operation is impolemented in a separate helper function to
+keep the analysis workflow modular, maintaiable, and easy to extend.
+The module also generates Top 5 prouct rankings and indentifies records with the highest values.
+
+The main analysis funciton coordinates these gelpers and returns a
+structured dictionay ready for report generation.
 """
 
 from typing import Dict, Any, List
@@ -121,13 +123,47 @@ def get_category_summary(df_analysis: pd.DataFrame) -> pd.DataFrame:
     """
     df_category_summary = df_analysis.groupby("categoria").agg({
         "cantidad": "sum",
-        "ingreso_fila": "sum",
+        "ingreso_fila": "sum"
     }).reset_index()
     df_category_summary = df_category_summary.rename(columns={
         "cantidad": "unidades_vendidas",
         "ingreso_fila": "ingreso_total"
     })
     return df_category_summary
+
+def get_city_summary(df_analysis: pd.DataFrame) -> pd.DataFrame:
+    """Create an aggregated sales summary gruped by city.
+
+    Filters out records with empty `ciudad` values and groups the remaining
+    sales records by city. It calculates the total units sold and total income
+    for each city.
+
+    the resulting records are sorted from highest to lowest total income.
+
+    Args:
+        df_analysis: DataFrame containing valid sales records the optional
+            `ciudad` column, and the calculated `ingreso_fila` column.
+
+    Returns:
+        A DataFrame containin one row per city with the following columns:
+
+        - `ciudad`: City associated with the sales records.
+        - `unidades_vendidas`: Total units sold in the city.
+        - `ingreso_total`: Total income gtenerated in the city.
+    """
+    df_city_summary = df_analysis[df_analysis["ciudad"].str.strip() != ""]
+    df_city_summary = df_city_summary.groupby("ciudad").agg({
+        "cantidad": "sum",
+        "ingreso_fila": "sum"
+    }).reset_index()
+
+    df_city_summary = df_city_summary.rename(columns={
+        "cantidad": "unidades_vendidas",
+        "ingreso_fila": "ingreso_total"
+    })
+    df_city_summary = df_city_summary.sort_values(by="ingreso_total", ascending=False).reset_index(drop=True)
+    return df_city_summary
+
 
 def get_records_with_max_value(df: pd.DataFrame, column_name : str) -> List[Dict[str, Any]]:
     """Return all records containing the maximum value in a column.
@@ -150,6 +186,39 @@ def get_records_with_max_value(df: pd.DataFrame, column_name : str) -> List[Dict
     df_max = df[df[column_name] == df[column_name].max()]
     return df_max.to_dict(orient="records")
 
+def get_top_5_best_selling_products(product_summary: pd.DataFrame) -> List[Dict[str, Any]]:
+    """Return the Top 5 best-selling products.
+
+    Sorts the product summary by total units sold in descending order.
+    When products have the same number of units sold, total income is used
+    as a secundary sortin criterion.
+
+    Args:
+        product_summary: DataFrame containing aggregated sales information
+            for each product.
+
+    Returns:
+        a list of dictionaries containing up to five products with the
+        highest number of units sold.
+    """
+    df_top5 = product_summary.sort_values(by=["unidades_vendidas", "ingreso_total"], ascending=[False,False]).head(5).reset_index(drop=True)
+    return df_top5.to_dict(orient="records")
+
+def get_top_5_highest_income_products(product_summary: pd.DataFrame) -> List[Dict[str, Any]]:
+    """Return the Top 5 products with the highest total income.
+
+    Sorts the product summary by `ingreso_total` in descending order and
+    selects up to the first five records.
+
+    Args:
+        product_summary: DataFrame contianin aggregated sales infomation for each product.
+
+    Returns:
+        A list of dictionaries containing up to five products with the highest total income.
+    """
+    df_top5 = product_summary.sort_values(by="ingreso_total", ascending=False).head(5).reset_index(drop=True)
+    return df_top5.to_dict(orient="records")
+
 def analyze_sales(validation_result: Dict[str, Any]) -> Dict[str, Any]:
     """Analyze validated sales records and calculate summary metrics.
 
@@ -161,6 +230,11 @@ def analyze_sales(validation_result: Dict[str, Any]) -> Dict[str, Any]:
     product summaries, and category summaries. It also identifies the
     best-selling product, the product with the highest income, and the
     category with the highest income.
+
+    Additionally, it generates Top 5 rankings for best-selling and
+    highest-income products. If the optional `ciudad` column is available,
+    the function also creates a city summary and identifies the city or cities
+    with the highest total income.
 
     Args:
         validation_result: (Dictionary produced by the validation process.
@@ -187,6 +261,14 @@ def analyze_sales(validation_result: Dict[str, Any]) -> Dict[str, Any]:
         total income.
         - `highest_income_category`: List containing the category or categories
         with the highest total income.
+        - `top_5_best_selling_products`: List containing up to five products with the highest 
+            number of units sold.
+        - `top_5_highest_income_products`: List containing up to five products with the highest total income.
+
+        When the optional `ciudad` column is available, the result also contains:
+
+        - `city_summary`: DataFrame containing aggregated sales results for each city.
+        - `highest_income_city`: List containing the city or cities with the highest total income.
 
 
     Raises:
@@ -212,4 +294,9 @@ def analyze_sales(validation_result: Dict[str, Any]) -> Dict[str, Any]:
     analysis_result["best_selling_product"] = get_records_with_max_value(analysis_result["product_summary"], "unidades_vendidas")
     analysis_result["highest_income_product"] = get_records_with_max_value(analysis_result["product_summary"], "ingreso_total")
     analysis_result["highest_income_category"] = get_records_with_max_value(analysis_result["category_summary"], "ingreso_total")
+    analysis_result["top_5_best_selling_products"] = get_top_5_best_selling_products(analysis_result["product_summary"])
+    analysis_result["top_5_highest_income_products"] = get_top_5_highest_income_products(analysis_result["product_summary"])
+    if "ciudad" in df_analysis.columns:
+        analysis_result["city_summary"] = get_city_summary(df_analysis)
+        analysis_result["highest_income_city"] = get_records_with_max_value(analysis_result["city_summary"], "ingreso_total")
     return analysis_result

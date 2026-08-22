@@ -1,14 +1,14 @@
 """Main application module for the Sales Report project.
 
-This module acts as the entry point for the application and coordinates the 
+This module acts as the entry point for the application and coordinates the
 complete sales-reporting workflow.
 
-It validates the source CSV file, read its contents into a pandas DataFrame,
+It validates the source CSV file, reads its contents into a pandas DataFrame,
 validates and normalizes the sales records, performs the sales analysis,
-generates the plain-text report, and saves the resulting fule.
+generates the plain-text report, and saves the resulting file.
 
 The module also measures the total execution time and handles both expected
-application-specific errors and unexpected exceptions.
+application-specific errors and unexpected exception.
 """
 
 import time
@@ -66,4 +66,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

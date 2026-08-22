@@ -3,11 +3,13 @@
 This module validates input CSV file paths, normalizes raw sales data,
 and applies independent validation rules to pandas DataFrames.
 
-Each validation rule is implemented in a separate helper function to keep
+Each validation rule is implemented in a separate halper funciton to keep
 the validation process modular, maintainable, and easy to extend. The main
-validation function coordinates these helpers, separates valid and invalid
-records, collects errors and warnings, and prepares valid sales data for
-analysis.
+validation function coordinates these helpers, separates valid and invalid records,
+collects errors and warnings, and prepares valid sales data for analysis.
+
+Optional fields, such as `ciudad`, are normalized when present without
+being required for the core validation workflow.
 """
 
 from pathlib import Path
@@ -37,24 +39,24 @@ REQUIRED_COLUMNS = [
 def validate_csv_file(file_path: str) -> Path:
     """Validate a CSV file path and return it as a Path object.
 
-Converts a string path into a Path object and verifies that the path
-is not empty, exists in the file system, points to a regular file,
-has a CSV extension, contains data, and can be read.
+    Converts a string path into a Path object and verifies that the path
+    is not empty, exists in the file system, points to a regular file,
+    has a CSV extension, conatains data, and can be read.
 
-Args:
-    file_path: String containing the path of the CSV file to validate.
+    Args:
+        file_path: String containing the path of the CSV file to validate.
 
-Returns:
-    A validated Path object ready for the CSV reading process.
-
-Raises:
-    EmptyPathError: If the provided path is None or empty.
-    FileNotFoundAppError: If the path does not exist.
-    InvalidFilePathError: If the path does not point to a regular file.
-    InvalidFileExtensionError: If the file extension is not `.csv`.
-    EmptyFileError: If the file contains zero bytes.
-    FileReadError: If the file cannot be read
-    """
+    Returns:
+        A validated Path object ready for the CSV readin process.
+    
+    Raises:
+        EmtpyPathError: If the provided path is None or empty.
+        FileNotFoundApppError: If the path does not exist.
+        InvalidFilePathError: If the path does not point to a regular file.
+        InvalidFileExtensionError: If the file extension is no `.csv`.
+        EmptyFileError: If the file contains zero bytes.
+        FileReadError: If the file cannot be read.
+"""
     if file_path is None or file_path.strip() == "":
         raise EmptyPathError()
     new_file_path = Path(file_path)
@@ -76,19 +78,20 @@ Raises:
 def normalize_dataframe(df_raw: pd.DataFrame) -> pd.DataFrame:
     """Normalize string values in a raw sales DataFrame.
 
-Creates a copy of the original DataFrame and applies field-specific
-normalization rules. The function removes unnecessary whitespace,
-converts product identifiers to uppercase, and preserves the original
-DataFrame unchanged.
+    Creates a copy of the original DataFrame and applies field-specific
+    normalization rules. The function removes unnecessary whitespace,
+    converts product identifiers to uppercase, and preserves the original
+    DataFrame unchanged.
 
-The input DataFrame is expected to contain the columns defined in
-`REQUIRED_COLUMNS`, with their values represented as strings.
+    The required sales columns are normalized according to their expected
+    format. If the optional `ciudad` column is present, its leading, trailing,
+    and repeated internal whitespace is also normalized.
 
-Args:
-    df_raw: Raw DataFrame containing sales records as strings.
+    Args:
+        df_raw: Raw DataFrame containing salse records as strings.
 
-Returns:
-    A new DataFrame containing normalized string values.
+    Returns:
+        A new DataFrame containing normalized string values.
     """
     df_normalized = df_raw.copy()
     df_normalized["producto_id"] = df_normalized["producto_id"].str.replace(r"\s+", "", regex=True).str.upper()
@@ -97,27 +100,29 @@ Returns:
     df_normalized["precio"] = df_normalized["precio"].str.replace(r"\s+", "", regex=True)
     df_normalized["cantidad"] = df_normalized["cantidad"].str.replace(r"\s+","", regex=True)
     df_normalized["fecha"] = df_normalized["fecha"].str.replace(r"\s+", "", regex=True)
+    if "ciudad" in df_normalized:
+        df_normalized["ciudad"] = df_normalized["ciudad"].str.replace(r"\s+", " ", regex=True).str.strip()
     return df_normalized
 
 def validated_empty_values(df_normalized: pd.DataFrame) -> Dict[str,Any]:
     """Detect empty values in the required DataFrame columns.
 
-Examines every required column and records an error whenever an empty
-string is found. Each affected row index is included in the invalid-index
-collection so that the row can later be separated from valid records.
+    Examines every required column and records an error whenever an empty
+    string is found. Each affected row index is added to the invalid-index
+    collection so that the row can later be separated from valid records.
 
-The reported CSV line number includes the header row, so two is added
-to each DataFrame row index.
+    The reported CSV line number includes the header row, so two is added
+    to each DataFrame row index.
 
-Args:
-    df_normalized: Normalized DataFrame containing the sales records
-        to validate.
+    Args:
+        df_normalized: Normalized DataFrame containing the sales records
+            to validate.
 
-Returns:
-    A dictionary containing the following keys:
+    Returns:
+        A dictionary containing the following keys:
 
-    - `invalid_indexes`: Row indexes containing empty required values.
-    - `errors`: Detailed errors for every empty field detected.
+        - `invalid_index`: Row indexes containing empty required values.
+        - `errors`: Detailed errors for every empty field detected.
     """
     validation_result = {
         "invalid_indexes": [],
@@ -140,22 +145,22 @@ Returns:
 def validated_price(df_normalized: pd.DataFrame) -> Dict[str,Any]:
     """Validate price values in a normalized sales DataFrame.
 
-Verifies that every non-empty value in the `precio` column can be
-converted to a numeric value and is greater than zero.
+    Verifies that every non-empty value in the `precio` column can be
+    converted to a numeric value and is greater than zero.
 
-Empty values are skipped because they are handled separately by
-`validated_empty_values()`.
+    Empty values are skipped because they are handled separately by
+    `validate_empty_values()`.
 
-Args:
-    df_normalized: Normalized DataFrame containing the sales records
-        to validate.
+    Args:
+        df_normalized: Normalized DataFrame containing the sales records
+            to validate.
 
-Returns:
-    A dictionary containing the following keys:
+    Returns:
+        A dictionary containing the following keys:
 
-    - `invalid_indexes`: Row indexes containing invalid prices.
-    - `errors`: Detailed errors for non-numeric, zero, or negative
-      price values.
+        - `invalid_indexes`: Row indexes containig invalid prices.
+        - `errors`: Detailed errors for non-numeric, zero, or negative
+          price values.
     """
     validation_result = {
         "invalid_indexes": [],
@@ -189,23 +194,23 @@ Returns:
 def validated_amount(df_normalized: pd.DataFrame) -> Dict[str,Any]:
     """Validate quantity values in a normalized sales DataFrame.
 
-Verifies that every non-empty value in the `cantidad` column can be
-converted to a number, represents a whole number, and is greater than
-zero. Decimal quantities are not accepted in version 1.0.
+    Verifies that every non-empty value in the `cantidad` column can be
+    converted to a number, represents a whole number, and is greater than
+    zero. Decimal quantities are not accepted in version 1.0.
 
-Empty values are skipped because they are handled separately by
-`validated_empty_values()`.
+    Empty values are skipped because they are handled separately by
+    `validated_emtpy_values()`
 
-Args:
-    df_normalized: Normalized DataFrame containing the sales records
-        to validate.
+    Args:
+        df_normalized: Normalized DataFrame containing the sales records 
+            to validate.
 
-Returns:
-    A dictionary containing the following keys:
+    Returns:
+        A dictionary containing the following keys:
 
-    - `invalid_indexes`: Row indexes containing invalid quantities.
-    - `errors`: Detailed errors for non-numeric, decimal, zero, or
-      negative quantity values.
+        - `invalid_indexes`: Row indexes containing invalid quantities.
+        - `errors`: Detailed erros for non-numeric, decimal, zero, or 
+          negative quantity values.
     """
     validation_result = {
         "invalid_indexes": [],
@@ -249,10 +254,10 @@ def validated_date(df_normalized: pd.DataFrame) -> Dict[str,Any]:
     """Validate date values in a normalized sales DataFrame.
 
     Verifies that every non-empty value in the `fecha` column follows the
-    `YYYY-MM-DD` format and represents and existing calendar date.
+    `YYYY-MM-DD` format and represents an existing calendar date.
 
-    Empty values are skipped because they are handled separately by 
-    `validated_empty_values()`
+    Empty values are skipped because they are handled separately by
+    `validate_empty_values()`
 
     Args:
         df_normalized: Normalized DataFrame containing the sales records
@@ -262,8 +267,8 @@ def validated_date(df_normalized: pd.DataFrame) -> Dict[str,Any]:
         A dictionary containing the following keys:
 
         - `invalid_indexes`: Row indexes containing invalid dates.
-        - `errors`: Detailed errors for incorrect date formats or 
-        nonexistent caldendar dates.
+        - `errors`: Detailed errors for incorrect data formats or 
+          nonexistent calendar dates.
     """
     validation_result = {
         "invalid_indexes": [],
@@ -297,22 +302,21 @@ def validated_date(df_normalized: pd.DataFrame) -> Dict[str,Any]:
     return validation_result
 
 def detect_warnings(df_valid_rows: pd.DataFrame) -> Dict[str,Any]:
-    """Detected non-critical inconsistencies in valid sales records.
+    """Detect non-critical inconsitencies in valid sales records.
 
-    Groups valid records by `producto_id` and verifies that every product 
-    identifier is associated eith a consistent product name.
+    Groups valid records by `product_id` and verifies that each product
+    identifier is associated with a consistent product name.
 
-    When the same identifier appears with different product names, the
-    incosistency is registered as a warning without invalidating the
-    affected records.
+    When the same identifier appears with different product names, the 
+    inconsistency is registered as a warning without invalidating the affected records.
 
     Args:
         df_valid_rows: DataFrame containing sales records that passed all
             critical validation rules.
 
     Returns:
-        A dictionary containing a `warnings` key with the detected
-            product-name inconsistencies.
+        A dictionary containing a `warnings` key with the detected 
+        product-name inconsistencies.
     """
     validated_result = {
         "warnings": []
@@ -336,35 +340,41 @@ def detect_warnings(df_valid_rows: pd.DataFrame) -> Dict[str,Any]:
 def validate_dataframe(df_raw: pd.DataFrame) -> Dict[str, Any]:
     """Validate the structure and contents of a raw sales DataFrame.
 
-    Verifies thath the DataFrame contains data and includes all required
-    columns. It then normalizes the sales records and coordinates the 
-    independent validation function for empty values, prices, quantities, 
+    Verifies that the DataFrame contains data and includes all required
+    columns. It the normalizes the sales records and coordinates the
+    independent validation functions for empty values, prices, quantities,
     and dates.
 
-    Rows containing one or more critiacl errors are separrated from valid
+    Rows containing one or more critical errors are separated form valid
     rows. Numeric fields and dates in valid rows are converted to their
-    appropriate pandas data types. Non-critical producto-name incosistencies
-    are collected separately as warnings
+    appropriate pandas data types. Non-critical product-name inconsistencies
+    are collected separately as warnings.
+
+    Optional columns that are not part of `REQUIRED_COLUMNS` are preserved
+    and may be normalized when supported by `normalize_dataframe()`.
 
     Args:
-        df_raw: Raw pandas DataFrame containing sales records as strings.
+        df_raw: Raw pandas DataFrame containing sales records as string.
     
     Returns:
         A dictionary containing the following keys:
 
-        - `df_valid_rows`: DataFrame containing records that passed all 
-        critical validation rules.
-        - `df_invalid_rows`: DataFrame containing records with one or more validations
-        errors.
+        - `df_valid_rows`: DataFrame containing records that passed all
+            critical validation rules.
+        - `df_invalid_rows`: DataFrame containing records with one or more
+            validation errors.
         - `errors`: Flat list containing detailed validation errors.
         - `warnings`: Flat list containing non-critical data inconsistencies.
-        - `total_rows`: Total number of normalized sales records.
+        - `total_rows`:Total number of normalized sales records.
         - `total_valid_rows`: Number of records that passed validation.
-        - `total:invalid_rows`: Number of records containing errors.
+        - `total_invalid_rows`: Number of records containing errros.
 
     Raises:
-        EmptyDataFrameError: If the input DataFrame containings no rows or usable data.
-        MissingColumnsError: If one or mor required columns are missings.
+        EmptyDataFrameError: If the input DataFrame contains no rows or
+            usable data.
+        MissingColumnsError: If one or more required columns are missing.
+
+    
     """
     if df_raw.empty:
         raise EmptyDataFrameError()
