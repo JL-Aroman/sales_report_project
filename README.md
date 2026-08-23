@@ -751,56 +751,84 @@ The generated report contains the following sections:
 
 The report file management module handles the storage of generated sales reports in the file system.
 
-Its main function, `save_report()`, creates the destination directory when necessary, generates a dynamic report filename, writes the report using UTF-8 encoding, and return the path of the saved file.
+The module handles the storage of generated sales reports and analysis data. It generates a shared dynamic base filename that can be used to save both the plain-text report and the JSON analysis file.
 
 The module currently provides the following functions:
 
 - `save_report()`
-- `get_dynamic_name()`
+- `create_report_base_name()`
+- `save_analysis_json()`
 
 #### Report Saving Process
 
 The `save_report()` function performs the following operations:
 
-1. Receives the generated report text.
-2. Converts the output folder into a `Path` object.
-3. Creates the output directory and any missing parent directories.
-4. Generates a timestamp using `get_dynamic_name()`.
-5. Creates the output filename using `sales_report` and the generated timestamp.
-6. Builds the complete output file path.
-7. Opens the destination file using UTF-8 encoding.
-8. Writes the report content to the file.
-9. Return the `Path` object pointing to the saved report.
+1. Receives th generated report text.
+2. Receives the destination folder.
+3. Receives a previously generated base filename.
+4. Add the `.txt` extension to the base filename.
+5. Converts the output folder into a `Path` object.
+6. Creates the output directory and any missing parent directories.
+7. Builds the complete output file path.
+8. Opens the destination file using UTF-8 encoding.
+9. Writes the report content to the file.
+10. Returns the `Path` object pointing to the saved report.
 
-#### Dynamic Filename Generation
+#### Dynamic Base Filename Generation
 
-The `get_dynamic_name()` funciton generates a timestamp using the current local date and time.
+The `create_report_base_name()` function generates a shared base filename using the current local date and time.
 
-The generaed vaule follows this format:
+The generated value follows this format:
 
-`YYYY-MM-DD_HH-MM-SS-fff`
+`sales_report_YYYY-MM-DD_HH-MM-SS-fff`
 
-The timestamp is used by `save_report()` to create dynamic report filenames such as:
+For example:
 
-`sales_report_2026-08-23_08-45-30-125.txt`
+`sales_report_2026-08-23_13-45-30-125`
+
+The same base can be used to generate different output files with the same timestamp, such as:
+
+`sales_report_2026-08-23_13-45-30-125.txt`
+
+`sales_report_2026-08-23_13-45-30-125.json`
+
+#### JSON Analysis Saving Process
+
+The `save_analysis_json()` function saves the complete sales analysis result as a JSON file.
+
+Before serealization, pandas `DataFrame` summaries are converted into list of dictionaries.
+
+The following summaries are converted:
+
+- `product_summary`
+- `category_summary`
+- `city_summary` when available
+- `payment_method_summary` when available
+
+The function adds the `.json` extension to the provided base filename and writes the resulting JSON file using UTF-8 encoding and formatted indentation.
 
 #### Input and Output
 
 ##### `save_report()`
 
-- **Input:** The complete report text, th and the destination folder.
+- **Input:** The complete report text, the destination folder, and a base filename without an extension.
 - **Output:** A `Path` object pointing to the saved report file.
 
 The output folder may be provided as either a string or a `Path` object.
 
-#### `get_dynamic_name()`
+#### `create_report_base_name()`
 
 - **Input:** None.
-- **Output:** A timestamp string containing the current date and time.
+- **Output:** A dynamic base filename containing the `sales_report` prefix and the current date and time.
+
+#### `dave_analysis_json()`
+
+- **Input:** The analysis-result dictionary, the destination folder, and a base filename without an extension.
+- **Output:** A `Path` object pointing to the saved JSON analysis file.
 
 #### Error Handling
 
-File-System errors produced while creating the destination directory or writing the report are converted into the custom `ReportSaveError` exception.
+File-system errors produced while creating destination directories, writing the text report, or writing the JSON analysis file are converted into the custom `ReportSaveError` exception.
 
 #### Related Exception
 
@@ -810,9 +838,9 @@ File-System errors produced while creating the destination directory or writing 
 
 ### Main Application Module
 
-The main application module acts as the entry point for the Sales Report Project and coordinates the complete application workflow.
+The main application module coordinates the complete sale-reporting workflow, form CSV validation and data analysis to report generation and file storage.
 
-Its main function, `main()`, connects the validation, reading, analysis, report generation, and file management modules in the correct execution order.
+It generates a shared dynamic base filename and uses it to save both the plain-text sales report and the JSON analysis results with the same timestamp.
 
 The module currently provides the following function:
 
@@ -827,11 +855,25 @@ The `main()` function performs the following operations:
 3. Reads the validated CSV file using `read_csv_file()`.
 4. Normalizes and validates the sales records using `validate_dataframe()`.
 5. Analyzes the valid sales data using `analyze_sales()`.
-6. Generates the plain-text sales report using `generate_report()`.
-7. Saves the generated report using `save_report()`.
-8. Stops the execution timer.
-9. Displays the location of the saved report.
-10. Displays the total execution time.
+6. Generates the complete plain-text sales report.
+7. Generates a shared dynamic base filename using `create_report_base_name()`
+8. Saves the plain-text rerport using the generate base filename.
+9. Saves the analysis results as a JSON file using the same base filename.
+10. Calculates the total execution time.
+11. Displays the paths of both generated files.
+12. Displays the total execution time.
+
+#### Output File Coordination
+
+The applicaton generates one shared base filename for both output file. 
+
+This ensures that the plain-text report and the JSON analysis file contain the same timestamp and can be easily identified as part of the same execution.
+
+For example:
+
+`sales_report_2026-08-23_14-30-25-125.txt`
+
+`sales_report_2026-08-23_14-30-25-125.json`
 
 #### Module Coordination
 
@@ -841,13 +883,21 @@ The main application coordinates the following modules:
 - `csv_reader`: Converts the CSV file into a pandas `DataFrame`.
 - `analyzer`: Calculates sales metrics and aggregated summaries.
 - `reporter`: Generates the structured plain-text report.
-- `file_manager`: Saves the generated report in the file system.
+- `file_manager`: Generates the shared dynamic base filename and saves both the plain-text report and the JSON analysis file in the file system.
 
 #### Current Input and Output
 
 - **Source file:** `data/sales.csv`
 - **Output folder:** `reports`
-- **Output filename:** `first_report.txt`
+- **Output filename:** A `.txt` sales report and a `.json` analysis file.
+
+Both output files use the same dynamically generated base filename.
+
+For example: For example:
+
+`sales_report_2026-08-23_14-30-25-125.txt`
+
+`sales_report_2026-08-23_14-30-25-125.json`
 
 The source and output locations are currently defined directly inside the `main()` function.
 
@@ -879,7 +929,7 @@ This prevents the complete application workflow from running automatically when 
 ##### `main()`
 
 - **Input:** The CSV file configured inside the main application workflow.
-- **Output:** A saved plain-text sales report and console messages showing the report path and execution time.
+- **Output:** A plain-text sales report and a JSON analysis file saved using the same dynamically generated base filename, along with console message showing both file paths and the execution time.
 
 #### Related Exceptions
 

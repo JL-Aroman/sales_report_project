@@ -5,7 +5,8 @@ complete sales-reporting workflow.
 
 It validates the source CSV file, reads its contents into a pandas DataFrame,
 validates and normalizes the sales records, performs the sales analysis,
-generates the plain-text report, and saves the resulting file.
+generates the plain-text report, creates a shared dynamic base filename,
+and saves both the text report and the analysis results as JSON files.
 
 The module also measures the total execution time and handles both expected
 application-specific errors and unexpected exception.
@@ -27,9 +28,14 @@ def main() -> None:
     3. Reads the CSV file into a raw pandas DataFrame.
     4. Normalizes and validates the sales records.
     5. Analyzes the valid sales data.
-    6. Generates the complete plain-text report.
-    7. Saves the report in the destination folder.
-    8. Calculates and displays the total execution time.
+    6. Generates the complete plain-text report-
+    7. Generates a shared dinamic base filename for the output files.
+    8. Saves the plain-text report in the destination folder.
+    9. Saves the analysis result as a JSON file using the same base filename.
+    10. Calculates and displays teh total executin time.
+
+    The text report and JSON analysis file share the same dynamically generated
+    base filename and differ only by their file extension.
 
     Application-specific exception derived from `AppError` are caught and 
     displayed as readable error messages. Unexpected exceptions are also 
@@ -51,12 +57,15 @@ def main() -> None:
             validation_result["warnings"],
             file_path
         )
-        saved_report_path = file_manager.save_report(report, "reports")
+        file_name = file_manager.create_report_base_name()
+        saved_report_path = file_manager.save_report(report, "reports", file_name)
+        saved_report_path_json = file_manager.save_analysis_json(analysis_result, "reports", file_name)
 
         end = time.perf_counter()
         total_time = end - start
 
         print(f"Report saved at: {saved_report_path}")
+        print(f"Report saved at: {saved_report_path_json}")
 
         print(f"Execution time: {total_time:.4f} seconds")
     except AppError as error:
