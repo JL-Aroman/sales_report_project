@@ -751,11 +751,12 @@ The generated report contains the following sections:
 
 The report file management module handles the storage of generated sales reports in the file system.
 
-Its main function, `save_report()`, creates the destination directory when necessary, writes the report using UTF-8 encoding, and returns the path of the saved file.
+Its main function, `save_report()`, creates the destination directory when necessary, generates a dynamic report filename, writes the report using UTF-8 encoding, and return the path of the saved file.
 
-The module currently provides the following function:
+The module currently provides the following functions:
 
 - `save_report()`
+- `get_dynamic_name()`
 
 #### Report Saving Process
 
@@ -764,20 +765,38 @@ The `save_report()` function performs the following operations:
 1. Receives the generated report text.
 2. Converts the output folder into a `Path` object.
 3. Creates the output directory and any missing parent directories.
-4. Builds the complete output file path.
-5. Opens the destination file using UTF-8 encoding.
-6. Writes the report content to the file.
-7. Overwrites an existing file when the same filename is used.
-8. Returns the `Path` object pointing to the saved report.
+4. Generates a timestamp using `get_dynamic_name()`.
+5. Creates the output filename using `sales_report` and the generated timestamp.
+6. Builds the complete output file path.
+7. Opens the destination file using UTF-8 encoding.
+8. Writes the report content to the file.
+9. Return the `Path` object pointing to the saved report.
+
+#### Dynamic Filename Generation
+
+The `get_dynamic_name()` funciton generates a timestamp using the current local date and time.
+
+The generaed vaule follows this format:
+
+`YYYY-MM-DD_HH-MM-SS-fff`
+
+The timestamp is used by `save_report()` to create dynamic report filenames such as:
+
+`sales_report_2026-08-23_08-45-30-125.txt`
 
 #### Input and Output
 
 ##### `save_report()`
 
-- **Input:** The complete report text, the destination folder, and the output filename.
+- **Input:** The complete report text, th and the destination folder.
 - **Output:** A `Path` object pointing to the saved report file.
 
 The output folder may be provided as either a string or a `Path` object.
+
+#### `get_dynamic_name()`
+
+- **Input:** None.
+- **Output:** A timestamp string containing the current date and time.
 
 #### Error Handling
 

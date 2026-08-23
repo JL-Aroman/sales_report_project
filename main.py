@@ -51,7 +51,7 @@ def main() -> None:
             validation_result["warnings"],
             file_path
         )
-        saved_report_path = file_manager.save_report(report, "reports", "first_report.txt")
+        saved_report_path = file_manager.save_report(report, "reports")
 
         end = time.perf_counter()
         total_time = end - start
