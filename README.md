@@ -1,6 +1,6 @@
 # Sales Report
 
-> **Project Status:** Version 1.0 completed - Functional console application. This project has been manually tested with a sample sales CSV file.
+> **Project Status:** Version 1.2 completed - Functional console application. This project has been manually tested with a sample sales CSV file.
 
 Automatic sales reporting system for processing sales data, validating CSV files, analyzing valid records, and generating structured reports.
 
@@ -29,7 +29,6 @@ git clone <repository-url>
 2. Move into the project directory:
 cd sales_report_project
 
-
 3. Create a virtual environment:
 python -m venv .venv
 
@@ -56,11 +55,24 @@ The expected date format is:
 
 YYYY-MM-DD
 
+The application also support the following optional columns:
+
+- `ciudad`
+- `metodo_pago`
+
+These columns are not required for the core validation process. When present, they are normalized and used to generate additional sales analysis summaries.
+
 Example:
 
 producto_id,producto,categoria,precio,cantidad,fecha
 P001,Producto A,Categoria A,150.50,2,2026-07-01
 P002,Producto B,Categoria B,89.90,5,2026-07-02
+
+A CSV file may also include the optional fields: 
+
+producto_id,producto,categoria,precio,cantidad,fecha,ciudad,metodo_pago 
+P001,Producto A,Categoria A,150.50,2,2026-07-01,Guadalajara,Tarjeta 
+P002,Producto B,Categoria B,89.90,5,2026-07-02,Zapopan,Efectivo
 
 ### Running the Application
 
@@ -70,31 +82,58 @@ python main.py
 
 The application will perform the following workflow:
 
-1. Validate the source CSV file.
-2. Read the file into a pandas `DataFrame`.
-3. Normalize and validate the sales records.
-4. Separate valid and invalid rows.
-5. Analyze the valid sales data.
-6. Generate a structured plain-text report.
-7. Save the report in the output directory.
-8. Display the saved report path and execution time.
+1. Validate the source CSV file. 
+2. Read the file into a pandas `DataFrame`. 
+3. Normalize and validate the sales records. 
+4. Separate valid and invalid rows. 
+5. Analyze the valid sales data. 
+6. Generate a structured plain-text report. 
+7. Generate a shared dynamic base filename. 
+8. Save the plain-text sales report. 
+9. Save the complete analysis results as a JSON file. 
+10. Save the product and category analysis summaries as independent CSV files. 
+11. Save city and payment method CSV summaries when the corresponding optional data is available. 
+12. Display the paths of the generated files. 
+13. Display the total execution time.
 
-### Generated Report
+### Generated Output Files
 
-The generated report is saved at:
+The generated files are saved inside the `reports` directory.
 
-reports/first_report.txt
+All files created during the same execution share a dynamically generated base filename contining the current date and time.
+
+For example:
+
+`reports/sales_report_2026-08-28_16-30-25-125.txt` 
+`reports/sales_report_2026-08-28_16-30-25-125.json` 
+`reports/sales_report_2026-08-28_16-30-25-125_products.csv` 
+`reports/sales_report_2026-08-28_16-30-25-125_categories.csv` 
+
+When optional analysis data is available, the application may also generate: 
+
+`reports/sales_report_2026-08-28_16-30-25-125_cities.csv` 
+`reports/sales_report_2026-08-28_16-30-25-125_payment_methods.csv`
 
 If the `reports` directory does not exist, the application creates it automatically.
 
-Running the application again with the same output filename overwrites the existing report.
+Each ececution generates a new dynamic base filename, allowing repor files from different executions to be stored independently.
 
 ### Console Output
 
-After a successful execution, the console displays information similar to:
+After a successful execution, the console displays the generated text and JSON file paths, the generated CSV analysis file paths, and the total execution time. 
 
-Report saved at: reports/first_report.txt
-Execution time: 0.0123 seconds
+For example: 
+
+Report saved at: reports/sales_report_2026-08-28_16-30-25-125.txt 
+Report saved at: reports/sales_report_2026-08-28_16-30-25-125.json 
+Reports CSV product_summary: reports/sales_report_2026-08-28_16-30-25-125_products.csv
+category_summary: reports/sales_report_2026-08-28_16-30-25-125_categories.csv 
+city_summary: reports/sales_report_2026-08-28_16-30-25-125_cities.csv 
+payment_method_summary: reports/sales_report_2026-08-28_16-30-25-125_payment_methods.csv 
+
+Execution time: 0.0123 seconds 
+
+The city and payment method CSV paths are displayed only when those optional analyses are available.
 
 If an application-specific error occurs, the corresponding error message is displayed and the reporting workflow stops.
 
@@ -184,11 +223,10 @@ The `normalize_dataframe()` function creates a copy of the raw `DataFrame` and a
 4. Replaces repeatd whitespace inside `producto` with a single space.
 5. Remove leading and trailing whitespace form `categoria`.
 6. Replaces repeated withespaces inside `categoria` with a single space.
-7. Remove all withespaces form `price`, `cantidad`, and, `fecha`
+7. Remove all withespaces form `precio`, `cantidad`, and, `fecha`
 8. If the optional `ciudad` column is present, removes leading and trailing whitespaces and replaces repeated internal whitespaces with a single space.
 9. If the optional `metodo_pago` column is present, removes leading and trailing whitespaces and replaces repeated internal whitespaces with a single space.
 10. Returns a new normalized `DataFrame` without modifying the original one.
-
 
 #### Independent Validation Functions
 
@@ -417,7 +455,7 @@ It excludes empty payment method values and calculates the total units sold and 
 
 The payment method summary contains the following fields:
 
-- `metodo_pato`
+- `metodo_pago`
 - `unidades_vendidas`
 - `ingreso_total`
 
@@ -611,7 +649,7 @@ The `get_highest_income_payment_method()` function formats the payment method or
 
 For each payment method, the section includes:
 
-- `metodo_pato`
+- `metodo_pago`
 - `ingreso_total`
 - `unidades_vendidas`
 
@@ -942,7 +980,7 @@ The main application coordinates the following modules:
 
 - **Source file:** `data/sales.csv`
 - **Output folder:** `reports`
-- **Output filename:** A `.text` sales report, a `.json` analysis file, and individual `.csv` analysis summary files.
+- **Output filename:** A `.txt` sales report, a `.json` analysis file, and individual `.csv` analysis summary files.
 
 All output files use the same dynamically generated base filename.
 
