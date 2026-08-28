@@ -6,7 +6,8 @@ complete sales-reporting workflow.
 It validates the source CSV file, reads its contents into a pandas DataFrame,
 validates and normalizes the sales records, performs the sales analysis,
 generates the plain-text report, creates a shared dynamic base filename,
-and saves both the text report and the analysis results as JSON files.
+and saves the text report, the complete analysis results as a JSON file,
+and the aggregated analysis summaries as independent CSV files.
 
 The module also measures the total execution time and handles both expected
 application-specific errors and unexpected exception.
@@ -32,10 +33,13 @@ def main() -> None:
     7. Generates a shared dinamic base filename for the output files.
     8. Saves the plain-text report in the destination folder.
     9. Saves the analysis result as a JSON file using the same base filename.
-    10. Calculates and displays teh total executin time.
+    10. Saves the aggregated analysis summaries as independent CSV files.
+    11. Displays the paths of the generated text, JSON, and CSV files.
+    12. Calculates and displays the total execution time.
 
-    The text report and JSON analysis file share the same dynamically generated
-    base filename and differ only by their file extension.
+    The text report, JSON analysis file, and CSV analysis summaries share the
+    same dynamically generated base filename. CSV files also include a descriptive
+    suffix identifying the type of summary.
 
     Application-specific exception derived from `AppError` are caught and 
     displayed as readable error messages. Unexpected exceptions are also 
@@ -60,12 +64,16 @@ def main() -> None:
         file_name = file_manager.create_report_base_name()
         saved_report_path = file_manager.save_report(report, "reports", file_name)
         saved_report_path_json = file_manager.save_analysis_json(analysis_result, "reports", file_name)
+        saved_reports_csv = file_manager.save_analysis_result_csv_files(analysis_result, "reports", file_name)
 
         end = time.perf_counter()
         total_time = end - start
 
         print(f"Report saved at: {saved_report_path}")
         print(f"Report saved at: {saved_report_path_json}")
+        print("Reports CSV")
+        for key, value in saved_reports_csv.items():
+            print(f"{key}: {value}")
 
         print(f"Execution time: {total_time:.4f} seconds")
     except AppError as error:

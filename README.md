@@ -749,15 +749,17 @@ The generated report contains the following sections:
 
 ### Report File Management Module
 
-The report file management module handles the storage of generated sales reports in the file system.
+The report file management module handles the storage of generated sales reports and structured analysis result in the file system.
 
-The module handles the storage of generated sales reports and analysis data. It generates a shared dynamic base filename that can be used to save both the plain-text report and the JSON analysis file.
+The module generates a shared dynamic base file name that can be use to save the plain-text report, the complete JSON analysis, and individual CSV analysis summaries.
 
 The module currently provides the following functions:
 
 - `save_report()`
 - `create_report_base_name()`
 - `save_analysis_json()`
+- `save_analysis_result_csv_files()`
+- `create_save_analysis_result_csv_files_and_path()`
 
 #### Report Saving Process
 
@@ -792,6 +794,14 @@ The same base can be used to generate different output files with the same times
 
 `sales_report_2026-08-23_13-45-30-125.json`
 
+The same base filename is also used to generate the individual CSV analysis summaries.
+
+for Example:
+
+`sales_report_2026-08-23_13-45-30-125_products.csv`
+
+`sales_report_2026-08-23_13-45-30-125_categories.csv`
+
 #### JSON Analysis Saving Process
 
 The `save_analysis_json()` function saves the complete sales analysis result as a JSON file.
@@ -807,6 +817,32 @@ The following summaries are converted:
 
 The function adds the `.json` extension to the provided base filename and writes the resulting JSON file using UTF-8 encoding and formatted indentation.
 
+#### CSV Analysis Summary Saving Process
+
+The `save_analysis_result_csv_files()` function saves aggregated analysis summaries as independent CSV files.
+
+The following summaries are always saved:
+
+- `product_summary`
+- `category_summary`
+
+The followin summaries are saved only when they are available:
+
+- `city_summary`
+- `payment_method_summary`
+
+Each generated CSV file uses the shared base filename followed by a descriptive suffix.
+
+The function returns a dictionary containing the paths of the generated CSV files.
+
+#### Individual CSV File Creation
+
+The `create_save_analysis_result_csv_files_and_path()` function creates and saves a single analysis summary CSV file.
+
+It receives a pandas `DataFrame`, the destination folder, the shared base filename, and a descriptive prefix.
+
+The function creates the destination directory when necessary, generates the complete CSV filename, saves the DataFrame without its pandas index, and returns the resulting `Path` object.
+
 #### Input and Output
 
 ##### `save_report()`
@@ -821,10 +857,20 @@ The output folder may be provided as either a string or a `Path` object.
 - **Input:** None.
 - **Output:** A dynamic base filename containing the `sales_report` prefix and the current date and time.
 
-#### `dave_analysis_json()`
+#### `save_analysis_json()`
 
 - **Input:** The analysis-result dictionary, the destination folder, and a base filename without an extension.
 - **Output:** A `Path` object pointing to the saved JSON analysis file.
+
+#### `save_analysis_result_csv_files()`
+
+- **Input:** The analysis-result dictionary, the destination folder, and a shared base filename without an extension.
+- **Output:** A dictionary containing the `Path` objects of the generated CSV analysis files.
+
+#### `create_save_analysis_result_csv_files_and_path()`
+
+- **Input:** A pandas `DataFrame`, the destination folder, a shared base filename, and a descriptive prefix.
+- **Output:** A `Path` object pointing to the saved CSV file.
 
 #### Error Handling
 
@@ -840,7 +886,7 @@ File-system errors produced while creating destination directories, writing the 
 
 The main application module coordinates the complete sale-reporting workflow, form CSV validation and data analysis to report generation and file storage.
 
-It generates a shared dynamic base filename and uses it to save both the plain-text sales report and the JSON analysis results with the same timestamp.
+It generates a shared dynamic base filename and uses it to save the plain-text sales report, the complete JSON analysis results, and the aggregated analysis summaries as independent CSV files.
 
 The module currently provides the following function:
 
@@ -857,23 +903,31 @@ The `main()` function performs the following operations:
 5. Analyzes the valid sales data using `analyze_sales()`.
 6. Generates the complete plain-text sales report.
 7. Generates a shared dynamic base filename using `create_report_base_name()`
-8. Saves the plain-text rerport using the generate base filename.
+8. Saves the plain-text report using the generated base filename.
 9. Saves the analysis results as a JSON file using the same base filename.
-10. Calculates the total execution time.
-11. Displays the paths of both generated files.
-12. Displays the total execution time.
+10. Saves the aggregated analysis summaries as independent CAV files using the same base filename.
+11. Calculates the total execution time.
+12. Displays the paths of the generated text and JSON files.
+13. Displays the paths of the generates CSV analysis files
+14. Displays the total execution time.
 
 #### Output File Coordination
 
-The applicaton generates one shared base filename for both output file. 
+The application generates one share base filename for all output files.
 
-This ensures that the plain-text report and the JSON analysis file contain the same timestamp and can be easily identified as part of the same execution.
+This ensures that the plain-text report, JSON analysis file, and CSV analysis summaries contain the same timestamp and can be easily identified as part of the same execution.
 
 For example:
 
 `sales_report_2026-08-23_14-30-25-125.txt`
-
 `sales_report_2026-08-23_14-30-25-125.json`
+`sales_report_2026-08-23_14-30-25-125_products.csv`
+`sales_report_2026-08-23_14-30-25-125_categories.csv`
+
+Optional analysis may also generate:
+
+`sales_report_2026-08-23_14-30-25-125_cities.csv`
+`sales_report_2026-08-23_14-30-25-125_payment_methods.csv`
 
 #### Module Coordination
 
@@ -883,21 +937,28 @@ The main application coordinates the following modules:
 - `csv_reader`: Converts the CSV file into a pandas `DataFrame`.
 - `analyzer`: Calculates sales metrics and aggregated summaries.
 - `reporter`: Generates the structured plain-text report.
-- `file_manager`: Generates the shared dynamic base filename and saves both the plain-text report and the JSON analysis file in the file system.
-
+- `file_manager`: Generates the share dynamic base filename and saves the plain-text report, JSON analysis file, and individual CAV analysis summaries in the file system.
 #### Current Input and Output
 
 - **Source file:** `data/sales.csv`
 - **Output folder:** `reports`
-- **Output filename:** A `.txt` sales report and a `.json` analysis file.
+- **Output filename:** A `.text` sales report, a `.json` analysis file, and individual `.csv` analysis summary files.
 
-Both output files use the same dynamically generated base filename.
+All output files use the same dynamically generated base filename.
 
-For example: For example:
+The following CSV summaries are always generated:
+
+- Product summary.
+- Category summary.
+
+The following CSV summaries are generated when the corresponding optional analysis is available:
+
+For example:
 
 `sales_report_2026-08-23_14-30-25-125.txt`
-
 `sales_report_2026-08-23_14-30-25-125.json`
+`sales_report_2026-08-23_14-30-25-125_products.csv`
+`sales_report_2026-08-23_14-30-25-125_categories.csv`
 
 The source and output locations are currently defined directly inside the `main()` function.
 
@@ -929,7 +990,7 @@ This prevents the complete application workflow from running automatically when 
 ##### `main()`
 
 - **Input:** The CSV file configured inside the main application workflow.
-- **Output:** A plain-text sales report and a JSON analysis file saved using the same dynamically generated base filename, along with console message showing both file paths and the execution time.
+- **Output:** A plain-text sales report, a JSON analysis file, and individual CSV analysis summaries saved using the same dymamically generated base filename, along with console messages showing the generated file paths and the execution time.
 
 #### Related Exceptions
 
