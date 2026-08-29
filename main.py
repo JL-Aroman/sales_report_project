@@ -1,81 +1,52 @@
 """Main application module for the Sales Report project.
 
-This module acts as the entry point for the application and coordinates the
-complete sales-reporting workflow.
+This module acts as the console entry point for the application.
 
-It validates the source CSV file, reads its contents into a pandas DataFrame,
-validates and normalizes the sales records, performs the sales analysis,
-generates the plain-text report, creates a shared dynamic base filename,
-and saves the text report, the complete analysis results as a JSON file,
-and the aggregated analysis summaries as independent CSV files.
+It defines the source CSV file and output directory, delegates the complete
+sales-report generation workflow to the controller module, and displays the 
+paths of the generated output files.
 
-The module also measures the total execution time and handles both expected
-application-specific errors and unexpected exception.
+The module also handles application-specific errors and unexpected exceptions 
+raised during execution.
 """
 
-import time
 
-from src import validator, csv_reader, analyzer, reporter, file_manager
+from src import controller
 from src.errors import AppError
 
 
 def main() -> None:
-    """Execute the complete sales report generation workflow.
+    """Execute the Sales Report application workflow.
 
-    Coordinates the application modules in the following order:
+    Defines the source CSV file and output directory and delegates the complete
+    processing workflow to `controller.generated_sales_report()`.
 
-    1. Starts the execution timer.
-    2. Validates the source CSV file path.
-    3. Reads the CSV file into a raw pandas DataFrame.
-    4. Normalizes and validates the sales records.
-    5. Analyzes the valid sales data.
-    6. Generates the complete plain-text report-
-    7. Generates a shared dinamic base filename for the output files.
-    8. Saves the plain-text report in the destination folder.
-    9. Saves the analysis result as a JSON file using the same base filename.
-    10. Saves the aggregated analysis summaries as independent CSV files.
-    11. Displays the paths of the generated text, JSON, and CSV files.
-    12. Calculates and displays the total execution time.
+    The controller is reponsible for validationg and reading the source data,
+    analyzing valid sales records, generating the report, and saving the
+    resulting output files.
 
-    The text report, JSON analysis file, and CSV analysis summaries share the
-    same dynamically generated base filename. CSV files also include a descriptive
-    suffix identifying the type of summary.
+    The returned report paths are displayed in the console. Nested dictionaries, 
+    such as collections of generated CSV file, are iterated so that each
+    individual report name and path is displayed.
 
-    Application-specific exception derived from `AppError` are caught and 
-    displayed as readable error messages. Unexpected exceptions are also 
-    caught and printed to prevent an unhandled application termination.
+    Application-specific exceptions derived from `AppError` are caught and
+    displayed as readable error messages. Unexpected exceptions are also caught
+    and printed to prevent an unhandled application termination.
 
     Returns:
         None.
     """
     try:
-        start = time.perf_counter()
+        input_file_path = "data/sales.csv"
+        output_folder = "reports"
+        reports = controller.generate_sales_report(input_file_path, output_folder)
 
-        file_path = validator.validate_csv_file("data/sales.csv")
-        df_raw = csv_reader.read_csv_file(file_path)
-        validation_result = validator.validate_dataframe(df_raw)
-        analysis_result = analyzer.analyze_sales(validation_result)
-        report = reporter.generate_report(
-            analysis_result,
-            validation_result["errors"],
-            validation_result["warnings"],
-            file_path
-        )
-        file_name = file_manager.create_report_base_name()
-        saved_report_path = file_manager.save_report(report, "reports", file_name)
-        saved_report_path_json = file_manager.save_analysis_json(analysis_result, "reports", file_name)
-        saved_reports_csv = file_manager.save_analysis_result_csv_files(analysis_result, "reports", file_name)
-
-        end = time.perf_counter()
-        total_time = end - start
-
-        print(f"Report saved at: {saved_report_path}")
-        print(f"Report saved at: {saved_report_path_json}")
-        print("Reports CSV")
-        for key, value in saved_reports_csv.items():
-            print(f"{key}: {value}")
-
-        print(f"Execution time: {total_time:.4f} seconds")
+        for item, value in reports.items():
+            if isinstance(value, dict):
+                for report, path in value.items():
+                    print(f"{report}: {path}")
+            else:
+                print(f"{item}: {value}")
     except AppError as error:
         print(error)
     except Exception as error:

@@ -922,9 +922,9 @@ File-system errors produced while creating destination directories, writing the 
 
 ### Main Application Module
 
-The main application module coordinates the complete sale-reporting workflow, form CSV validation and data analysis to report generation and file storage.
+The main application module acts as the console entry point for the Sales Report application.
 
-It generates a shared dynamic base filename and uses it to save the plain-text sales report, the complete JSON analysis results, and the aggregated analysis summaries as independent CSV files.
+It defines the source CSV file and output directory, delegates the complete sales-reporting workflow to the `controller` module, and displays the paths of the generated output files.
 
 The module currently provides the following function:
 
@@ -934,53 +934,46 @@ The module currently provides the following function:
 
 The `main()` function performs the following operations:
 
-1. Starts the execution timer.
-2. Validates the source CSV file using `validate_csv_file()`.
-3. Reads the validated CSV file using `read_csv_file()`.
-4. Normalizes and validates the sales records using `validate_dataframe()`.
-5. Analyzes the valid sales data using `analyze_sales()`.
-6. Generates the complete plain-text sales report.
-7. Generates a shared dynamic base filename using `create_report_base_name()`
-8. Saves the plain-text report using the generated base filename.
-9. Saves the analysis results as a JSON file using the same base filename.
-10. Saves the aggregated analysis summaries as independent CAV files using the same base filename.
-11. Calculates the total execution time.
-12. Displays the paths of the generated text and JSON files.
-13. Displays the paths of the generates CSV analysis files
-14. Displays the total execution time.
+1. Defines the source CSV file path.
+2. Defines the output folder.
+3. Calls `controller.generate_sales_report()` to execute the complete reporting workflow.
+4. Receives a dictionary containing the generated report paths.
+5. Iterates through the returned results.
+6. Displays the paths of the generated text and JSON files.
+7. Detectes nested dictionaries containing groups of generated files.
+8. Displays each individual CSV analysis file path.
+9. Handles application-specific and unexpected exceptions.
 
-#### Output File Coordination
+#### Generate Output Results
 
-The application generates one share base filename for all output files.
+The `main()` function receives the generated output paths from `controller.generate_sales_report()`
 
-This ensures that the plain-text report, JSON analysis file, and CSV analysis summaries contain the same timestamp and can be easily identified as part of the same execution.
+The returned result may contain direct file paths and nested dictionaries containing groups of generated files.
 
-For example:
+The main application does not create or save these file directly. Its responsibility is to display the results returned by the controller.
 
-`sales_report_2026-08-23_14-30-25-125.txt`
-`sales_report_2026-08-23_14-30-25-125.json`
-`sales_report_2026-08-23_14-30-25-125_products.csv`
-`sales_report_2026-08-23_14-30-25-125_categories.csv`
+The generated files may include:
 
-Optional analysis may also generate:
-
-`sales_report_2026-08-23_14-30-25-125_cities.csv`
-`sales_report_2026-08-23_14-30-25-125_payment_methods.csv`
+- A plain-text sales report.
+- A JSON analysis file.
+- Product summary CSV.
+- Category summary CSV.
+- City summary CSV when available.
+- Payment method summary CSV when available.
 
 #### Module Coordination
 
-The main application coordinates the following modules:
+The main application interacts directly with the following module:
 
-- `validator`: Validates the input file and sales records.
-- `csv_reader`: Converts the CSV file into a pandas `DataFrame`.
-- `analyzer`: Calculates sales metrics and aggregated summaries.
-- `reporter`: Generates the structured plain-text report.
-- `file_manager`: Generates the share dynamic base filename and saves the plain-text report, JSON analysis file, and individual CAV analysis summaries in the file system.
+- `controller`: Coordinates the complete sales-report generation workflow and returns the generated output file paths.
+
+The internal coordination between validation, CSV reading, analysis, report generation, and file management is delegate to the `controller` module.
+
 #### Current Input and Output
 
 - **Source file:** `data/sales.csv`
 - **Output folder:** `reports`
-- **Output filename:** A `.txt` sales report, a `.json` analysis file, and individual `.csv` analysis summary files.
+- **Generated files:** The controller may generate a `.txt` sales report, a `.json` analysis file, and individual `.csv` analysis summary files.
 
 All output files use the same dynamically generated base filename.
 
@@ -1000,12 +993,6 @@ For example:
 
 The source and output locations are currently defined directly inside the `main()` function.
 
-#### Execution Time
-
-The application uses `time.perf_counter()` to measure the duration of the complete reporting workflow.
-
-The total execution time is displayed in seconds with four decimal places.
-
 #### Error Handling 
 
 The main application handles two categories of errors:
@@ -1013,7 +1000,7 @@ The main application handles two categories of errors:
 - Application-specific exceptions derived from `AppError`
 - Unexpected exceptions raised during execution.
 
-When an error occurs, its message is displayed and the workflow stops before completing the report.
+When an error occurs, its message is displayed and the application workflow stops.
 
 #### Application Entry Point
 
@@ -1027,12 +1014,182 @@ This prevents the complete application workflow from running automatically when 
 
 ##### `main()`
 
-- **Input:** The CSV file configured inside the main application workflow.
-- **Output:** A plain-text sales report, a JSON analysis file, and individual CSV analysis summaries saved using the same dymamically generated base filename, along with console messages showing the generated file paths and the execution time.
+- **Input:** The source CSV path and output folder configured inside the main application workflow.
+- **Output:** Console messages displaying the file paths returned by `controller.generate_sales_report()`
 
 #### Related Exceptions
 
 - `AppError`
 - Unexpected Python exceptions
+
+---
+
+### Sales Report Controller Module
+
+The sales report controller module coordinates the complete sales-report generation workflow.
+
+It acts as the orchestration layer between the main application and the specialized modules responsible for file validation, CSV reading, data validation, sales analysis, report generation, and file storage.
+
+The controller receives teh source CSV file path and output folder, executes the complete processing workflow, generates all supported output files, measures the total execution time, and returns a structured dictionary containing processing totals, generated file paths, and execution information.
+
+The module currently provides the following function:
+
+- `generate_sales_report()`
+
+#### Controller Workflow
+
+The `generate_sales_report()` function perfroms the following operations:
+
+1. Starts the execution timer.
+2. Validates the source CSV file using `validator.validate_csv_file()`.
+3. Reads the validate CSV file using `csv_reader.read_csv_file()`.
+4. Normaizes and validates the sales records using `validator.validate_dataframe()`.
+5. Analyzes the valid sales records using `analyzer.analyze_sales()`. 
+6. Generates the complete plain-text sales report using `reporter.generate_report()`. 
+7. Stores the total number of processed, valid, and invalid rows in the controller result. 8. Generates a shared dynamic base filename using `file_manager.create_report_base_name()`. 9. Saves the plain-text sales report using `file_manager.save_report()`. 
+10. Saves the complete analysis result as a JSON file using `file_manager.save_analysis_json()`.
+11. Saves the available analysis summaries as independent CSV files using `file_manager.save_analysis_result_csv_files()`. 
+12. Calculates the total execution time. 
+13. Adds the execution time to the controller result. 
+14. Returns the complete result dictionary to the caller.
+
+#### Module Coordination
+
+The controller coordinates th following module:
+
+- `validator`: Validates the source file path, normalizes sales data, validates records, and separates valid and invalid rows.
+- `csv_reader`: Reads the validated CSV file and converts its contents into a pandas `DataFrame`.
+- `analyzer`: Calculates sales metrics, aggregated summaries, rankings, and optional analyses.
+- `reporter`: Converts analysis results, validation errors, and warnings into a structured plain-text sales report.
+- `file_manager`: Generates the shared dynamic base filename and saves the generated TXT, JSON, and CSV files.
+
+#### Validation Results
+
+The controller receives the validation result produced by `validator.validate_dataframe()`.
+
+This information includes:
+
+- Valid sales records.
+- Invlid sales records.
+- Validation errors.
+- Validation warnings.
+- Total processed rows.
+- Total valid rows.
+- Total invalid rows.
+
+The valid records are passe tod the analysis workflow, while validation errors and warnings are included in the generated plain-text report.
+
+#### Sales Analysis
+
+The controller send the validation result to `analyzer.analyze_sales()`
+
+The analysis result contains the general sales metrics and aggregated summaries required by the reporting and file-management processes.
+
+These results may include:
+
+- Total income.
+- Total units sold. 
+- Product summary.
+- Category summary.
+- Best-selling products.
+- Highest-income products.
+- Highest-income categories.
+- Top 5 product rankings.
+- City analysis when `ciudad` is available.
+- Payment method analysis when `metodo_pago` is available.
+
+#### Output File Coordination
+
+A single Dynamic base filename is generated during each controller execution.
+
+The same base filename is used for all output files generated during that execution.
+
+The controller generates:
+
+- A plain-text sales report.
+- A JSON file containing the complete structured analysis result.
+- A product summary CSV file.
+- A category summary CSV file.
+
+When optional analysis information is available, it may also generate.
+
+- A city summary CSV file.
+- A payment method summary CSV file.
+
+For example:
+
+`sales_report_2026-08-29_09-30-25-125.txt` 
+`sales_report_2026-08-29_09-30-25-125.json`
+`sales_report_2026-08-29_09-30-25-125_products.csv` 
+`sales_report_2026-08-29_09-30-25-125_categories.csv`
+
+Optional files:
+
+`sales_report_2026-08-29_09-30-25-125_cities.csv` 
+`sales_report_2026-08-29_09-30-25-125_payment_methods.csv`
+
+#### Controller Result
+
+The `generate_sales_report()` function returns a dictionary containing information about the complete workflow.
+
+The result contains:
+
+- `total_rows`: Total number of processed sales records.
+- `total_valid_rows`: Number of records that passed validation.
+- `total_invalid_rows`: Number of records containing validation errors.
+- `report_path_txt`: `Path` object pointing to the generated plain-text sales report.
+- `report_path_json`: `Path` object pointing to the generated JSON analysis file.
+- `reports_path_csv`: Dictionary containing the paths of the generated CSV analysis summary files.
+- `execution_tiem`: Formatted string containing the total execution time.
+
+#### CSV Report Paths
+
+The `reports_path_csv` value contains a nested dictionary.
+
+The following paths are always included:
+
+- `product_summary`
+- `category_summary`
+
+The following paths are included only when the corresponding optional analysis is available:
+
+- `city_summary`
+- `payment_method_summary`
+
+An example structure is:
+
+{
+    "product_summary": Path(...),
+    "category_summary": Path(...),
+    "city_summary": Path(...)
+    "payment_method_summary": Path(...)
+}
+
+#### Execution Time
+
+The controller uses `time.perf_counter()` to measure the duration of the complete sales-report generation workflow.
+
+The execution time includes validation, CSV readin, data analysis, report generation, and file storage.
+
+The result is formatted in seconds with four decimal places.
+
+For example:
+
+`Execution time: 0.0123 seconds`
+
+#### Input and Output
+
+##### `generate_sales_report()`
+
+- **Input:** A string containing the source CSV file path and a string containing the destination output folder.
+- **Output:** A dictionary containing processing totals, generated TXT, JSON, and CSV file paths, and the total execution time.
+
+#### Error Propagation
+
+The controller does not handle application exceptions directly.
+
+Errors raised by the validation, reading, analyisis, reporting, or file-management modules are propagated to the caller.
+
+The main application is responsible for catching application-specific exceptions derived from `AppError` and unexpected Python exceptions.
 
 ---
