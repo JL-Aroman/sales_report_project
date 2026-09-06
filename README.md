@@ -1,6 +1,6 @@
 # Sales Report
 
-> **Project Status:** Version 2.0.2 completed - Functional console application. This project has been manually tested with a sample sales CSV file.
+> **Project Status:** Version 2.0.3 completed - Functional console application. This project has been manually tested with a sample sales CSV file.
 
 Automatic sales reporting system for processing sales data, validating CSV files, analyzing valid records, and generating structured reports.
 
@@ -1198,7 +1198,7 @@ The main application is responsible for catching application-specific exceptions
 
 The graphical user interface module provides the main desktop window for the Sales Report application using PySide6.
 
-It allows the user to select a source CSV file, choose an output directory, view the current application status, initiate the report-generation action, and display information about generated output files.
+It allows the user to select a source CSV file, choose an output directory, generate sales reports through the backend controller, view the current application status, and display the paths of generated TXT, JSON, and CSV files.
 
 The interface is divided into independent sections built through helper methods. This structure keeps the graphical layer modular, maintainable, and easy to extend.
 
@@ -1206,7 +1206,7 @@ The graphical interface is displayed in Spanish, while the project documentation
 
 The module currently provides the following class:
 
-- `SalesReportWindow`
+* `SalesReportWindow`
 
 #### Main Window
 
@@ -1214,21 +1214,21 @@ The `SalesReportWindow` class inherits from PySide6 `QMainWindow` and represents
 
 The window is configured with:
 
-- Title: `Generador de Reportes de Ventas` 
-- Width: `700` 
-- Height: `500` 
-- Default output folder: `reports/`
+* Title: `Generador de Reportes de Ventas`
+* Width: `900`
+* Height: `700`
+* Default output folder: `reports/`
 
-The main window uses a central `QWidget` and a vertical `QVBoxLayout` yo organize the different interface sections.
+The main window uses a central `QWidget` and a vertical `QVBoxLayout` to organize the different interface sections.
 
 #### Interface Sections
 
 The main application window contains the following sections:
 
-1. Source CSV file selection. 
-2. Output folder selection. 
-3. Report generation. 
-4. Application status. 
+1. Source CSV file selection.
+2. Output folder selection.
+3. Report generation.
+4. Application status.
 5. Generated file information.
 
 Each section is created inside an independent `QGroupBox`.
@@ -1239,221 +1239,278 @@ The `build_selected_file_layout()` method creates the section used to select the
 
 The section contains:
 
-- A label displaying the currently selected file. 
-- A `Seleccionar Archivo` button. 
-- A file-selection dialog restricted to `.csv` files.
+* A label displaying the currently selected file.
+* A `Seleccionar Archivo` button.
+* A file-selection dialog restricted to `.csv` files.
 
-The button is connected to: 
+The button is connected to:
 
 `selected_file_path()`
 
-When no file has been selected, the interface displays: 
+When no file has been selected, the interface displays:
 
-`Archivo no seleccionado.` 
+`Archivo no seleccionado.`
 
-#### CSV File Selection Process 
+#### CSV File Selection Process
 
-The `selected_file_path()` method opens a `QFileDialog` that allows the user to select a CSV file. 
+The `selected_file_path()` method opens a `QFileDialog` that allows the user to select a CSV file.
 
-The dialog uses the following filter: 
+The dialog uses the following filter:
 
-`Archivos CSV (*.csv)` 
+`Archivos CSV (*.csv)`
 
-When a valid selection is made: 
+When a valid selection is made:
 
-1. The selected path is stored in `file_path`. 
-2. The selected-file label is updated. 
-3. The application status is updated. 
-4. The status message considers whether the default or a custom output folder is currently configured. 
+1. The selected path is stored in `file_path`.
+2. The selected-file label is updated.
+3. The application status is updated.
+4. The status message considers whether the default or a custom output folder is currently configured.
 
-If the dialog is canceled, the current application state remains unchanged. 
+If the dialog is canceled, the current application state remains unchanged.
 
-#### Output Folder Selection 
+#### Output Folder Selection
 
-The `build_selected_folder_layout()` method creates the section used to configure the destination folder. 
+The `build_selected_folder_layout()` method creates the section used to configure the destination folder.
 
-The section contains: 
+The section contains:
 
-- A label displaying the current output directory. 
-- A `Seleccionar Carpeta` button. 
+* A label displaying the current output directory.
+* A `Seleccionar Carpeta` button.
 
-The button is connected to: 
+The button is connected to:
 
-`selected_folder_path()` 
+`selected_folder_path()`
 
-The default output directory is: 
+The default output directory is:
 
 `reports/`
 
-When no custom directory has been selected, the interface informs the user that the default folder will be used. 
+When no custom directory has been selected, the interface informs the user that the default folder will be used.
 
-#### Output Folder Selection Process 
+#### Output Folder Selection Process
 
-The `selected_folder_path()` method opens a directory-selection dialog using `QFileDialog.getExistingDirectory()`. 
+The `selected_folder_path()` method opens a directory-selection dialog using `QFileDialog.getExistingDirectory()`.
 
-When a folder is selected: 
+When a folder is selected:
 
-1. The selected directory is stored in `output_folder`. 
-2. The output-folder label is updated. 
-3. The application status is updated. 
-4. The status message considers whether a source CSV file has already been selected. 
+1. The selected directory is stored in `output_folder`.
+2. The output-folder label is updated.
+3. The application status is updated.
+4. The status message considers whether a source CSV file has already been selected.
 
-If the dialog is canceled, the previously configured output directory remains unchanged. 
+If the dialog is canceled, the previously configured output directory remains unchanged.
 
-#### Report Generation Section 
+#### Report Generation Section
 
-The `build_generate_report_layout()` method creates the section containing the main report-generation button. 
+The `build_generate_report_layout()` method creates the section containing the main report-generation button.
 
-The section contains: 
+The section contains:
 
-`Crear Reporte` 
+`Crear Reporte`
 
-The button is connected to: 
+The button is connected to:
 
-`generate_reports()` 
+`generate_reports()`
 
-The graphical control is currently available, but the report-generation workflow has not yet been connected to the backend controller. 
+The report-generation button is connected to the backend workflow through the Sales Report controller.
 
-#### Report Generation Status 
+#### Report Generation Process
 
-The current implementation of `generate_reports()` is a temporary placeholder. 
+The `generate_reports()` method coordinates the graphical report-generation process.
 
-When the user presses the `Crear Reporte` button, the status label displays: 
+It performs the following operations:
 
-`Falta conectar este botón.` 
+1. Updates the application status to indicate that the process has started.
+2. Verifies that a source CSV file has been selected.
+3. Stops the operation and displays an error message when no file is available.
+4. Removes previously displayed CSV summary paths.
+5. Calls `controller.generate_sales_report()` using the selected CSV path and output folder.
+6. Receives the processing results and generated file paths from the controller.
+7. Displays the generated TXT report path.
+8. Displays the generated JSON analysis path.
+9. Creates individual labels for each generated CSV summary path.
+10. Adds the CSV labels to the scrollable results area.
+11. Updates the application status when the report is generated successfully.
+12. Displays application-specific or unexpected errors in the status area when necessary.
 
-Future integration will connect this method to the existing sales-report controller workflow. 
+#### Backend Controller Integration
 
-#### Application Status 
+The graphical interface is connected to the backend workflow through:
 
-The `build_status_layout()` method creates the status section of the interface. 
+`controller.generate_sales_report()`
 
-The `status_label` is used to provide feedback about the current state of the application. 
+The GUI provides the controller with:
 
-Its initial value is: 
+* `file_path`
+* `output_folder`
 
-`Seleccione un archivo CSV para comenzar.` 
+The controller performs the complete validation, analysis, report-generation, and file-storage workflow.
 
-The status is updated when: 
+The GUI receives the controller result and displays the generated output paths to the user.
 
-- A CSV file is selected. 
-- An output folder is selected. 
-- Both a CSV file and output folder are available. 
-- The report-generation button is pressed. 
+#### Application Status
 
-#### Generated Files Section 
+The `build_status_layout()` method creates the status section of the interface.
 
-The `build_generated_files_layout()` method creates the section reserved for displaying generated report information. 
+The `status_label` is used to provide feedback about the current state of the application.
 
-The interface currently contains the following labels: 
+Its initial value is:
 
-- `TXT` 
-- `JSON` 
-- `Resúmenes CSV` 
+`Seleccione un archivo CSV para comenzar.`
 
-The corresponding attributes are: 
+The status may be updated when:
 
-- `txt_file_label` 
-- `json_file_label` 
-- `csv_summaries_label` 
+* A CSV file is selected.
+* An output folder is selected.
+* Both a CSV file and output folder are available.
+* Report generation starts.
+* No CSV file has been selected.
+* Report generation completes successfully.
+* An application-specific error occurs.
+* An unexpected error occurs.
 
-These labels are prepared for future integration with the backend report-generation workflow. 
+#### Generated Files Section
 
-#### Window State 
+The `build_generated_files_layout()` method creates the section used to display generated report information.
 
-The `SalesReportWindow` class maintains the following primary state values: 
+The interface contains dedicated areas for:
 
-- `file_path`: Stores the selected source CSV path. Its initial value is `None`. 
-- `output_folder`: Stores the destination directory for generated files. Its default value is `reports/`. 
+* TXT report path.
+* JSON analysis path.
+* CSV summary paths.
 
-The remaining interface attributes store references to labels and buttons used by the graphical window. 
+The corresponding attributes include:
 
-#### PySide6 Components 
+* `txt_file_label`
+* `json_file_label`
+* `csv_title_label`
+* `csv_summaries_layout`
 
-The graphical interface currently uses the following PySide6 widgets: 
+The TXT and JSON paths are displayed directly through labels.
 
-- `QMainWindow`: Main application window. 
-- `QWidget`: Central window container. 
-- `QPushButton`: Interactive application buttons. 
-- `QVBoxLayout`: Vertical organization of interface elements. 
-- `QLabel`: Text and status information. 
-- `QGroupBox`: Visual grouping of related controls. 
-- `QFileDialog`: File and directory selection dialogs. 
+CSV summary paths are created dynamically after each successful report-generation process.
 
-#### Current GUI Workflow 
+#### Scrollable CSV Results
 
-The current graphical workflow is: 
+CSV summary paths are displayed inside a `QScrollArea`.
 
-1. Open the Sales Report window. 
-2. Select a source CSV file. 
-3. Optionally select a custom output directory. 
-4. Use `reports/` when no custom output folder is selected. 
-5. Review the current status displayed by the interface. 
-6. Press the `Crear Reporte` button. 
-7. Display the temporary message indicating that backend integration is still pending. 
+The scrollable area contains a dedicated `QVBoxLayout` stored in:
 
-The report-generation button does not currently execute `controller.generate_sales_report()`. 
+`csv_summaries_layout`
 
-#### Backend Integration Status 
+Each generated CSV report is represented by an independent `QLabel`.
 
-The graphical interface and backend reporting workflow are currently separated. 
+The scroll area is configured to resize its internal widget automatically and uses a fixed height of `200` pixels.
 
-The existing backend workflow is coordinated by: 
+This allows multiple CSV output paths to be displayed without increasing the size of the main window.
 
-`controller.generate_sales_report()` 
+#### Previous Result Cleanup
 
-The GUI already stores the two values required by the controller: 
+The `clean_layout()` method removes widgets previously added to a layout.
 
-- `file_path` 
-- `output_folder` 
+Before generating a new report, the GUI uses this method to clear the existing CSV summary labels.
 
-However, `generate_reports()` has not yet been connected to the controller. 
+This prevents CSV paths from previous report generations from remaining visible when a new report is created.
 
-Once this integration is implemented, the graphical interface will be able to send the selected file and output folder to the controller and display the returned TXT, JSON, and CSV report paths. 
+#### Window State
 
-#### Input and Output 
+The `SalesReportWindow` class maintains the following primary state values:
 
-##### `SalesReportWindow` 
+* `file_path`: Stores the selected source CSV path. Its initial value is `None`.
 
-- **Input:** User interaction through the graphical interface. 
-- **Output:** A desktop window for configuring and initiating sales-report generation. 
+* `output_folder`: Stores the destination directory for generated files. Its default value is `reports/`.
 
-##### `selected_file_path()` 
+The class also maintains references to interface labels, buttons, layouts, and generated-file display controls.
 
-- **Input:** A CSV file selected through `QFileDialog`. 
-- **Output:** Updates `file_path`, the selected-file label, and the application status. 
+#### PySide6 Components
 
-##### `selected_folder_path()` 
+The graphical interface currently uses the following PySide6 widgets:
 
-- **Input:** A directory selected through `QFileDialog`. 
-- **Output:** Updates `output_folder`, the output-folder label, and the application status. 
+* `QMainWindow`: Main application window.
+* `QWidget`: Central window and internal containers.
+* `QPushButton`: Interactive application buttons.
+* `QVBoxLayout`: Vertical organization of interface elements.
+* `QLabel`: File paths, messages, and status information.
+* `QGroupBox`: Visual grouping of related controls.
+* `QFileDialog`: File and directory selection dialogs.
+* `QScrollArea`: Scrollable display area for generated CSV summary paths.
 
-##### `generate_reports()` 
+#### Current GUI Workflow
 
-- **Input:** User interaction with the `Crear Reporte` button. 
-- **Output:** Currently updates the status label with a temporary message indicating that backend integration is pending. 
+The current graphical workflow is:
 
-#### Current Development Status 
+1. Open the Sales Report window.
+2. Select a source CSV file.
+3. Optionally select a custom output directory.
+4. Use `reports/` when no custom output folder is selected.
+5. Review the current application status.
+6. Press the `Crear Reporte` button.
+7. Validate that a CSV file has been selected.
+8. Send the selected file and output directory to `controller.generate_sales_report()`.
+9. Execute the complete backend reporting workflow.
+10. Display the generated TXT report path.
+11. Display the generated JSON analysis path.
+12. Display the generated CSV summary paths inside the scrollable area.
+13. Display the final success status or an error message.
 
-The graphical interface structure is implemented. 
+#### Error Handling
 
-Currently available: 
+The graphical interface handles two categories of errors during report generation:
 
-- Main application window.
-- CSV file selection. 
-- Output folder selection. 
-- Default output folder. 
-- Application status messages. 
-- Report-generation button. 
-- Generated-files display section. 
+* Application-specific exceptions derived from `AppError`.
+* Unexpected Python exceptions.
 
-Pending: 
+When an error occurs, its message is displayed through `status_label`.
 
-- Connection between `generate_reports()` and `controller.generate_sales_report()`. 
-- Display of generated TXT report path. 
-- Display of generated JSON analysis path. 
-- Display of generated CSV summary paths. 
-- GUI handling and presentation of backend errors. 
+This keeps backend failures visible to the user without terminating the graphical application unexpectedly.
+
+#### Input and Output
+
+##### `SalesReportWindow`
+
+* **Input:** User interaction through the graphical interface.
+* **Output:** A desktop window for configuring, generating, and displaying sales-report results.
+
+##### `selected_file_path()`
+
+* **Input:** A CSV file selected through `QFileDialog`.
+* **Output:** Updates `file_path`, the selected-file label, and the application status.
+
+##### `selected_folder_path()`
+
+* **Input:** A directory selected through `QFileDialog`.
+* **Output:** Updates `output_folder`, the output-folder label, and the application status.
+
+##### `generate_reports()`
+
+* **Input:** The selected CSV path and configured output folder.
+* **Output:** Generates reports through the controller and updates the GUI with TXT, JSON, and CSV output paths or an error message.
+
+##### `clean_layout()`
+
+* **Input:** A Qt layout containing dynamically generated widgets.
+* **Output:** Removes the widgets currently contained in the layout.
+
+#### Current Development Status
+
+The graphical interface is connected to the existing Sales Report backend workflow.
+
+Currently available:
+
+* Main application window.
+* CSV file selection.
+* Output folder selection.
+* Default output folder.
+* Application status messages.
+* Backend controller integration.
+* Report-generation button.
+* TXT report path display.
+* JSON analysis path display.
+* Dynamic CSV summary path display.
+* Scrollable CSV results area.
+* Cleanup of previous CSV results.
+* Application-specific error presentation.
+* Unexpected error presentation.
 
 ---
 

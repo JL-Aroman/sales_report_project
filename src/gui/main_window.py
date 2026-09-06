@@ -1,19 +1,23 @@
 """Sales Report graphical user interface module.
 
-This module provides the main desktop window for the Sales Report application 
+This module provides the main desktop window for the Sales Report application
 using PySide6.
 
-It builds the graphical interface for seleting a source CSV file, choosing 
-an output directory, starting the report generation process, displaying the 
-current application status, and presenting the paths of generated ouput
-files.
+It builds the graphical interface for selecting a source CSV file, choosing
+an output directory, generating sales reports through the backend controller,
+displaying the current application status, and presenting the paths of the
+generated output files.
 
 The interface is organized into independent layout-building methods to keep
-the window structure modula, maintainable, and easy to extend.
+the window structure modular, maintainable, and easy to extend.
 
-The report generation button is currently prepared in the interface but is
-not yet connected to the backend repporting workflow.
+The module integrates the graphical interface with the Sales Report controller
+and handles application-specific and unexpected errors during report
+generation.
 """
+
+from src import controller as control
+from src.errors import AppError
 
 from PySide6.QtWidgets import(
     QMainWindow,
@@ -22,7 +26,8 @@ from PySide6.QtWidgets import(
     QVBoxLayout,
     QLabel,
     QGroupBox,
-    QFileDialog
+    QFileDialog,
+    QScrollArea
 )
 
 class SalesReportWindow(QMainWindow):
@@ -46,7 +51,11 @@ class SalesReportWindow(QMainWindow):
         status_label: Label displaying the current interface status.
         txt_file_label: Label reserved for the generated TXT report path.
         json_file_label: Label reserved for the generated JSON report path.
-        csv_file_label: Label reserved for generated CSV summary paths
+        csv_title_label: Label identifying the generated CSV summaries section.
+        csv_summaries_layout: Layout containing dynamically generated labels
+            for CSV summary file paths.
+        button_create_report: Button used to start the report-generation
+            workflow.
     """
     def __init__(self) -> None:
         """Initialize the main Sales Report application window.
@@ -63,7 +72,7 @@ class SalesReportWindow(QMainWindow):
         self.output_folder = "reports/"
 
         self.setWindowTitle("Generador de Reportes de Ventas")
-        self.setFixedSize(700,500)
+        self.setFixedSize(900,700)
 
         widget_central = QWidget()
         self.setCentralWidget(widget_central)
@@ -87,12 +96,12 @@ class SalesReportWindow(QMainWindow):
         The selection button is connected to `selected_file_path()`
 
         Returns:
-            A QGroupBox containing the source-file selecton controls.
+            A QGroupBox containing the source-file selection controls.
         """
         group = QGroupBox("Archivo CSV de Origen")
         layout = QVBoxLayout()
         self.selected_file_label = QLabel("Archivo no seleccionado.")
-        self.button_selected_file = QPushButton("Seleccionar Archivo")
+        self.button_selected_file = QPushButton("Seleccionar archivo")
         self.button_selected_file.setFixedSize(200,30)
         self.button_selected_file.clicked.connect(self.selected_file_path)
         layout.addWidget(self.selected_file_label)
@@ -110,12 +119,12 @@ class SalesReportWindow(QMainWindow):
         selected. The selection button is connected to `selected_folder_path()`.    
 
         Returns:
-            A QGroupBox contianing the output-folder selection controls.
+            A QGroupBox containing the output-folder selection controls.
         """
         group = QGroupBox("Carpeta de Salida")
         layout = QVBoxLayout()
         self.output_folder_label = QLabel(f"Carpeta no seleccionada. Se usará: {self.output_folder}")
-        self.button_output_folder = QPushButton("Seleccionar Carpeta")
+        self.button_output_folder = QPushButton("Seleccionar carpeta")
         self.button_output_folder.setFixedSize(200,30)
         self.button_output_folder.clicked.connect(self.selected_folder_path)
         layout.addWidget(self.output_folder_label)
@@ -136,7 +145,7 @@ class SalesReportWindow(QMainWindow):
         """
         group = QGroupBox("Crear Reporte")
         layout = QVBoxLayout()
-        self.button_create_report = QPushButton("Crear Reporte")
+        self.button_create_report = QPushButton("Crear reporte")
         self.button_create_report.clicked.connect(self.generate_reports)
         layout.addWidget(self.button_create_report)
         group.setLayout(layout)
@@ -163,27 +172,39 @@ class SalesReportWindow(QMainWindow):
     def build_generated_files_layout(self) -> QGroupBox:
         """Build the generated-files display section.
 
-        Creates a group box containing labels reserved for displaying the paths
-        of the generated TXT report, JSON analysis file, and CSV summary files.
+        Creates a group box containing labels for the generated TXT report and
+        JSON analysis file, together with a scrollable area for dynamically
+        displaying CSV summary file paths.
+
+        The CSV paths are added to `csv_summaries_layout` after a successful
+        report-generation process.
 
         Returns:
-            A QGroupBox containing the generated-file labels.
+            A QGroupBox containing the generated-file display controls.
         """
         group = QGroupBox("Archivos Generados")
         layout = QVBoxLayout()
         self.txt_file_label = QLabel("- TXT:")
         self.json_file_label = QLabel("- JSON:")
-        self.csv_summaries_label = QLabel("- Resúmenes CSV:")
+        self.csv_title_label = QLabel("- Resúmenes CSV:")
         layout.addWidget(self.txt_file_label)
         layout.addWidget(self.json_file_label)
-        layout.addWidget(self.csv_summaries_label)
+        layout.addWidget(self.csv_title_label)
+        csv_container = QWidget()
+        self.csv_summaries_layout = QVBoxLayout()
+        csv_container.setLayout(self.csv_summaries_layout)
+        scroll = QScrollArea()
+        scroll.setWidget(csv_container)
+        scroll.setWidgetResizable(True)
+        scroll.setFixedHeight(200)
+        layout.addWidget(scroll)
         group.setLayout(layout)
         return group
 
     def selected_file_path(self) -> None:
         """Open a dialog for selecting the source CSV file.
 
-        Displays a file-selection dialog restricted to files whit the `.csv`
+        Displays a file-selection dialog restricted to files with the `.csv`
         extension.
 
         When a file is selected, its path is stored in `file_path` and displayed
@@ -219,17 +240,66 @@ class SalesReportWindow(QMainWindow):
             self.output_folder = folder
             self.output_folder_label.setText(self.output_folder)
             if self.file_path is not None:
-                self.status_label.setText(f"Archivo y Carpeta seleccionados correctamente.")
+                self.status_label.setText(f"Archivo y carpeta seleccionados correctamente.")
             else:
                 self.status_label.setText(f"Carpeta seleccionada correctamente... Esperando archivo CSV.")
 
     def generate_reports(self) -> None:
-        """Handle the report generation button action.
+        """Generate sales reports using the configured file and output folder.
 
-        Uppdates the application status to indicate that the report-generation
-        button has not yet been connected to the backend reporting workflow.
+        Verifies that a source CSV file has been selected before starting the
+        report-generation workflow.
 
-        This method is currently a placeholder for the future integration whit
-        the Sales Report controller.
+        When a file is available, the method clears previously displayed CSV
+        results and calls `controller.generate_sales_report()` using the selected
+        CSV path and output directory.
+
+        The generated TXT and JSON paths are displayed in their corresponding
+        labels. CSV summary paths are dynamically added to the scrollable CSV
+        results layout.
+
+        The application status is updated according to the result of the operation.
+        Application-specific errors derived from `AppError` and unexpected
+        exceptions are displayed through the status label.
+
+        Returns:
+            None.
         """
-        self.status_label.setText("Falta conectar este botón.")
+        self.status_label.setText("Proceso iniciado...")
+        if self.file_path is None:
+            self.status_label.setText("Seleccione un archivo CSV antes de generar el reporte.")
+            return
+        else:
+            try:
+                self.txt_file_label.setText("- TXT:")
+                self.json_file_label.setText("- JSON:")
+                self.clean_layout(self.csv_summaries_layout)
+                data_analysis = control.generate_sales_report(self.file_path, self.output_folder)
+                self.txt_file_label.setText(f"- TXT: {str(data_analysis['report_path_txt'])}")
+                self.json_file_label.setText(f"- JSON: {str(data_analysis['report_path_json'])}")
+                for path, name_path in data_analysis["reports_path_csv"].items():
+                    path_label = QLabel(f"{path}: {str(name_path)}")
+                    self.csv_summaries_layout.addWidget(path_label)
+                self.status_label.setText("Reporte generado correctamente")
+            except AppError as error:
+                self.status_label.setText(str(error))
+            except Exception as error:
+                self.status_label.setText(str(error))
+
+    def clean_layout(self, layout) -> None:
+        """Remove all widgets from a layout.
+
+        Iterates through the layout in reverse order and schedules each contained
+        widget for deletion.
+
+        This method is used before displaying new CSV summary paths so that results
+        from a previous report generation are removed from the interface.
+
+        Args:
+            layout: Qt layout containing widgets to remove.
+
+        Returns:
+            None.
+        """
+        for i in reversed(range(layout.count())):
+            layout.itemAt(i).widget().deleteLater()
