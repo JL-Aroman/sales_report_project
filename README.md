@@ -1,6 +1,6 @@
 # Sales Report
 
-> **Project Status:** Version 1.2 completed - Functional console application. This project has been manually tested with a sample sales CSV file.
+> **Project Status:** Version 2.0.2 completed - Functional console application. This project has been manually tested with a sample sales CSV file.
 
 Automatic sales reporting system for processing sales data, validating CSV files, analyzing valid records, and generating structured reports.
 
@@ -1191,5 +1191,412 @@ The controller does not handle application exceptions directly.
 Errors raised by the validation, reading, analyisis, reporting, or file-management modules are propagated to the caller.
 
 The main application is responsible for catching application-specific exceptions derived from `AppError` and unexpected Python exceptions.
+
+---
+
+### Graphical User Interface Module
+
+The graphical user interface module provides the main desktop window for the Sales Report application using PySide6.
+
+It allows the user to select a source CSV file, choose an output directory, view the current application status, initiate the report-generation action, and display information about generated output files.
+
+The interface is divided into independent sections built through helper methods. This structure keeps the graphical layer modular, maintainable, and easy to extend.
+
+The graphical interface is displayed in Spanish, while the project documentation remains in English.
+
+The module currently provides the following class:
+
+- `SalesReportWindow`
+
+#### Main Window
+
+The `SalesReportWindow` class inherits from PySide6 `QMainWindow` and represents the main desktop window of the application.
+
+The window is configured with:
+
+- Title: `Generador de Reportes de Ventas` 
+- Width: `700` 
+- Height: `500` 
+- Default output folder: `reports/`
+
+The main window uses a central `QWidget` and a vertical `QVBoxLayout` yo organize the different interface sections.
+
+#### Interface Sections
+
+The main application window contains the following sections:
+
+1. Source CSV file selection. 
+2. Output folder selection. 
+3. Report generation. 
+4. Application status. 
+5. Generated file information.
+
+Each section is created inside an independent `QGroupBox`.
+
+#### Source CSV File Selection
+
+The `build_selected_file_layout()` method creates the section used to select the source CSV file.
+
+The section contains:
+
+- A label displaying the currently selected file. 
+- A `Seleccionar Archivo` button. 
+- A file-selection dialog restricted to `.csv` files.
+
+The button is connected to: 
+
+`selected_file_path()`
+
+When no file has been selected, the interface displays: 
+
+`Archivo no seleccionado.` 
+
+#### CSV File Selection Process 
+
+The `selected_file_path()` method opens a `QFileDialog` that allows the user to select a CSV file. 
+
+The dialog uses the following filter: 
+
+`Archivos CSV (*.csv)` 
+
+When a valid selection is made: 
+
+1. The selected path is stored in `file_path`. 
+2. The selected-file label is updated. 
+3. The application status is updated. 
+4. The status message considers whether the default or a custom output folder is currently configured. 
+
+If the dialog is canceled, the current application state remains unchanged. 
+
+#### Output Folder Selection 
+
+The `build_selected_folder_layout()` method creates the section used to configure the destination folder. 
+
+The section contains: 
+
+- A label displaying the current output directory. 
+- A `Seleccionar Carpeta` button. 
+
+The button is connected to: 
+
+`selected_folder_path()` 
+
+The default output directory is: 
+
+`reports/`
+
+When no custom directory has been selected, the interface informs the user that the default folder will be used. 
+
+#### Output Folder Selection Process 
+
+The `selected_folder_path()` method opens a directory-selection dialog using `QFileDialog.getExistingDirectory()`. 
+
+When a folder is selected: 
+
+1. The selected directory is stored in `output_folder`. 
+2. The output-folder label is updated. 
+3. The application status is updated. 
+4. The status message considers whether a source CSV file has already been selected. 
+
+If the dialog is canceled, the previously configured output directory remains unchanged. 
+
+#### Report Generation Section 
+
+The `build_generate_report_layout()` method creates the section containing the main report-generation button. 
+
+The section contains: 
+
+`Crear Reporte` 
+
+The button is connected to: 
+
+`generate_reports()` 
+
+The graphical control is currently available, but the report-generation workflow has not yet been connected to the backend controller. 
+
+#### Report Generation Status 
+
+The current implementation of `generate_reports()` is a temporary placeholder. 
+
+When the user presses the `Crear Reporte` button, the status label displays: 
+
+`Falta conectar este botón.` 
+
+Future integration will connect this method to the existing sales-report controller workflow. 
+
+#### Application Status 
+
+The `build_status_layout()` method creates the status section of the interface. 
+
+The `status_label` is used to provide feedback about the current state of the application. 
+
+Its initial value is: 
+
+`Seleccione un archivo CSV para comenzar.` 
+
+The status is updated when: 
+
+- A CSV file is selected. 
+- An output folder is selected. 
+- Both a CSV file and output folder are available. 
+- The report-generation button is pressed. 
+
+#### Generated Files Section 
+
+The `build_generated_files_layout()` method creates the section reserved for displaying generated report information. 
+
+The interface currently contains the following labels: 
+
+- `TXT` 
+- `JSON` 
+- `Resúmenes CSV` 
+
+The corresponding attributes are: 
+
+- `txt_file_label` 
+- `json_file_label` 
+- `csv_summaries_label` 
+
+These labels are prepared for future integration with the backend report-generation workflow. 
+
+#### Window State 
+
+The `SalesReportWindow` class maintains the following primary state values: 
+
+- `file_path`: Stores the selected source CSV path. Its initial value is `None`. 
+- `output_folder`: Stores the destination directory for generated files. Its default value is `reports/`. 
+
+The remaining interface attributes store references to labels and buttons used by the graphical window. 
+
+#### PySide6 Components 
+
+The graphical interface currently uses the following PySide6 widgets: 
+
+- `QMainWindow`: Main application window. 
+- `QWidget`: Central window container. 
+- `QPushButton`: Interactive application buttons. 
+- `QVBoxLayout`: Vertical organization of interface elements. 
+- `QLabel`: Text and status information. 
+- `QGroupBox`: Visual grouping of related controls. 
+- `QFileDialog`: File and directory selection dialogs. 
+
+#### Current GUI Workflow 
+
+The current graphical workflow is: 
+
+1. Open the Sales Report window. 
+2. Select a source CSV file. 
+3. Optionally select a custom output directory. 
+4. Use `reports/` when no custom output folder is selected. 
+5. Review the current status displayed by the interface. 
+6. Press the `Crear Reporte` button. 
+7. Display the temporary message indicating that backend integration is still pending. 
+
+The report-generation button does not currently execute `controller.generate_sales_report()`. 
+
+#### Backend Integration Status 
+
+The graphical interface and backend reporting workflow are currently separated. 
+
+The existing backend workflow is coordinated by: 
+
+`controller.generate_sales_report()` 
+
+The GUI already stores the two values required by the controller: 
+
+- `file_path` 
+- `output_folder` 
+
+However, `generate_reports()` has not yet been connected to the controller. 
+
+Once this integration is implemented, the graphical interface will be able to send the selected file and output folder to the controller and display the returned TXT, JSON, and CSV report paths. 
+
+#### Input and Output 
+
+##### `SalesReportWindow` 
+
+- **Input:** User interaction through the graphical interface. 
+- **Output:** A desktop window for configuring and initiating sales-report generation. 
+
+##### `selected_file_path()` 
+
+- **Input:** A CSV file selected through `QFileDialog`. 
+- **Output:** Updates `file_path`, the selected-file label, and the application status. 
+
+##### `selected_folder_path()` 
+
+- **Input:** A directory selected through `QFileDialog`. 
+- **Output:** Updates `output_folder`, the output-folder label, and the application status. 
+
+##### `generate_reports()` 
+
+- **Input:** User interaction with the `Crear Reporte` button. 
+- **Output:** Currently updates the status label with a temporary message indicating that backend integration is pending. 
+
+#### Current Development Status 
+
+The graphical interface structure is implemented. 
+
+Currently available: 
+
+- Main application window.
+- CSV file selection. 
+- Output folder selection. 
+- Default output folder. 
+- Application status messages. 
+- Report-generation button. 
+- Generated-files display section. 
+
+Pending: 
+
+- Connection between `generate_reports()` and `controller.generate_sales_report()`. 
+- Display of generated TXT report path. 
+- Display of generated JSON analysis path. 
+- Display of generated CSV summary paths. 
+- GUI handling and presentation of backend errors. 
+
+---
+
+### Graphical Application Entry Point Module
+
+The graphical application entry point module initializes and launches the PySide6 desktop application.
+
+It creates the Qt application environment, initializes the main Sales Report window, displays the graphical interface, and starts the Qt event loop.
+
+Unlike the graphical user interface module, this module does not define the interface structure or application controls. Its responsibility is only to start the desktop application.
+
+
+#### Application Initialization
+
+The module creates a `QApplication` instance using:
+
+`QApplication(sys.argv)`
+
+The `QApplication` object manages the graphical application environment and receives command-line arguments provided when the program is executed.
+
+
+#### Main Window Initialization
+
+The main application window is created using:
+
+`main_windows.SalesReportWindow()`
+
+The `SalesReportWindow` class is imported from:
+
+`gui.main_windows`
+
+This separates the application startup logic from the graphical interface implementation.
+
+
+#### Window Display
+
+After the main window is created, the application calls:
+
+`show()`
+
+This displays the Sales Report graphical interface to the user.
+
+
+#### Qt Event Loop
+
+The application starts the Qt event loop using:
+
+`app.exec()`
+
+The event loop keeps the graphical application running and processes user interactions such as:
+
+- Button clicks.
+- File-selection dialogs.
+- Folder-selection dialogs.
+- Window events.
+- Application closing events.
+
+
+#### Application Exit
+
+The result returned by the Qt event loop is passed to:
+
+`sys.exit()`
+
+This allows the application to terminate using the exit status returned by PySide6.
+
+
+#### Application Startup Workflow
+
+The graphical application starts using the following process:
+
+1. Imports the Python `sys` module.
+
+2. Imports `QApplication` from PySide6.
+
+3. Imports the graphical window module from `gui.main_windows`.
+
+4. Creates the `QApplication` instance.
+
+5. Creates an instance of `SalesReportWindow`.
+
+6. Displays the main application window.
+
+7. Starts the Qt event loop.
+
+8. Returns the application exit status to the operating system.
+
+
+#### Module Coordination
+
+The graphical application entry point interacts directly with:
+
+- `PySide6.QtWidgets.QApplication`: Creates and manages the Qt application environment.
+
+- `gui.main_windows`: Provides the `SalesReportWindow` graphical interface.
+
+The module does not interact directly with the sales-report backend modules.
+
+Backend processing is handled through the graphical interface and the controller when those components are connected.
+
+
+#### Input and Output
+
+- **Input:** Command-line arguments received through `sys.argv` and subsequent user interaction with the graphical application.
+
+- **Output:** A running PySide6 desktop application displaying the `SalesReportWindow` interface.
+
+
+#### Responsibilities
+
+This module is responsible for:
+
+- Creating the Qt application environment.
+- Creating the main Sales Report window.
+- Displaying the graphical interface.
+- Starting the Qt event loop.
+- Managing the final application exit status.
+
+This module is not responsible for:
+
+- Building graphical interface layouts.
+- Selecting CSV files.
+- Selecting output folders.
+- Validating sales data.
+- Analyzing sales records.
+- Generating reports.
+- Saving output files.
+
+These responsibilities belong to the corresponding GUI and backend modules.
+
+
+#### Application Relationship
+
+The graphical startup flow can be represented as:
+
+`Graphical Application Entry Point`
+
+→ `QApplication`
+
+→ `gui.main_windows.SalesReportWindow`
+
+→ Graphical user interaction
+
+The graphical window will communicate with the backend controller when report-generation integration is completed.
 
 ---
