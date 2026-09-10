@@ -148,18 +148,18 @@ def save_analysis_result_csv_files(
 
     Returns:
         A dictionary containing the generated CSV file paths. The dictionary
-        always contains `product_summary` and `category_summary`, and may also
-        contain `city_summary` and `payment_method_summary` when those analyses 
+        always contains `resumen_producto` and `resumen_categoria`, and may also
+        contain `ciudad_resumen` and `metodo_de_pago_resumen` when those analyses 
         are available.
     """
     analysis_csv = analysis_result.copy()
     reports = {}
-    reports["product_summary"] = create_save_analysis_result_csv_files_and_path(analysis_csv["product_summary"], output_folder, file_name, "products")
-    reports["category_summary"] = create_save_analysis_result_csv_files_and_path(analysis_csv["category_summary"], output_folder, file_name, "categories")
+    reports["resumen_producto"] = create_save_analysis_result_csv_files_and_path(analysis_csv["product_summary"], output_folder, file_name, "products")
+    reports["resumen_categoria"] = create_save_analysis_result_csv_files_and_path(analysis_csv["category_summary"], output_folder, file_name, "categories")
     if "city_summary" in analysis_csv and analysis_csv["city_summary"] is not None:
-        reports["city_summary"] = create_save_analysis_result_csv_files_and_path(analysis_csv["city_summary"], output_folder, file_name, "cities")
+        reports["ciudad_resumen"] = create_save_analysis_result_csv_files_and_path(analysis_csv["city_summary"], output_folder, file_name, "cities")
     if "payment_method_summary" in analysis_csv and analysis_csv["payment_method_summary"] is not None:
-        reports["payment_method_summary"] = create_save_analysis_result_csv_files_and_path(analysis_csv["payment_method_summary"], output_folder, file_name, "payment_methods")
+        reports["metodo_de_pago_resumen"] = create_save_analysis_result_csv_files_and_path(analysis_csv["payment_method_summary"], output_folder, file_name, "payment_methods")
     return reports
 
 def create_save_analysis_result_csv_files_and_path(

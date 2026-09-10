@@ -1,10 +1,16 @@
-"""Custom exception classes for the sales report project.
+"""Custom exception classes for the Sales Report project.
 
 This module defines application-specific exceptions used across the
-automatic sales report generator.
+Sales Report application.
 
-The goal of these custom errors is to make failures easier to understand,
-handle, and report from the main application flow.
+All custom exceptions inherit from `AppError`, providing a common exception
+hierarchy that allows application-specific failures to be handled consistently.
+
+Default error messages are written in Spanish because they are intended to
+be displayed directly to users through the graphical interface.
+
+The exceptions cover file validation, CSV structure, data validation,
+sales analysis, report generation, and report file storage failures.
 """
 
 class AppError(Exception):
@@ -19,7 +25,7 @@ class AppError(Exception):
 
 class EmptyPathError(AppError):
     """Raised when the provided file path is empty."""
-    def __init__(self, message: str = "File path is empty.") -> None:
+    def __init__(self, message: str = "La ruta del archivo está vacía.") -> None:
         """
         Args:
             message: Descriptive message of the error. If 
@@ -30,7 +36,7 @@ class EmptyPathError(AppError):
 
 class FileNotFoundAppError(AppError):
     """Raised when the provided file path does not exist."""
-    def __init__(self, message: str = "File path does not exist.") -> None:
+    def __init__(self, message: str = "La ruta del archivo no existe.") -> None:
         """
         Args:
             message: Descriptive message of the error. If 
@@ -41,7 +47,7 @@ class FileNotFoundAppError(AppError):
 
 class InvalidFilePathError(AppError):
     """Raised when the provided path is not a valid file."""
-    def __init__(self, message: str = "Path not a valid file.") -> None:
+    def __init__(self, message: str = "La ruta del archivo no corresponde a un archivo válido.") -> None:
         """
         Args:
             message: Descriptive message of the error. If
@@ -52,7 +58,7 @@ class InvalidFilePathError(AppError):
 
 class InvalidFileExtensionError(AppError):
     """Raised when the file extension is not supported."""
-    def __init__(self, message: str = "File extension is not supported.") -> None:
+    def __init__(self, message: str = "La extensión del archivo no es compatible.") -> None:
         """
         Args:
             message: Descriptive message of the error. If
@@ -63,7 +69,7 @@ class InvalidFileExtensionError(AppError):
 
 class EmptyFileError(AppError):
     """Raised when the CSV file exists but has no content."""
-    def __init__(self, message: str = "File exists but has no content.") -> None:
+    def __init__(self, message: str = "El archivo existe pero no tiene contenido.") -> None:
         """
         Args:
             message: Descriptive message of the error. If
@@ -74,7 +80,7 @@ class EmptyFileError(AppError):
 
 class FileReadError(AppError):
     """Raised when the CSV file cannot be read correctly."""
-    def __init__(self, message: str = "File cannot be read correctly.") -> None:
+    def __init__(self, message: str = "El archivo no se pudo leer correctamente.") -> None:
         """
         Args:
             message: Descriptive message of the error. If
@@ -85,7 +91,7 @@ class FileReadError(AppError):
 
 class MissingColumnsError(AppError):
     """Raised when the CSV file does not contain required columns."""
-    def __init__(self, message: str = "File does not contain required columns.") -> None:
+    def __init__(self, message: str = "El archivo no contiene las columnas requeridas.") -> None:
         """
         Args:
             message: Descriptive message of the error. If
@@ -96,7 +102,7 @@ class MissingColumnsError(AppError):
 
 class EmptyHeadersError(AppError):
     """Raised when the CSV file has no valid headers."""
-    def __init__(self, message: str = "File has no valid headers.") -> None:
+    def __init__(self, message: str = "El archivo no tiene encabezados válidos.") -> None:
         """
         Args:
             message: Descriptive message of the error. If
@@ -107,7 +113,7 @@ class EmptyHeadersError(AppError):
 
 class InvalidCSVStructureError(AppError):
     """Raised when the CSV structure is invalid."""
-    def __init__(self, message: str = "File structure is invalid.") -> None:
+    def __init__(self, message: str = "La estructura del archivo no es válida.") -> None:
         """
         Args:
             message: Descriptive message of the error. If
@@ -118,7 +124,7 @@ class InvalidCSVStructureError(AppError):
 
 class EmptyDataFrameError(AppError):
     """Raised when the DataFrame has no rows or usable data."""
-    def __init__(self, message: str = "DataFrame has no rows or usable data.") -> None:
+    def __init__(self, message: str = "No hay filas o datos utilizables.") -> None:
         """
         Args:
             message: Descriptive message of the error. If
@@ -129,7 +135,7 @@ class EmptyDataFrameError(AppError):
 
 class DataValidationError(AppError):
     """Raised when the DataFrame validation process fails."""
-    def __init__(self, message: str = "DataFrame validation process failed.") -> None:
+    def __init__(self, message: str = "El proceso de validación de datos falló.") -> None:
         """
         Args:
             message: Descriptive message of the error. If
@@ -140,7 +146,7 @@ class DataValidationError(AppError):
 
 class NoValidRowsError(AppError):
     """Raised when no valid rows are available for analysis."""
-    def __init__(self, message: str = "No valid rows are available for analysis.") -> None:
+    def __init__(self, message: str = "No hay filas válidas disponibles para el análisis.") -> None:
         """
         Args:
             message: Descriptive message of the error. If
@@ -151,7 +157,7 @@ class NoValidRowsError(AppError):
 
 class ReportGenerationError(AppError):
     """Raised when the report text cannot be generated."""
-    def __init__(self, message: str = "The report text cannot be generated.") -> None:
+    def __init__(self, message: str = "No se pudo generar el texto del reporte.") -> None:
         """
         Args:
             message: Descriptive message of the error. If
@@ -162,7 +168,7 @@ class ReportGenerationError(AppError):
 
 class ReportSaveError(AppError):
     """Raised when the report file cannot be saved."""
-    def __init__(self, message: str = "The report file cannot be saved.") -> None:
+    def __init__(self, message: str = "No se pudo guardar el archivo del reporte.") -> None:
         """
         Args:
             message: descriptive message of the error. If

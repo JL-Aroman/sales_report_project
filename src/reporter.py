@@ -33,13 +33,13 @@ def get_general_summary(analysis_result: Dict[str, Any]) -> str:
         A formatted string containing the general sales summary.
     """
     general_summary = f"""
-GENERAL SUMMARY
+RESUMEN GENERAL
 
-Total rows: {analysis_result["total_rows"]}
-Valid rows: {analysis_result["total_valid_rows"]}
-Invalid rows: {analysis_result["total_invalid_rows"]}
-Total income: ${analysis_result["total_income"]:,.2f}
-Total units sold: {analysis_result["total_units_sold"]}
+Total de filas: {analysis_result["total_rows"]}
+Filas válidas: {analysis_result["total_valid_rows"]}
+Filas inválidas: {analysis_result["total_invalid_rows"]}
+Ingreso Total: ${analysis_result["total_income"]:,.2f}
+Unidades vendidas: {analysis_result["total_units_sold"]}
 """
     return general_summary
    
@@ -61,11 +61,11 @@ def get_best_selling_product(analysis_result: Dict[str, Any]) -> str:
     """
     list_best_selling_products = analysis_result["best_selling_product"]
     summary = []
-    summary.append("BEST SELLING PRODUCT")
+    summary.append("PRODUCTO MÁS VENDIDO")
     for best_selling_product in list_best_selling_products:
         summary_product = f"""
 {best_selling_product["producto_id"]} - {best_selling_product["producto"]}
-Units sold: {best_selling_product["unidades_vendidas"]}
+Unidades vendidas: {best_selling_product["unidades_vendidas"]}
 """
         summary.append(summary_product)
     return "\n".join(summary)
@@ -89,11 +89,11 @@ def get_highest_income_product(analysis_result: Dict[str, Any]) -> str:
     """
     list_highest_income_products = analysis_result["highest_income_product"]
     summary = []
-    summary.append("HIGHEST INCOME PRODUCT")
+    summary.append("PRODUCTO CON MAYOR INGRESO")
     for highest_income_product in list_highest_income_products:
         summary_product = f"""
 {highest_income_product["producto_id"]} - {highest_income_product["producto"]}
-Income: ${highest_income_product["ingreso_total"]:,.2f}
+Ingreso: ${highest_income_product["ingreso_total"]:,.2f}
 """
         summary.append(summary_product)
     return "\n".join(summary)
@@ -117,11 +117,11 @@ def get_highest_income_category(analysis_result: Dict[str, Any]) -> str:
     """
     list_highest_income_category = analysis_result["highest_income_category"]
     summary = []
-    summary.append("HIGHEST INCOME CATEGORY")
+    summary.append("CATEGORÍA CON MAYOR INGRESO")
     for highest_income_category in list_highest_income_category:
         summary_category = f"""
 {highest_income_category["categoria"]}
-Income: ${highest_income_category["ingreso_total"]:,.2f}
+Ingreso: ${highest_income_category["ingreso_total"]:,.2f}
 """
         summary.append(summary_category)
     return "\n".join(summary)
@@ -144,12 +144,12 @@ def get_highest_income_city(analysis_result: Dict[str, Any]) -> str:
     """
     list_highest_income_city = analysis_result["highest_income_city"]
     summary = []
-    summary.append("HIGHEST INCOME CITY")
+    summary.append("CIUDAD CON MAYOR INGRESO")
     for highest_income_city in list_highest_income_city:
         summary_city = f"""
 {highest_income_city["ciudad"]}
-Income: ${highest_income_city["ingreso_total"]:,.2f}
-Units sold: {highest_income_city["unidades_vendidas"]}
+Ingreso: ${highest_income_city["ingreso_total"]:,.2f}
+Unidades vendidas: {highest_income_city["unidades_vendidas"]}
 """
         summary.append(summary_city)
     return "\n".join(summary)
@@ -173,12 +173,12 @@ def get_highest_income_payment_method(analysis_result: Dict[str, Any]) -> str:
     """
     list_highest_income_payment_method = analysis_result["highest_income_payment_method"]
     summry = []
-    summry.append("HIGHEST INCOME PAYMENT METHOD")
+    summry.append("MÉTODO DE PAGO CON MAYOR INGRESO")
     for highest_income_pyment_method in list_highest_income_payment_method:
         summry_paymet_method = f"""
 {highest_income_pyment_method["metodo_pago"]}
-Income: ${highest_income_pyment_method["ingreso_total"]:,.2f}
-Units sold: {highest_income_pyment_method["unidades_vendidas"]}"""
+Ingreso: ${highest_income_pyment_method["ingreso_total"]:,.2f}
+Unidades vendidas: {highest_income_pyment_method["unidades_vendidas"]}"""
         summry.append(summry_paymet_method)
     return "\n".join(summry)
 
@@ -201,11 +201,11 @@ def get_top_5_best_selling_products(analysis_result: Dict[str, Any]) -> str:
     """
     top_5_best_selling_products = analysis_result["top_5_best_selling_products"]
     summary = []
-    summary.append("TOP 5 BEST SELLING PRODUCTS\n")
+    summary.append("TOP 5 PRODUCTOS MÁS VENDIDOS\n")
     for index in range(len(top_5_best_selling_products)):
         top_5 = top_5_best_selling_products[index]
         summary_top_5 = f"""
-{index + 1}. {top_5["producto_id"]} - {top_5["producto"]} | Units sold: {top_5["unidades_vendidas"]} | Income: ${top_5["ingreso_total"]:,.2f}""".strip()
+{index + 1}. {top_5["producto_id"]} - {top_5["producto"]} | Unidades vendidas: {top_5["unidades_vendidas"]} | Ingreso: ${top_5["ingreso_total"]:,.2f}""".strip()
         summary.append(summary_top_5)
     summary = "\n".join(summary)
     return "\n" + summary.strip()
@@ -228,11 +228,11 @@ def get_top_5_highest_income_products(analysis_result: Dict[str, Any]) -> str:
     """
     top_5_highest_income_products = analysis_result["top_5_highest_income_products"]
     summary = []
-    summary.append("TOP 5 HIGHEST INCOME PRODUCTS\n")
+    summary.append("TOP 5 PRODUCTOS CON MAYOR INGRESO\n")
     for index in range(len(top_5_highest_income_products)):
         top_5 = top_5_highest_income_products[index]
         summary_top_5 = f"""
-{index + 1}. {top_5["producto_id"]} - {top_5["producto"]} | Income: ${top_5["ingreso_total"]:,.2f} | Units sold: {top_5["unidades_vendidas"]}
+{index + 1}. {top_5["producto_id"]} - {top_5["producto"]} | Ingreso: ${top_5["ingreso_total"]:,.2f} | Unidades vendidas: {top_5["unidades_vendidas"]}
 """.strip()
         summary.append(summary_top_5)
     summary = "\n".join(summary)
@@ -254,7 +254,7 @@ def get_product_summary(analysis_result: Dict[str, Any]) -> str:
     product_summary_for_display = analysis_result["product_summary"].copy()
     product_summary_for_display["ingreso_total"] = product_summary_for_display["ingreso_total"].map(lambda x: f"${x:,.2f}")
     summary = []
-    summary.append("PRODUCT SUMMARY")
+    summary.append("RESUMEN POR PRODUCTO")
     summary.append(f"\n{product_summary_for_display.to_string(index=False)}\n")
     return "\n".join(summary)
 
@@ -274,7 +274,7 @@ def get_category_summary(analysis_result: Dict[str, Any]) -> str:
     category_summary_for_display = analysis_result["category_summary"].copy()
     category_summary_for_display["ingreso_total"] = category_summary_for_display["ingreso_total"].map(lambda x: f"${x:,.2f}")
     summary = []
-    summary.append("CATEGORY SUMMARY")
+    summary.append("RESUMEN POR CATEGORÍA")
     summary.append(f"\n{category_summary_for_display.to_string(index=False)}\n")
     return "\n".join(summary)
 
@@ -295,7 +295,7 @@ def get_city_summary(analysis_result: Dict[str, Any]) -> str:
     city_summary_for_display = analysis_result["city_summary"].copy()
     city_summary_for_display["ingreso_total"] = city_summary_for_display["ingreso_total"].map(lambda x: f"${x:,.2f}")
     summary = []
-    summary.append("CITY SUMMARY")
+    summary.append("RESUMEN POR CIUDAD")
     summary.append(f"\n{city_summary_for_display.to_string(index=False)}\n")
     return "\n".join(summary)
 
@@ -316,7 +316,7 @@ def get_payment_method_summary(analysis_result: Dict[str, Any]) -> str:
     payment_method_summary_for_display = analysis_result["payment_method_summary"].copy()
     payment_method_summary_for_display["ingreso_total"] = payment_method_summary_for_display["ingreso_total"].map(lambda x: f"${x:,.2f}")
     summary = []
-    summary.append("PAYMENT METHOD SUMMARY")
+    summary.append("RESUMEN POR MÉTODO DE PAGO")
     summary.append(f"\n{payment_method_summary_for_display.to_string(index=False)}\n")
     return "\n".join(summary)
 
@@ -338,9 +338,9 @@ def get_errors(errors: List[Dict[str, Any]]) -> str:
         line-number order.
     """
     summary = []
-    summary.append("VALIDATION ERRORS")
+    summary.append("ERRORES DE VALIDACIÓN")
     if len(errors) < 1:
-        summary.append("No validation errors found.\n")
+        summary.append("No se encontraron errores de validación.\n")
         return "\n".join(summary)
     sorted_errors = sorted(errors, key=lambda x: x["line_number"])
     for error in sorted_errors:
@@ -350,7 +350,7 @@ def get_errors(errors: List[Dict[str, Any]]) -> str:
         else:
             summary_errors = f"""
 - Line {error["line_number"]} | {error["column"]} | {error["error_type"]} | {error["message"]} 
-  Original value: {error['original_value']}"""
+  Valor original: {error['original_value']}"""
         summary.append(summary_errors)
     summary.append("")
     return "\n".join(summary)
@@ -372,9 +372,9 @@ def get_warnings(warnings: List[Dict[str, Any]]) -> str:
         A formatted string containing the detected warnings.
     """
     summary = []
-    summary.append("WARNINGS")
+    summary.append("ADVERTENCIAS")
     if len(warnings) < 1:
-        summary.append("No warnings found.\n")
+        summary.append("No se encontraron advertencias.\n")
         return "\n".join(summary)
     sorted_warnings = sorted(warnings, key=lambda x: x["affected_value"])
     for warning in sorted_warnings:
@@ -416,10 +416,10 @@ def generate_report(
         A complete plain-text sales report ready to be displated or saved.
     """
     summary = []
-    summary.append("SALES REPORT")
+    summary.append("REPORTE DE VENTAS")
     summary.append(f"""
-Source file: {source_filename.name}
-Generated at: {date.today()}""")
+Archivo de origen: {source_filename.name}
+Generado el: {date.today()}""")
     summary.append(get_general_summary(analysis_result))
     summary.append(get_best_selling_product(analysis_result))
     summary.append(get_highest_income_product(analysis_result))

@@ -1,8 +1,12 @@
 # Sales Report
 
-> **Project Status:** Version 2.0.3 completed - Functional console application. This project has been manually tested with a sample sales CSV file.
+> **Project Status:** Version 2.0.4 completed - Functional console application. This project has been manually tested with a sample sales CSV file.
 
-Automatic sales reporting system for processing sales data, validating CSV files, analyzing valid records, and generating structured reports.
+Sales Report is a modular Python application for validating sales data, analyzing valid records, generating structured reports, and exporting analysis results in multiple formats.
+
+The project includes a PySide6 graphical interface that allows users to select a source CSV file, choose an output directory, generate reports, inspect generated TXT, JSON, and CSV files, and open the output directory directly from the application.
+
+The application interface and user-facing messages are displayed in Spanish, while the project source code and technical documentation are maintained in English.
 
 ---
 
@@ -10,132 +14,378 @@ Automatic sales reporting system for processing sales data, validating CSV files
 
 The project follows a modular architecture in which each module is responsible for a specific part of the application workflow.
 
+The application separates graphical presentation, workflow orchestration, validation, analysis, report generation, file management, and error handling.
+
+The current application relationship can be represented as:
+
+`Graphical Application Entry Point`
+
+→ `SalesReportWindow`
+
+→ `controller.generate_sales_report()`
+
+→ `validator`
+
+→ `csv_reader`
+
+→ `analyzer`
+
+→ `reporter`
+
+→ `file_manager`
+
+→ TXT / JSON / CSV output files
+
+Generated report files can then be opened from the graphical interface through:
+
+`FileViewerWindow`
+
+The main modules include:
+
+* `controller`: Coordinates the complete sales-report generation workflow.
+* `validator`: Validates the source file, normalizes records, validates sales data, and detects warnings.
+* `csv_reader`: Reads the validated CSV file into a pandas `DataFrame`.
+* `analyzer`: Calculates sales metrics, rankings, and aggregated summaries.
+* `reporter`: Generates the structured plain-text sales report.
+* `file_manager`: Saves TXT, JSON, and CSV output files.
+* `errors`: Defines application-specific exceptions and Spanish user-facing error messages.
+* `gui.main_windows`: Provides the main PySide6 graphical interface.
+* `gui.file_viewer_window`: Displays generated TXT, JSON, and CSV files in read-only viewer windows.
+* Graphical application entry point: Initializes `QApplication`, creates the main window, and starts the Qt event loop.
+
+---
+
 ## Installation and Usage
 
 ### Requirements
 
 Before running the project, make sure the following tools are installed:
 
-- Python 3.10 or later.
-- `pip`, the Python package installer.
-- Git, if the project will be cloned from GitHub.
+* Python 3.10 or later.
+* `pip`, the Python package installer.
+* Git, if the project will be cloned from GitHub.
+* `PySide6`, used to build and run the graphical desktop interface.
+
+The required Python libraries, including PySide6 and the data-processing dependencies, are listed in:
+
+`requirements.txt`
+
+Install all project dependencies using:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
 
 ### Installation
 
 1. Clone the repository:
-git clone <repository-url>
 
+```bash
+git clone <repository-url>
+```
 
 2. Move into the project directory:
+
+```bash
 cd sales_report_project
+```
 
 3. Create a virtual environment:
+
+```bash
 python -m venv .venv
+```
 
 4. Activate the virtual environment.
+
 On Windows:
+
+```bash
 .venv\Scripts\activate
+```
+
 On macOS or Linux:
+
+```bash
 source .venv/bin/activate
+```
 
 5. Install the project dependencies:
+
+```bash
 pip install -r requirements.txt
+```
 
-### Input CSV File
+---
 
-Place the source CSV file inside the `data` directory using the following filename:
+## Input CSV File
 
-data/sales.csv
+The application processes sales information from a CSV file selected by the user.
 
-The CSV file must contain the following columns:
+The CSV file must contain the following required columns:
 
+```text
 producto_id,producto,categoria,precio,cantidad,fecha
+```
 
 The expected date format is:
 
+```text
 YYYY-MM-DD
+```
 
-The application also support the following optional columns:
+The application also supports the following optional columns:
 
-- `ciudad`
-- `metodo_pago`
+* `ciudad`
+* `metodo_pago`
 
-These columns are not required for the core validation process. When present, they are normalized and used to generate additional sales analysis summaries.
+These columns are not required for the core validation process.
 
-Example:
+When present, they are normalized and used to generate additional sales analysis summaries.
 
+### Minimum CSV Example
+
+```csv
 producto_id,producto,categoria,precio,cantidad,fecha
 P001,Producto A,Categoria A,150.50,2,2026-07-01
 P002,Producto B,Categoria B,89.90,5,2026-07-02
+```
 
-A CSV file may also include the optional fields: 
+### CSV Example with Optional Columns
 
-producto_id,producto,categoria,precio,cantidad,fecha,ciudad,metodo_pago 
-P001,Producto A,Categoria A,150.50,2,2026-07-01,Guadalajara,Tarjeta 
+```csv
+producto_id,producto,categoria,precio,cantidad,fecha,ciudad,metodo_pago
+P001,Producto A,Categoria A,150.50,2,2026-07-01,Guadalajara,Tarjeta
 P002,Producto B,Categoria B,89.90,5,2026-07-02,Zapopan,Efectivo
+```
 
-### Running the Application
+---
 
-Run the application from the project root directory:
+## Running the Application
 
-python main.py
+The application is launched through its PySide6 graphical application entry point.
 
-The application will perform the following workflow:
+When the application starts, the main window allows the user to:
 
-1. Validate the source CSV file. 
-2. Read the file into a pandas `DataFrame`. 
-3. Normalize and validate the sales records. 
-4. Separate valid and invalid rows. 
-5. Analyze the valid sales data. 
-6. Generate a structured plain-text report. 
-7. Generate a shared dynamic base filename. 
-8. Save the plain-text sales report. 
-9. Save the complete analysis results as a JSON file. 
-10. Save the product and category analysis summaries as independent CSV files. 
-11. Save city and payment method CSV summaries when the corresponding optional data is available. 
-12. Display the paths of the generated files. 
-13. Display the total execution time.
+1. Select a source CSV file.
+2. Optionally select a custom output directory.
+3. Use `reports/` as the default output directory when no custom folder is selected.
+4. Start the sales-report generation process.
+5. View the current application status.
+6. View the paths of generated report files.
+7. Open generated TXT, JSON, and CSV files.
+8. Open the configured output directory.
 
-### Generated Output Files
+---
 
-The generated files are saved inside the `reports` directory.
+## Application Workflow
 
-All files created during the same execution share a dynamically generated base filename contining the current date and time.
+When the user starts report generation, the application performs the following workflow:
+
+1. Verifies that a source CSV file has been selected.
+2. Sends the source file path and output directory to `controller.generate_sales_report()`.
+3. Starts the execution timer.
+4. Validates the source CSV file.
+5. Reads the validated file into a pandas `DataFrame`.
+6. Normalizes and validates the sales records.
+7. Separates valid and invalid rows.
+8. Detects validation warnings.
+9. Analyzes the valid sales records.
+10. Calculates general sales metrics.
+11. Generates product and category summaries.
+12. Generates Top 5 product rankings.
+13. Generates city analysis when `ciudad` is available.
+14. Generates payment-method analysis when `metodo_pago` is available.
+15. Generates the structured plain-text sales report.
+16. Creates a shared dynamic base filename.
+17. Saves the plain-text report as a TXT file.
+18. Saves the complete structured analysis as a JSON file.
+19. Saves product and category summaries as independent CSV files.
+20. Saves city and payment-method CSV summaries when those optional analyses are available.
+21. Calculates the total execution time.
+22. Returns processing results and generated file paths to the graphical interface.
+23. Displays the generated file paths in the application.
+24. Enables the controls used to inspect the generated reports.
+
+---
+
+## Generated Output Files
+
+Generated report files are stored in the selected output directory.
+
+If no custom directory is selected, the default directory is:
+
+```text
+reports/
+```
+
+If the destination directory does not exist, the application creates it when necessary.
+
+All files generated during the same execution share a dynamically generated base filename containing the current local date and time.
+
+The base filename follows this format:
+
+```text
+sales_report_YYYY-MM-DD_HH-MM-SS-fff
+```
 
 For example:
 
-`reports/sales_report_2026-08-28_16-30-25-125.txt` 
-`reports/sales_report_2026-08-28_16-30-25-125.json` 
-`reports/sales_report_2026-08-28_16-30-25-125_products.csv` 
-`reports/sales_report_2026-08-28_16-30-25-125_categories.csv` 
+```text
+sales_report_2026-08-28_16-30-25-125
+```
 
-When optional analysis data is available, the application may also generate: 
+A normal execution generates:
 
-`reports/sales_report_2026-08-28_16-30-25-125_cities.csv` 
-`reports/sales_report_2026-08-28_16-30-25-125_payment_methods.csv`
+```text
+reports/sales_report_2026-08-28_16-30-25-125.txt
+reports/sales_report_2026-08-28_16-30-25-125.json
+reports/sales_report_2026-08-28_16-30-25-125_products.csv
+reports/sales_report_2026-08-28_16-30-25-125_categories.csv
+```
 
-If the `reports` directory does not exist, the application creates it automatically.
+When optional analysis data is available, the application may also generate:
 
-Each ececution generates a new dynamic base filename, allowing repor files from different executions to be stored independently.
+```text
+reports/sales_report_2026-08-28_16-30-25-125_cities.csv
+reports/sales_report_2026-08-28_16-30-25-125_payment_methods.csv
+```
 
-### Console Output
+Each execution generates a new dynamic base filename, allowing report files from different executions to be stored independently.
 
-After a successful execution, the console displays the generated text and JSON file paths, the generated CSV analysis file paths, and the total execution time. 
+---
 
-For example: 
+## Generated TXT Report
 
-Report saved at: reports/sales_report_2026-08-28_16-30-25-125.txt 
-Report saved at: reports/sales_report_2026-08-28_16-30-25-125.json 
-Reports CSV product_summary: reports/sales_report_2026-08-28_16-30-25-125_products.csv
-category_summary: reports/sales_report_2026-08-28_16-30-25-125_categories.csv 
-city_summary: reports/sales_report_2026-08-28_16-30-25-125_cities.csv 
-payment_method_summary: reports/sales_report_2026-08-28_16-30-25-125_payment_methods.csv 
+The TXT file contains the human-readable sales report.
 
-Execution time: 0.0123 seconds 
+Depending on the available data, the report may include:
 
-The city and payment method CSV paths are displayed only when those optional analyses are available.
+* General sales summary.
+* Total processed rows.
+* Valid and invalid row totals.
+* Total income.
+* Total units sold.
+* Best-selling product.
+* Highest-income product.
+* Highest-income category.
+* Highest-income city when available.
+* Highest-income payment method when available.
+* Top 5 best-selling products.
+* Top 5 highest-income products.
+* Product summary.
+* Category summary.
+* City summary when available.
+* Payment-method summary when available.
+* Validation errors.
+* Validation warnings.
 
-If an application-specific error occurs, the corresponding error message is displayed and the reporting workflow stops.
+The report is saved using UTF-8 encoding.
+
+---
+
+## Generated JSON Analysis
+
+The JSON file contains the structured sales analysis results.
+
+pandas `DataFrame` summaries are converted into JSON-compatible lists of dictionaries before serialization.
+
+The JSON output always contains the product and category analysis results and may also contain city and payment-method analysis when those optional fields are available.
+
+The file is written using UTF-8 encoding and formatted indentation.
+
+---
+
+## Generated CSV Summaries
+
+The application generates independent CSV files for aggregated sales summaries.
+
+The following summaries are always generated:
+
+* Product summary.
+* Category summary.
+
+The following summaries are generated when the corresponding optional data is available:
+
+* City summary.
+* Payment-method summary.
+
+The physical filenames use the following suffixes:
+
+* `_products.csv`
+* `_categories.csv`
+* `_cities.csv`
+* `_payment_methods.csv`
+
+The CSV-path dictionary returned by the file-management workflow uses the following Spanish keys:
+
+* `resumen_producto`
+* `resumen_categoria`
+* `ciudad_resumen`
+* `metodo_de_pago_resumen`
+
+The city and payment-method entries are optional.
+
+---
+
+## Graphical Report Viewing
+
+After a successful report-generation process, the graphical interface displays the generated output paths.
+
+The user can:
+
+* Open the generated TXT report.
+* Open the generated JSON analysis file.
+* Select a generated CSV summary from a combo box.
+* Open the selected CSV summary.
+* Open the output directory using the operating system file manager.
+
+TXT, JSON, and CSV files are displayed through an independent read-only `FileViewerWindow`.
+
+The viewer reads the selected report using UTF-8 encoding and displays its contents without modifying the original file.
+
+---
+
+## Application Status and Errors
+
+The graphical interface provides status messages during the application workflow.
+
+The status area informs the user about events such as:
+
+* CSV file selection.
+* Output-folder selection.
+* Start of report generation.
+* Missing source-file selection.
+* Successful report generation.
+* Processing errors.
+
+Application-specific exceptions inherit from:
+
+`AppError`
+
+Expected application errors use Spanish default messages because they are intended to be displayed directly to the user.
+
+When an application-specific or unexpected error occurs during report generation, the graphical interface updates the status and displays the error through a critical message box.
+
+The graphical application remains open so that the user can correct the problem and try again.
+
+---
+
+## Output Directory Access
+
+After successful report generation, the graphical interface enables the option:
+
+`Abrir carpeta de salida`
+
+The application opens the configured output directory using the platform-specific operating-system mechanism:
+
+* Windows: `os.startfile()`
+* macOS: `open`
+* Linux and compatible systems: `xdg-open`
+
+This allows generated report files to be accessed directly from the desktop application.
 
 ---
 
@@ -143,41 +393,134 @@ If an application-specific error occurs, the corresponding error message is disp
 
 The custom exceptions module defines the application-specific errors used throughout the Sales Report project.
 
-Its purpose is to make failures easier to identify, handle, and report from the main application flow.
+Its purpose is to make expected application failures easier to identify, handle, propagate, and present consistently across the backend and graphical interface.
 
-All custom exceptions inherit from `AppError`, which acts as the base exception for expected application errors.
+All custom exceptions inherit from `AppError`, which acts as the common base class for application-specific errors.
+
+The default exception messages are written in Spanish because they are intended to be displayed directly to the user through the graphical interface.
 
 The module currently handles errors related to:
 
-- Empty, missing, or invalid file paths.
-- Unsupported file extensions.
-- Empty or unreadable CSV files.
-- Missing or invalid CSV headers.
-- Missing required columns.
-- Invalid CSV structures.
-- Empty or unusable DataFrames.
-- Data validation failures.
-- Absence of valid rows for analysis.
-- Report generation failures.
-- Report saving failures.
+* Empty, missing, or invalid file paths.
+* Unsupported file extensions.
+* Empty or unreadable CSV files.
+* Missing or invalid CSV headers.
+* Missing required columns.
+* Invalid CSV structures.
+* Empty or unusable DataFrames.
+* Data validation failures.
+* Absence of valid rows for analysis.
+* Report generation failures.
+* Report saving failures.
+
+#### Base Exception
+
+`AppError` is the base class for all application-specific exceptions.
+
+It stores the error message received during initialization and provides that message through its string representation.
+
+This allows the application to handle all expected project-specific errors through a common exception type while preserving specialized subclasses for different failure conditions.
+
+#### User-Facing Error Messages
+
+Each specialized exception provides a default error message in Spanish.
+
+These messages are designed to be presented directly to the user when an expected application error occurs.
+
+For example:
+
+`La ruta del archivo está vacía.`
+
+`La ruta del archivo no existe.`
+
+`La extensión del archivo no es compatible.`
+
+`El archivo no se pudo leer correctamente.`
+
+`No hay filas válidas disponibles para el análisis.`
+
+`No se pudo guardar el archivo del reporte.`
+
+A custom message may also be provided when creating an exception, replacing its default message.
 
 #### Exception Hierarchy
 
-- `AppError`: Base class for all application-specific exceptions.
-- `EmptyPathError`: Raised when the provided file path is empty.
-- `FileNotFoundAppError`: Raised when the provided file path does not exist.
-- `InvalidFilePathError`: Raised when the path does not point to a valid file.
-- `InvalidFileExtensionError`: Raised when the file extension is not supported.
-- `EmptyFileError`: Raised when the CSV file contains no data.
-- `FileReadError`: Raised when the CSV file cannot be read correctly.
-- `MissingColumnsError`: Raised when required columns are missing.
-- `EmptyHeadersError`: Raised when the CSV file has no valid headers.
-- `InvalidCSVStructureError`: Raised when the CSV structure is invalid.
-- `EmptyDataFrameError`: Raised when the DataFrame contains no usable data.
-- `DataValidationError`: Raised when the DataFrame validation process fails.
-- `NoValidRowsError`: Raised when no valid rows are available for analysis.
-- `ReportGenerationError`: Raised when the report content cannot be generated.
-- `ReportSaveError`: Raised when the report file cannot be saved.
+* `AppError`: Base class for all application-specific exceptions.
+
+* `EmptyPathError`: Raised when the provided file path is empty.
+
+* `FileNotFoundAppError`: Raised when the provided file path does not exist.
+
+* `InvalidFilePathError`: Raised when the path does not point to a valid file.
+
+* `InvalidFileExtensionError`: Raised when the file extension is not supported.
+
+* `EmptyFileError`: Raised when the CSV file exists but contains no usable content.
+
+* `FileReadError`: Raised when the CSV file cannot be read correctly.
+
+* `MissingColumnsError`: Raised when the CSV file does not contain all required columns.
+
+* `EmptyHeadersError`: Raised when the CSV file has no valid headers.
+
+* `InvalidCSVStructureError`: Raised when the CSV structure is invalid.
+
+* `EmptyDataFrameError`: Raised when the DataFrame contains no rows or usable data.
+
+* `DataValidationError`: Raised when the DataFrame validation process fails.
+
+* `NoValidRowsError`: Raised when no valid rows are available for sales analysis.
+
+* `ReportGenerationError`: Raised when the plain-text report cannot be generated.
+
+* `ReportSaveError`: Raised when a generated report file cannot be saved.
+
+#### Error Propagation
+
+Specialized backend modules raise these exceptions when an expected application failure occurs.
+
+The exceptions can propagate through the controller until they reach the graphical interface.
+
+Because all custom exceptions inherit from `AppError`, the GUI can handle expected application errors through a common exception block.
+
+#### Graphical Interface Integration
+
+The main graphical interface catches application-specific exceptions using:
+
+```python
+except AppError as error:
+```
+
+When an `AppError` occurs during report generation, the GUI can present the Spanish error message directly to the user.
+
+This separates technical exception handling from user-facing feedback while maintaining a consistent error hierarchy across the application.
+
+#### Custom Error Messages
+
+Each specialized exception accepts an optional `message` argument.
+
+When no custom message is provided, the exception uses its predefined Spanish message.
+
+A custom message can be supplied when additional context is required without changing the exception type.
+
+#### Responsibilities
+
+This module is responsible for:
+
+* Defining the common `AppError` base exception.
+* Defining specialized exceptions for expected application failures.
+* Providing default user-facing messages in Spanish.
+* Supporting consistent exception handling across the project.
+* Allowing custom messages when additional error context is required.
+
+This module is not responsible for:
+
+* Detecting every error condition directly.
+* Displaying graphical error dialogs.
+* Logging errors.
+* Recovering from failed operations.
+
+Those responsibilities belong to the modules that raise, catch, or present the corresponding exceptions.
 
 ---
 
@@ -787,26 +1130,26 @@ The generated report contains the following sections:
 
 ### Report File Management Module
 
-The report file management module handles the storage of generated sales reports and structured analysis result in the file system.
+The report file management module handles the storage of generated sales reports and structured analysis results in the file system.
 
-The module generates a shared dynamic base file name that can be use to save the plain-text report, the complete JSON analysis, and individual CSV analysis summaries.
+The module generates a shared dynamic base filename that can be used to save the plain-text report, the complete JSON analysis, and individual CSV analysis summaries.
 
 The module currently provides the following functions:
 
-- `save_report()`
-- `create_report_base_name()`
-- `save_analysis_json()`
-- `save_analysis_result_csv_files()`
-- `create_save_analysis_result_csv_files_and_path()`
+* `save_report()`
+* `create_report_base_name()`
+* `save_analysis_json()`
+* `save_analysis_result_csv_files()`
+* `create_save_analysis_result_csv_files_and_path()`
 
 #### Report Saving Process
 
 The `save_report()` function performs the following operations:
 
-1. Receives th generated report text.
+1. Receives the generated report text.
 2. Receives the destination folder.
 3. Receives a previously generated base filename.
-4. Add the `.txt` extension to the base filename.
+4. Adds the `.txt` extension to the base filename.
 5. Converts the output folder into a `Path` object.
 6. Creates the output directory and any missing parent directories.
 7. Builds the complete output file path.
@@ -826,7 +1169,9 @@ For example:
 
 `sales_report_2026-08-23_13-45-30-125`
 
-The same base can be used to generate different output files with the same timestamp, such as:
+The same base filename is used to generate different output files from the same execution.
+
+For example:
 
 `sales_report_2026-08-23_13-45-30-125.txt`
 
@@ -834,44 +1179,90 @@ The same base can be used to generate different output files with the same times
 
 The same base filename is also used to generate the individual CSV analysis summaries.
 
-for Example:
+For example:
 
 `sales_report_2026-08-23_13-45-30-125_products.csv`
 
 `sales_report_2026-08-23_13-45-30-125_categories.csv`
 
+Optional CSV files may also be generated:
+
+`sales_report_2026-08-23_13-45-30-125_cities.csv`
+
+`sales_report_2026-08-23_13-45-30-125_payment_methods.csv`
+
 #### JSON Analysis Saving Process
 
 The `save_analysis_json()` function saves the complete sales analysis result as a JSON file.
 
-Before serealization, pandas `DataFrame` summaries are converted into list of dictionaries.
+Before serialization, pandas `DataFrame` summaries are converted into lists of dictionaries so that they can be serialized correctly.
 
-The following summaries are converted:
+The following summaries are always converted:
 
-- `product_summary`
-- `category_summary`
-- `city_summary` when available
-- `payment_method_summary` when available
+* `product_summary`
+* `category_summary`
+
+The following summaries are converted when available:
+
+* `city_summary`
+* `payment_method_summary`
 
 The function adds the `.json` extension to the provided base filename and writes the resulting JSON file using UTF-8 encoding and formatted indentation.
+
+The original `analysis_result` dictionary is not modified directly because the function creates a shallow copy before preparing the JSON-compatible structure.
 
 #### CSV Analysis Summary Saving Process
 
 The `save_analysis_result_csv_files()` function saves aggregated analysis summaries as independent CSV files.
 
-The following summaries are always saved:
+The following analysis summaries are always saved:
 
-- `product_summary`
-- `category_summary`
+* `product_summary`
+* `category_summary`
 
-The followin summaries are saved only when they are available:
+The following analysis summaries are saved only when they are available:
 
-- `city_summary`
-- `payment_method_summary`
+* `city_summary`
+* `payment_method_summary`
 
 Each generated CSV file uses the shared base filename followed by a descriptive suffix.
 
 The function returns a dictionary containing the paths of the generated CSV files.
+
+The returned dictionary uses Spanish keys to identify each generated summary:
+
+* `resumen_producto`: Path of the product summary CSV file.
+* `resumen_categoria`: Path of the category summary CSV file.
+* `ciudad_resumen`: Path of the city summary CSV file when city analysis is available.
+* `metodo_de_pago_resumen`: Path of the payment method summary CSV file when payment-method analysis is available.
+
+The product and category entries are always included.
+
+The city and payment-method entries are included only when the corresponding optional analysis exists.
+
+#### CSV Result Dictionary
+
+The dictionary returned by `save_analysis_result_csv_files()` follows this structure:
+
+```python
+{
+    "resumen_producto": Path(...),
+    "resumen_categoria": Path(...),
+    "ciudad_resumen": Path(...),
+    "metodo_de_pago_resumen": Path(...)
+}
+```
+
+The `ciudad_resumen` and `metodo_de_pago_resumen` entries are optional.
+
+These dictionary keys identify the generated files inside the application and do not change the physical CSV filenames.
+
+The internal analysis dictionary continues to use the following keys:
+
+* `product_summary`
+* `category_summary`
+* `city_summary`
+* `payment_method_summary`
 
 #### Individual CSV File Creation
 
@@ -879,44 +1270,62 @@ The `create_save_analysis_result_csv_files_and_path()` function creates and save
 
 It receives a pandas `DataFrame`, the destination folder, the shared base filename, and a descriptive prefix.
 
-The function creates the destination directory when necessary, generates the complete CSV filename, saves the DataFrame without its pandas index, and returns the resulting `Path` object.
+The function performs the following operations:
+
+1. Builds the complete CSV filename using the shared base filename and prefix.
+2. Converts the destination folder into a `Path` object.
+3. Creates the destination directory and any missing parent directories.
+4. Builds the complete output path.
+5. Saves the DataFrame as a CSV file without its pandas index.
+6. Returns the resulting `Path` object.
+
+The descriptive prefixes currently used by the application are:
+
+* `products`
+* `categories`
+* `cities`
+* `payment_methods`
 
 #### Input and Output
 
 ##### `save_report()`
 
-- **Input:** The complete report text, the destination folder, and a base filename without an extension.
-- **Output:** A `Path` object pointing to the saved report file.
+* **Input:** The complete report text, the destination folder, and a base filename without an extension.
+* **Output:** A `Path` object pointing to the saved TXT report file.
 
 The output folder may be provided as either a string or a `Path` object.
 
-#### `create_report_base_name()`
+##### `create_report_base_name()`
 
-- **Input:** None.
-- **Output:** A dynamic base filename containing the `sales_report` prefix and the current date and time.
+* **Input:** None.
+* **Output:** A dynamic base filename containing the `sales_report` prefix and the current date and time.
 
-#### `save_analysis_json()`
+##### `save_analysis_json()`
 
-- **Input:** The analysis-result dictionary, the destination folder, and a base filename without an extension.
-- **Output:** A `Path` object pointing to the saved JSON analysis file.
+* **Input:** The analysis-result dictionary, the destination folder, and a base filename without an extension.
+* **Output:** A `Path` object pointing to the saved JSON analysis file.
 
-#### `save_analysis_result_csv_files()`
+##### `save_analysis_result_csv_files()`
 
-- **Input:** The analysis-result dictionary, the destination folder, and a shared base filename without an extension.
-- **Output:** A dictionary containing the `Path` objects of the generated CSV analysis files.
+* **Input:** The analysis-result dictionary, the destination folder, and a shared base filename without an extension.
+* **Output:** A dictionary containing the `Path` objects of the generated CSV analysis files, identified by the keys `resumen_producto`, `resumen_categoria`, and, when available, `ciudad_resumen` and `metodo_de_pago_resumen`.
 
-#### `create_save_analysis_result_csv_files_and_path()`
+##### `create_save_analysis_result_csv_files_and_path()`
 
-- **Input:** A pandas `DataFrame`, the destination folder, a shared base filename, and a descriptive prefix.
-- **Output:** A `Path` object pointing to the saved CSV file.
+* **Input:** A pandas `DataFrame`, the destination folder, a shared base filename, and a descriptive prefix.
+* **Output:** A `Path` object pointing to the saved CSV file.
 
 #### Error Handling
 
 File-system errors produced while creating destination directories, writing the text report, or writing the JSON analysis file are converted into the custom `ReportSaveError` exception.
 
+The TXT and JSON saving functions explicitly catch `OSError` exceptions and raise `ReportSaveError`.
+
+CSV file creation currently does not convert file-system or pandas CSV-writing errors into `ReportSaveError`. Errors raised while creating or saving CSV files are propagated directly to the caller.
+
 #### Related Exception
 
-- `ReportSaveError`
+* `ReportSaveError`
 
 ---
 
@@ -1522,7 +1931,6 @@ It creates the Qt application environment, initializes the main Sales Report win
 
 Unlike the graphical user interface module, this module does not define the interface structure or application controls. Its responsibility is only to start the desktop application.
 
-
 #### Application Initialization
 
 The module creates a `QApplication` instance using:
@@ -1531,19 +1939,15 @@ The module creates a `QApplication` instance using:
 
 The `QApplication` object manages the graphical application environment and receives command-line arguments provided when the program is executed.
 
-
 #### Main Window Initialization
 
 The main application window is created using:
 
 `main_windows.SalesReportWindow()`
 
-The `SalesReportWindow` class is imported from:
+The `SalesReportWindow` class is provided by the graphical user interface module.
 
-`gui.main_windows`
-
-This separates the application startup logic from the graphical interface implementation.
-
+This separates the application startup logic from the graphical interface implementation and backend processing workflow.
 
 #### Window Display
 
@@ -1553,7 +1957,6 @@ After the main window is created, the application calls:
 
 This displays the Sales Report graphical interface to the user.
 
-
 #### Qt Event Loop
 
 The application starts the Qt event loop using:
@@ -1562,12 +1965,14 @@ The application starts the Qt event loop using:
 
 The event loop keeps the graphical application running and processes user interactions such as:
 
-- Button clicks.
-- File-selection dialogs.
-- Folder-selection dialogs.
-- Window events.
-- Application closing events.
-
+* Button clicks.
+* File-selection dialogs.
+* Folder-selection dialogs.
+* Report-generation actions.
+* Report-viewer windows.
+* Message boxes.
+* Window events.
+* Application closing events.
 
 #### Application Exit
 
@@ -1577,83 +1982,258 @@ The result returned by the Qt event loop is passed to:
 
 This allows the application to terminate using the exit status returned by PySide6.
 
-
 #### Application Startup Workflow
 
 The graphical application starts using the following process:
 
 1. Imports the Python `sys` module.
-
 2. Imports `QApplication` from PySide6.
-
-3. Imports the graphical window module from `gui.main_windows`.
-
+3. Imports the graphical window module.
 4. Creates the `QApplication` instance.
-
 5. Creates an instance of `SalesReportWindow`.
-
 6. Displays the main application window.
-
 7. Starts the Qt event loop.
-
-8. Returns the application exit status to the operating system.
-
+8. Processes graphical user interactions while the application remains open.
+9. Returns the application exit status to the operating system when the application closes.
 
 #### Module Coordination
 
 The graphical application entry point interacts directly with:
 
-- `PySide6.QtWidgets.QApplication`: Creates and manages the Qt application environment.
+* `PySide6.QtWidgets.QApplication`: Creates and manages the Qt application environment.
+* `main_windows`: Provides the `SalesReportWindow` graphical interface.
 
-- `gui.main_windows`: Provides the `SalesReportWindow` graphical interface.
+The entry point does not interact directly with the sales-report backend modules.
 
-The module does not interact directly with the sales-report backend modules.
-
-Backend processing is handled through the graphical interface and the controller when those components are connected.
-
+Backend processing is initiated through `SalesReportWindow`, which communicates with the Sales Report controller when the user starts the report-generation process.
 
 #### Input and Output
 
-- **Input:** Command-line arguments received through `sys.argv` and subsequent user interaction with the graphical application.
+* **Input:** Command-line arguments received through `sys.argv` and subsequent user interaction with the graphical application.
 
-- **Output:** A running PySide6 desktop application displaying the `SalesReportWindow` interface.
-
+* **Output:** A running PySide6 desktop application displaying the `SalesReportWindow` interface.
 
 #### Responsibilities
 
 This module is responsible for:
 
-- Creating the Qt application environment.
-- Creating the main Sales Report window.
-- Displaying the graphical interface.
-- Starting the Qt event loop.
-- Managing the final application exit status.
+* Creating the Qt application environment.
+* Creating the main Sales Report window.
+* Displaying the graphical interface.
+* Starting the Qt event loop.
+* Keeping the graphical application responsive to user interactions.
+* Managing the final application exit status.
 
 This module is not responsible for:
 
-- Building graphical interface layouts.
-- Selecting CSV files.
-- Selecting output folders.
-- Validating sales data.
-- Analyzing sales records.
-- Generating reports.
-- Saving output files.
+* Building graphical interface layouts.
+* Selecting CSV files.
+* Selecting output folders.
+* Displaying generated report contents.
+* Validating sales data.
+* Analyzing sales records.
+* Generating reports.
+* Saving output files.
+* Handling the internal backend workflow.
 
-These responsibilities belong to the corresponding GUI and backend modules.
-
+These responsibilities belong to the graphical interface, controller, and specialized backend modules.
 
 #### Application Relationship
 
-The graphical startup flow can be represented as:
+The graphical application startup and processing relationship can be represented as:
 
 `Graphical Application Entry Point`
 
 → `QApplication`
 
-→ `gui.main_windows.SalesReportWindow`
+→ `SalesReportWindow`
 
 → Graphical user interaction
 
-The graphical window will communicate with the backend controller when report-generation integration is completed.
+→ `controller.generate_sales_report()`
+
+→ Sales Report backend workflow
+
+The application entry point only initializes and runs the graphical environment. The communication with the backend controller is performed by the `SalesReportWindow` graphical interface.
+
+---
+
+### Report File Viewer Module
+
+The report file viewer module provides a dedicated PySide6 window for displaying the contents of generated report files.
+
+It is used by the main graphical interface to open TXT, JSON, and CSV reports without modifying their contents.
+
+The viewer receives a window title and a file path, reads the selected file using UTF-8 encoding, displays its contents inside a read-only text area, and provides a button for closing the viewer.
+
+The module currently provides the following class:
+
+* `FileViewerWindow`
+
+#### File Viewer Window
+
+The `FileViewerWindow` class inherits from PySide6 `QMainWindow` and represents an independent report-viewing window.
+
+The window is configured with:
+
+* A dynamic title received when the window is created.
+* Width: `700`
+* Height: `900`
+* A read-only report display area.
+* A close button.
+
+The window title allows the main graphical interface to identify the type of report being displayed, such as TXT, JSON, or CSV.
+
+#### Window Initialization
+
+The `FileViewerWindow` constructor receives:
+
+* `title`: Title displayed in the viewer window.
+* `name_path`: Path of the report file to read and display.
+
+During initialization, the class:
+
+1. Stores the window title.
+2. Stores the report file path.
+3. Configures the window title and fixed size.
+4. Creates the central widget.
+5. Creates the main vertical layout.
+6. Builds the report text area.
+7. Builds the close-button area.
+8. Adds both sections to the main window.
+
+#### Report Display Area
+
+The `build_text_area()` method creates the section responsible for displaying the selected report.
+
+The section contains a read-only `QTextEdit` widget.
+
+The report file is read using:
+
+`Path.read_text(encoding="utf-8")`
+
+The complete file contents are then displayed as plain text inside the text area.
+
+Because the `QTextEdit` widget is configured as read-only, the user can inspect the report without modifying its contents through the application.
+
+#### Supported Report Files
+
+The file viewer can display text-based files generated by the Sales Report application.
+
+The main graphical interface currently uses it for:
+
+* TXT sales reports.
+* JSON analysis files.
+* CSV analysis summaries.
+
+The viewer itself does not perform format-specific parsing. It reads the selected file as UTF-8 text and displays its contents directly.
+
+#### Close Button Area
+
+The `build_button_area()` method creates a horizontal layout containing the:
+
+`Cerrar reporte`
+
+button.
+
+The button is connected directly to the window's:
+
+`close()`
+
+method.
+
+When pressed, the report viewer window is closed without affecting the main Sales Report application window.
+
+#### PySide6 Components
+
+The report file viewer currently uses the following PySide6 components:
+
+* `QMainWindow`: Independent report viewer window.
+* `QWidget`: Central window container.
+* `QVBoxLayout`: Main vertical organization of the viewer.
+* `QHBoxLayout`: Horizontal organization of the close-button area.
+* `QTextEdit`: Read-only display of report contents.
+* `QGroupBox`: Visual grouping of the report display area.
+* `QPushButton`: Button used to close the viewer.
+
+#### File Handling
+
+The viewer uses Python's `pathlib.Path` to access the selected report file.
+
+The report is read using UTF-8 encoding:
+
+`Path(self.name_path).read_text(encoding="utf-8")`
+
+The file is only read by this module.
+
+The viewer does not:
+
+* Modify the report.
+* Save changes.
+* Delete files.
+* Rename files.
+* Generate new reports.
+
+#### Input and Output
+
+##### `FileViewerWindow`
+
+* **Input:** A window title and the path of a text-based report file.
+* **Output:** An independent graphical window displaying the report contents.
+
+##### `build_text_area()`
+
+* **Input:** The report path stored in `name_path`.
+* **Output:** A `QGroupBox` containing a read-only text area with the report contents.
+
+##### `build_button_area()`
+
+* **Input:** No external input.
+* **Output:** A `QHBoxLayout` containing the button used to close the viewer.
+
+#### Integration with the Main GUI
+
+The report file viewer is opened from the main `SalesReportWindow`.
+
+The graphical interface currently uses separate methods to display generated reports:
+
+* `open_report_txt()`
+* `open_report_json()`
+* `open_report_csv()`
+
+Each method creates a new `FileViewerWindow` instance using the corresponding generated report path.
+
+The relationship can be represented as:
+
+`SalesReportWindow`
+
+→ User selects generated report
+
+→ `FileViewerWindow`
+
+→ Read report file
+
+→ Display contents in read-only mode
+
+#### Responsibilities
+
+This module is responsible for:
+
+* Creating an independent report-viewing window.
+* Reading a generated report file.
+* Displaying the file contents as plain text.
+* Preventing modification through the viewer.
+* Providing a control for closing the report window.
+
+This module is not responsible for:
+
+* Generating sales reports.
+* Validating CSV files.
+* Analyzing sales data.
+* Saving report files.
+* Selecting the source CSV file.
+* Selecting the output folder.
+
+Those responsibilities belong to the controller, backend modules, and main graphical interface.
 
 ---
