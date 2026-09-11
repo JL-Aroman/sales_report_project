@@ -217,23 +217,19 @@ class SalesReportWindow(QMainWindow):
         self.txt_file_path_label = QLabel("")
         self.button_txt_show_report = QPushButton("Reporte TXT")
         self.button_txt_show_report.setFixedSize(200,30)
-        self.button_txt_show_report.setEnabled(False)
         self.button_txt_show_report.clicked.connect(self.open_report_txt)
         self.json_file_label = QLabel("- JSON:")
         self.json_file_path_label = QLabel("")
         self.button_json_show_report = QPushButton("Análisis JSON")
         self.button_json_show_report.setFixedSize(200,30)
-        self.button_json_show_report.setEnabled(False)
         self.button_json_show_report.clicked.connect(self.open_report_json)
         self.csv_title_label = QLabel("- Resúmenes CSV:")
         self.csv_combobox = QComboBox()
-        self.csv_combobox.setEnabled(False)
         self.button_csv_show_report = QPushButton("Ver resumen CSV")
-        self.button_csv_show_report.setEnabled(False)
         self.button_csv_show_report.clicked.connect(self.open_report_csv)
         self.button_open_output_folder = QPushButton("Abrir carpeta de salida")
         self.button_open_output_folder.clicked.connect(self.open_output_folder)
-        self.button_open_output_folder.setEnabled(False)
+        self.off_buttons()
         layout.addWidget(self.txt_file_label)
         layout.addWidget(self.txt_file_path_label)
         layout.addWidget(self.button_txt_show_report)
@@ -259,60 +255,66 @@ class SalesReportWindow(QMainWindow):
     def selected_file_path(self) -> None:
         """Open a dialog for selecting the source CSV file.
 
-        Disables controls associated with previously generated reports before opening
-        a file-selection dialog restricted to `.csv` files.
+        Displays a file-selection dialog restricted to files with the `.csv`
+        extension.
 
-        When a file is selected, its path is stored in `file_path`, displayed in the
-        interface, and the application status is updated according to the currently
-        configured output folder.
+        When a new file is selected, previously generated report references and
+        displayed results are cleared. Report-viewing controls and the CSV selector
+        are disabled until a new report-generation process completes successfully.
 
-        If the dialog is canceled, the current source-file selection remains
-        unchanged.
+        The selected path is stored in `file_path`, displayed in the interface,
+        and the application status is updated according to the currently configured
+        output folder.
+
+        If the dialog is canceled, the current application state remains unchanged.
 
         Returns:
             None.
         """
-        self.button_open_output_folder.setEnabled(False)
-        self.button_txt_show_report.setEnabled(False)
-        self.button_json_show_report.setEnabled(False)
-        self.button_csv_show_report.setEnabled(False)
+        
         file, _ = QFileDialog.getOpenFileName(self, "Seleccionar archivo", "", "Archivos CSV (*.csv)")
         if file:
+            self.off_buttons()
+            self.clean_labels()
+            self.clean_paths()
             self.file_path = file
             self.selected_file_label.setText(self.file_path)
             if self.output_folder == "reports/":
-                self.status_label.setText(f"Archivo seleccionado correctamente, carpeta predefinida: {self.output_folder}")
+                self.status_label.setText(f"Archivo seleccionado correctamente, carpeta predefinida: {self.output_folder}")       
             else:
-                self.status_label.setText(f"Archivo y carpeta seleccionados correctamente.")
-       
+                self.status_label.setText(f"Archivo y carpeta seleccionados correctamente")
 
     def selected_folder_path(self) -> None:
         """Open a dialog for selecting the output directory.
 
-        Disables controls associated with previously generated reports before
-        displaying a directory-selection dialog.
+        Displays a directory-selection dialog that allows the user to choose where
+        generated report files will be stored.
 
-        When a folder is selected, its path is stored in `output_folder`, displayed
-        in the interface, and the application status is updated according to whether
-        a source CSV file has already been selected.
+        When a new folder is selected, previously generated report references and
+        displayed results are cleared. Report-viewing controls and the CSV selector
+        are disabled until a new report-generation process completes successfully.
 
-        If the dialog is canceled, the current output directory remains unchanged.
+        The selected directory is stored in `output_folder`, displayed in the
+        interface, and the application status is updated according to whether a
+        source CSV file has already been selected.
+
+        If the dialog is canceled, the current application state remains unchanged.
 
         Returns:
             None.
         """
-        self.button_open_output_folder.setEnabled(False)
-        self.button_txt_show_report.setEnabled(False)
-        self.button_json_show_report.setEnabled(False)
-        self.button_csv_show_report.setEnabled(False)
         folder = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta de salida.")
         if folder:
+            self.off_buttons()
+            self.clean_paths()
+            self.clean_labels()
             self.output_folder = folder
             self.output_folder_label.setText(self.output_folder)
             if self.file_path is not None:
                 self.status_label.setText(f"Archivo y carpeta seleccionados correctamente.")
             else:
                 self.status_label.setText(f"Carpeta seleccionada correctamente... Esperando archivo CSV.")
+                
 
     def generate_reports(self) -> None:
         """Generate sales reports using the selected file and output folder.
@@ -321,8 +323,10 @@ class SalesReportWindow(QMainWindow):
         CSV file has been selected.
 
         Before starting a new generation process, previously stored TXT, JSON, and
-        CSV paths are cleared from the interface. The method then delegates the
-        complete backend workflow to `controller.generate_sales_report()`.
+        CSV paths are reset. Previously displayed file paths, CSV selector entries,
+        and dynamically generated CSV labels are also cleared from the interface. 
+        The method then delegates the complete backend workflow to 
+        `controller.generate_sales_report()`.
 
         After a successful operation, the generated TXT and JSON paths are stored
         and displayed, CSV summary paths are added to the scrollable layout and CSV
@@ -338,16 +342,13 @@ class SalesReportWindow(QMainWindow):
         self.status_label.setText("Proceso iniciado...")
         if self.file_path is None:
             self.status_label.setText("Seleccione un archivo CSV antes de generar el reporte.")
+            self.button_create_report.setEnabled(True)
             return
         else:
             try:
-                self.txt_path = None
-                self.json_path = None
-                self.csv_paths = {}
-                self.txt_file_path_label.setText("")
-                self.json_file_path_label.setText("")
-                self.csv_combobox.clear()
-                self.clean_layout(self.csv_summaries_layout)
+                self.off_buttons()
+                self.clean_paths()
+                self.clean_labels()
                 data_analysis = control.generate_sales_report(self.file_path, self.output_folder)
                 self.txt_file_path_label.setText(str(data_analysis['report_path_txt']))
                 self.txt_path = str(data_analysis['report_path_txt'])
@@ -359,11 +360,7 @@ class SalesReportWindow(QMainWindow):
                     self.csv_summaries_layout.addWidget(path_label)
                     self.csv_paths[path] = name_path
                 self.status_label.setText("Archivos guardados en la carpeta seleccionada.")
-                self.button_open_output_folder.setEnabled(True)
-                self.button_txt_show_report.setEnabled(True)
-                self.button_json_show_report.setEnabled(True)
-                self.csv_combobox.setEnabled(True)
-                self.button_csv_show_report.setEnabled(True)
+                self.on_buttons()
             except AppError as error:
                 self.status_label.setText("Error en el proceso")
                 QMessageBox.critical(self, "Error", str(error))
@@ -431,7 +428,7 @@ class SalesReportWindow(QMainWindow):
         Returns:
             None.
         """
-        self.json_window = fwindow.FileViewerWindow("Reporte JSON", self.json_path)
+        self.json_window = fwindow.FileViewerWindow("Análisis JSON", self.json_path)
         self.json_window.show()
 
     def open_report_csv(self) -> None:
@@ -447,3 +444,74 @@ class SalesReportWindow(QMainWindow):
         csv_selected = self.csv_combobox.currentText()
         self.csv_window = fwindow.FileViewerWindow(f"Reporte CSV: {csv_selected}", self.csv_paths[csv_selected])
         self.csv_window.show()
+
+    def on_buttons(self) -> None:
+        """Enable controls associated with generated report results.
+
+        Enables the output-folder button, TXT and JSON report viewer buttons,
+        CSV summary selector, and CSV report viewer button.
+
+        This method is called after a successful report-generation process so
+        the user can access the newly generated files.
+
+        Returns:
+            None.
+        """
+        self.button_open_output_folder.setEnabled(True)
+        self.button_txt_show_report.setEnabled(True)
+        self.button_json_show_report.setEnabled(True)
+        self.csv_combobox.setEnabled(True)
+        self.button_csv_show_report.setEnabled(True)
+
+    def off_buttons(self) -> None:
+        """Disable controls associated with generated report results.
+
+        Disables the output-folder button, TXT and JSON report viewer buttons,
+        CSV report viewer button, and CSV summary selector.
+
+        This method is used when previously generated results are no longer
+        considered valid or while a new report-generation process is prepared.
+
+        Returns:
+            None.
+        """
+        self.button_open_output_folder.setEnabled(False)
+        self.button_txt_show_report.setEnabled(False)
+        self.button_json_show_report.setEnabled(False)
+        self.button_csv_show_report.setEnabled(False)
+        self.csv_combobox.setEnabled(False)
+
+    def clean_labels(self) -> None:
+        """Clear generated report information displayed in the interface.
+
+        Removes the displayed TXT and JSON file paths, clears all entries from
+        the CSV summary selector, and removes dynamically generated CSV path
+        labels from the CSV summaries layout.
+
+        This method is used before displaying the results of a new report
+        generation or after changing the selected source file or output folder.
+
+        Returns:
+            None.
+        """
+        self.txt_file_path_label.setText("")
+        self.json_file_path_label.setText("")
+        self.csv_combobox.clear()
+        self.clean_layout(self.csv_summaries_layout)
+
+    def clean_paths(self) -> None:
+        """Reset stored paths for previously generated report files.
+
+        Resets the TXT and JSON report paths to `None` and replaces the stored
+        CSV path mapping with an empty dictionary.
+
+        This prevents previously generated files from remaining associated with
+        the interface after changing the input configuration or starting a new
+        report-generation process.
+
+        Returns:
+            None.
+        """
+        self.txt_path = None
+        self.json_path = None
+        self.csv_paths = {}

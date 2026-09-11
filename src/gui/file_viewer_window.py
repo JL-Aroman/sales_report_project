@@ -26,7 +26,7 @@ class FileViewerWindow(QMainWindow):
     """Window used to display the contents of a generated report file.
 
     Creates an independent read-only report viewer using PySide6. The file
-    specified by `name_path` is loaded from the file system and displayed
+    specified by `file_path` is loaded from the file system and displayed
     inside a QTextEdit widget.
 
     The window also provides a button that allows the user to close the
@@ -34,10 +34,10 @@ class FileViewerWindow(QMainWindow):
 
     Attributes:
         title: Title displayed in the viewer window.
-        name_path: Path of the report file whose contents will be displayed.
+        file_path: Path of the report file whose contents will be displayed.
         button_close: Button used to close the viewer window.
     """
-    def __init__(self, title: str, name_path: str) -> None:
+    def __init__(self, title: str, file_path: str) -> None:
         """Initialize the report file viewer window.
 
         Stores the window title and target file path, configures the fixed
@@ -46,11 +46,11 @@ class FileViewerWindow(QMainWindow):
 
         Args:
             title: Title to display in the viewer window.
-            name_path: Path of the report file to read and display.
+            file_path: Path of the report file to read and display.
         """
         super().__init__()
         self.title = title
-        self.name_path = name_path
+        self.file_path = file_path
 
         self.setWindowTitle(self.title)
         self.setFixedSize(700,900)
@@ -69,17 +69,17 @@ class FileViewerWindow(QMainWindow):
         """Build the read-only report display area.
 
         Creates a group box containing a read-only QTextEdit widget. The target
-        file specified by `name_path` is read using UTF-8 encoding and its
+        file specified by `file_path` is read using UTF-8 encoding and its
         complete contents are displayed as plain text.
 
         Returns:
             A QGroupBox containing the read-only report text area.
         """
-        group = QGroupBox("Reporte")
+        group = QGroupBox("Contenido del archivo")
         layout = QVBoxLayout()
         text_area = QTextEdit()
         text_area.setReadOnly(True)
-        text = Path(self.name_path).read_text(encoding="utf-8")
+        text = Path(self.file_path).read_text(encoding="utf-8")
         text_area.setPlainText(text)
         layout.addWidget(text_area)
         group.setLayout(layout)
