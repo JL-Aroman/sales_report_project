@@ -1130,9 +1130,17 @@ The generated report contains the following sections:
 
 ### Report File Management Module
 
-The report file management module handles the storage of generated sales reports and structured analysis results in the file system.
+The report file management module handles the storage and export of generated sales reports and structured analysis results.
 
-The module generates a shared dynamic base filename that can be used to save the plain-text report, the complete JSON analysis, and individual CSV analysis summaries.
+The module creates destination directories when necessary, generates a shared timestamp-based base filename, saves the human-readable report as TXT, exports the complete analysis as JSON, generates independent CSV analysis summaries, and creates a multi-sheet Excel workbook containing sales analysis and validation information.
+
+The module uses:
+
+* `pathlib.Path` for file-system paths.
+* `datetime` for dynamic report filenames.
+* `json` for JSON serialization.
+* `pandas` for DataFrame-based analysis results.
+* `openpyxl` for XLSX workbook and worksheet generation.
 
 The module currently provides the following functions:
 
@@ -1141,27 +1149,52 @@ The module currently provides the following functions:
 * `save_analysis_json()`
 * `save_analysis_result_csv_files()`
 * `create_save_analysis_result_csv_files_and_path()`
+* `build_sheet_general_summary()`
+* `build_sheet_products()`
+* `build_sheet_categories()`
+* `build_sheet_bestselling()`
+* `build_sheet_top_income()`
+* `build_sheet_city_summary()`
+* `build_sheet_payment_method_summary()`
+* `build_sheet_validation_errors()`
+* `build_sheet_warnings()`
+* `save_report_xlsx()`
+
+#### Supported Output Formats
+
+The module currently supports four report-output formats:
+
+* TXT
+* JSON
+* CSV
+* XLSX
+
+Files generated during the same report-generation process use the same shared base filename.
 
 #### Report Saving Process
 
-The `save_report()` function performs the following operations:
+The `save_report()` function saves the human-readable sales report as a TXT file.
+
+It performs the following operations:
 
 1. Receives the generated report text.
 2. Receives the destination folder.
-3. Receives a previously generated base filename.
-4. Adds the `.txt` extension to the base filename.
-5. Converts the output folder into a `Path` object.
-6. Creates the output directory and any missing parent directories.
-7. Builds the complete output file path.
+3. Receives a previously generated shared base filename.
+4. Adds the `.txt` extension.
+5. Converts the destination directory into a `Path` object.
+6. Creates the destination directory and missing parent directories when necessary.
+7. Builds the complete output path.
 8. Opens the destination file using UTF-8 encoding.
-9. Writes the report content to the file.
-10. Returns the `Path` object pointing to the saved report.
+9. Writes the report content.
+10. Returns the `Path` pointing to the generated TXT file.
+
+File-system `OSError` exceptions are converted into `ReportSaveError`.
 
 #### Dynamic Base Filename Generation
 
 The `create_report_base_name()` function generates a shared base filename using the current local date and time.
 
-The generated value follows this format:
+The generated filename follows this format:
 
 `sales_report_YYYY-MM-DD_HH-MM-SS-fff`
 
@@ -1169,7 +1202,7 @@ For example:
 
 `sales_report_2026-08-23_13-45-30-125`
 
-The same base filename is used to generate different output files from the same execution.
+The same base filename can be reused by all supported output formats.
 
 For example:
 
@@ -1177,9 +1210,9 @@ For example:
 
 `sales_report_2026-08-23_13-45-30-125.json`
 
-The same base filename is also used to generate the individual CSV analysis summaries.
+`sales_report_2026-08-23_13-45-30-125.xlsx`
 
-For example:
+CSV summaries use the same base filename followed by a descriptive suffix:
 
 `sales_report_2026-08-23_13-45-30-125_products.csv`
 
@@ -1195,54 +1228,61 @@ Optional CSV files may also be generated:
 
 The `save_analysis_json()` function saves the complete sales analysis result as a JSON file.
 
-Before serialization, pandas `DataFrame` summaries are converted into lists of dictionaries so that they can be serialized correctly.
+Before serialization, the function creates a shallow copy of the original `analysis_result` dictionary.
+
+pandas `DataFrame` summaries are converted into lists of dictionaries so that they can be serialized correctly.
 
 The following summaries are always converted:
 
 * `product_summary`
 * `category_summary`
 
-The following summaries are converted when available:
+The following summaries are converted when they are present and available:
 
 * `city_summary`
 * `payment_method_summary`
 
-The function adds the `.json` extension to the provided base filename and writes the resulting JSON file using UTF-8 encoding and formatted indentation.
+The function:
 
-The original `analysis_result` dictionary is not modified directly because the function creates a shallow copy before preparing the JSON-compatible structure.
+1. Creates a copy of the analysis result.
+2. Converts required DataFrames into JSON-compatible records.
+3. Converts optional summary DataFrames when available.
+4. Adds the `.json` extension to the shared base filename.
+5. Creates the destination directory when necessary.
+6. Writes the JSON file using UTF-8 encoding.
+7. Uses formatted indentation.
+8. Preserves non-ASCII characters through `ensure_ascii=False`.
+9. Returns the generated file path.
+
+The original `analysis_result` dictionary is not modified directly.
 
 #### CSV Analysis Summary Saving Process
 
 The `save_analysis_result_csv_files()` function saves aggregated analysis summaries as independent CSV files.
 
-The following analysis summaries are always saved:
+The following summaries are always exported:
 
 * `product_summary`
 * `category_summary`
 
-The following analysis summaries are saved only when they are available:
+The following summaries are exported when available:
 
 * `city_summary`
 * `payment_method_summary`
 
-Each generated CSV file uses the shared base filename followed by a descriptive suffix.
+Each generated CSV file uses the shared report base filename followed by a descriptive suffix.
 
-The function returns a dictionary containing the paths of the generated CSV files.
+The individual file-creation process is delegated to:
 
-The returned dictionary uses Spanish keys to identify each generated summary:
+`create_save_analysis_result_csv_files_and_path()`
 
-* `resumen_producto`: Path of the product summary CSV file.
-* `resumen_categoria`: Path of the category summary CSV file.
-* `ciudad_resumen`: Path of the city summary CSV file when city analysis is available.
-* `metodo_de_pago_resumen`: Path of the payment method summary CSV file when payment-method analysis is available.
-
-The product and category entries are always included.
-
-The city and payment-method entries are included only when the corresponding optional analysis exists.
+The function returns a dictionary containing the generated CSV paths.
 
 #### CSV Result Dictionary
 
-The dictionary returned by `save_analysis_result_csv_files()` follows this structure:
+The dictionary returned by `save_analysis_result_csv_files()` uses Spanish keys to identify generated summaries.
+
+It follows this structure:
 
 ```python
 {
@@ -1253,11 +1293,21 @@ The dictionary returned by `save_analysis_result_csv_files()` follows this struc
 }
 ```
 
-The `ciudad_resumen` and `metodo_de_pago_resumen` entries are optional.
+The following entries are always included:
 
-These dictionary keys identify the generated files inside the application and do not change the physical CSV filenames.
+* `resumen_producto`: Product summary CSV path.
+* `resumen_categoria`: Category summary CSV path.
 
-The internal analysis dictionary continues to use the following keys:
+The following entries are optional:
+
+* `ciudad_resumen`: City summary CSV path.
+* `metodo_de_pago_resumen`: Payment-method summary CSV path.
+
+These dictionary keys are used internally by the application to identify generated CSV files.
+
+They do not modify the physical filenames.
+
+The internal analysis dictionary continues to use the following English keys:
 
 * `product_summary`
 * `category_summary`
@@ -1266,62 +1316,347 @@ The internal analysis dictionary continues to use the following keys:
 
 #### Individual CSV File Creation
 
-The `create_save_analysis_result_csv_files_and_path()` function creates and saves a single analysis summary CSV file.
+The `create_save_analysis_result_csv_files_and_path()` function creates and saves one analysis summary as a CSV file.
 
-It receives a pandas `DataFrame`, the destination folder, the shared base filename, and a descriptive prefix.
+It receives:
+
+* A pandas `DataFrame`.
+* The destination directory.
+* The shared base filename.
+* A descriptive filename suffix.
 
 The function performs the following operations:
 
-1. Builds the complete CSV filename using the shared base filename and prefix.
-2. Converts the destination folder into a `Path` object.
-3. Creates the destination directory and any missing parent directories.
-4. Builds the complete output path.
-5. Saves the DataFrame as a CSV file without its pandas index.
-6. Returns the resulting `Path` object.
+1. Builds the filename using the shared base filename and suffix.
+2. Adds the `.csv` extension.
+3. Converts the destination directory into a `Path`.
+4. Creates the destination directory and missing parent directories when necessary.
+5. Builds the complete output path.
+6. Saves the DataFrame without its pandas index.
+7. Returns the generated CSV path.
 
-The descriptive prefixes currently used by the application are:
+The descriptive suffixes currently used are:
 
 * `products`
 * `categories`
 * `cities`
 * `payment_methods`
 
+File-system `OSError` exceptions are converted into `ReportSaveError`.
+
+#### Excel Report Generation
+
+The `save_report_xlsx()` function generates a complete Excel workbook containing sales-analysis and validation information.
+
+The function:
+
+1. Receives the complete `analysis_result`.
+2. Receives validation errors.
+3. Receives validation warnings.
+4. Receives the destination folder.
+5. Receives the shared report base filename.
+6. Adds the `.xlsx` extension.
+7. Creates the destination directory when necessary.
+8. Creates a new openpyxl `Workbook`.
+9. Removes the default worksheet created by openpyxl.
+10. Builds the required sales-analysis worksheets.
+11. Builds optional worksheets when corresponding analysis data is available.
+12. Builds validation error and warning worksheets.
+13. Saves the completed workbook.
+14. Returns the resulting XLSX file path.
+
+The Excel file uses the same shared base filename as the TXT, JSON, and CSV outputs.
+
+For example:
+
+`sales_report_2026-08-23_13-45-30-125.xlsx`
+
+#### Excel Workbook Structure
+
+The XLSX workbook can contain the following worksheets:
+
+* `Resumen General`
+* `Productos`
+* `Categorias`
+* `Productos mejor vendidos`
+* `Productos con mejor ingreso`
+* `Resumen por ciudad`
+* `Resumen por metodo de pago`
+* `Validación de errores`
+* `Advetencias`
+
+The city and payment-method worksheets depend on the corresponding analysis data being present.
+
+The remaining analysis and validation worksheets are generated as part of the standard Excel report workflow.
+
+#### General Summary Worksheet
+
+The `build_sheet_general_summary()` function creates:
+
+`Resumen General`
+
+The worksheet contains two columns:
+
+* `Métrica`
+* `Valor`
+
+The following general metrics are added:
+
+* Total rows.
+* Valid rows.
+* Invalid rows.
+* Total income.
+* Total units sold.
+
+The values are obtained from:
+
+* `total_rows`
+* `total_valid_rows`
+* `total_invalid_rows`
+* `total_income`
+* `total_units_sold`
+
+The function returns the generated openpyxl `Worksheet`.
+
+#### Product Summary Worksheet
+
+The `build_sheet_products()` function creates:
+
+`Productos`
+
+It receives the product-summary pandas `DataFrame` and converts its contents into Excel rows using:
+
+`dataframe_to_rows()`
+
+The DataFrame headers are included and the pandas index is excluded.
+
+The function returns the generated worksheet.
+
+#### Category Summary Worksheet
+
+The `build_sheet_categories()` function creates:
+
+`Categorias`
+
+It receives the category-summary pandas `DataFrame` and converts it into worksheet rows using `dataframe_to_rows()`.
+
+The DataFrame headers are included and the pandas index is excluded.
+
+The function returns the generated worksheet.
+
+#### Best-Selling Products Worksheet
+
+The `build_sheet_bestselling()` function creates:
+
+`Productos mejor vendidos`
+
+It receives the Top 5 best-selling product data, converts it into a pandas `DataFrame`, and exports the resulting structure into the Excel worksheet.
+
+The DataFrame headers are included and the pandas index is excluded.
+
+#### Highest-Income Products Worksheet
+
+The `build_sheet_top_income()` function creates:
+
+`Productos con mejor ingreso`
+
+It receives the Top 5 products ranked by generated income, converts the information into a pandas `DataFrame`, and writes the resulting structure to the worksheet.
+
+The DataFrame headers are included and the pandas index is excluded.
+
+#### City Summary Worksheet
+
+The `build_sheet_city_summary()` function creates:
+
+`Resumen por ciudad`
+
+The worksheet is generated from the `city_summary` DataFrame.
+
+It is included in the workbook when city analysis information is available.
+
+The DataFrame headers are included and the pandas index is excluded.
+
+#### Payment-Method Summary Worksheet
+
+The `build_sheet_paymet_method_summary()` function creates:
+
+`Resumen por metodo de pago`
+
+The worksheet is generated from the `payment_method_summary` DataFrame.
+
+It is included in the workbook when payment-method analysis information is available.
+
+The DataFrame headers are included and the pandas index is excluded.
+
+#### Validation Errors Worksheet
+
+The `build_sheet_validation_errors()` function creates:
+
+`Validación de errores`
+
+The worksheet contains the validation errors detected while processing the source sales records.
+
+The current columns are:
+
+* `línea`
+* `columna`
+* `tipo_error`
+* `mensaje`
+* `valor_original`
+
+Each validation error is added as an independent worksheet row.
+
+#### Validation Warnings Worksheet
+
+The `build_sheet_warnings()` function creates:
+
+`Advetencias`
+
+The worksheet contains the warnings detected while validating and normalizing sales records.
+
+The current columns are:
+
+* `tipo_advertencia`
+* `campo`
+* `mensaje`
+* `valor_afectado`
+* `detalles`
+
+When a warning value contains a list, the values are converted into comma-separated text before being written to the worksheet.
+
+#### DataFrame to Excel Conversion
+
+Analysis DataFrames are converted into Excel-compatible rows using:
+
+`openpyxl.utils.dataframe.dataframe_to_rows`
+
+The module uses:
+
+```python
+dataframe_to_rows(
+    df,
+    index=False,
+    header=True
+)
+```
+
+This causes:
+
+* DataFrame column names to become worksheet headers.
+* DataFrame rows to become worksheet rows.
+* pandas indexes to be excluded from the generated Excel report.
+
+#### Workbook Creation
+
+The Excel report is created using:
+
+`openpyxl.Workbook`
+
+A new workbook initially contains a default worksheet.
+
+The module removes this worksheet using:
+
+```python
+wb.remove(wb.active)
+```
+
+The application then builds its report-specific worksheets before saving the workbook.
+
 #### Input and Output
 
 ##### `save_report()`
 
-* **Input:** The complete report text, the destination folder, and a base filename without an extension.
-* **Output:** A `Path` object pointing to the saved TXT report file.
-
-The output folder may be provided as either a string or a `Path` object.
+* **Input:** Complete report text, destination folder, and shared base filename.
+* **Output:** `Path` pointing to the generated TXT report.
 
 ##### `create_report_base_name()`
 
 * **Input:** None.
-* **Output:** A dynamic base filename containing the `sales_report` prefix and the current date and time.
+* **Output:** Shared timestamp-based report filename.
 
 ##### `save_analysis_json()`
 
-* **Input:** The analysis-result dictionary, the destination folder, and a base filename without an extension.
-* **Output:** A `Path` object pointing to the saved JSON analysis file.
+* **Input:** Analysis-result dictionary, destination folder, and shared base filename.
+* **Output:** `Path` pointing to the generated JSON analysis file.
 
 ##### `save_analysis_result_csv_files()`
 
-* **Input:** The analysis-result dictionary, the destination folder, and a shared base filename without an extension.
-* **Output:** A dictionary containing the `Path` objects of the generated CSV analysis files, identified by the keys `resumen_producto`, `resumen_categoria`, and, when available, `ciudad_resumen` and `metodo_de_pago_resumen`.
+* **Input:** Analysis-result dictionary, destination folder, and shared base filename.
+* **Output:** Dictionary containing generated CSV `Path` objects.
 
 ##### `create_save_analysis_result_csv_files_and_path()`
 
-* **Input:** A pandas `DataFrame`, the destination folder, a shared base filename, and a descriptive prefix.
-* **Output:** A `Path` object pointing to the saved CSV file.
+* **Input:** DataFrame, destination folder, shared base filename, and descriptive suffix.
+* **Output:** `Path` pointing to the generated CSV file.
+
+##### `build_sheet_general_summary()`
+
+* **Input:** Workbook and analysis-result dictionary.
+* **Output:** `Worksheet` containing the general sales summary.
+
+##### `build_sheet_products()`
+
+* **Input:** Workbook and product-summary DataFrame.
+* **Output:** `Worksheet` containing the product summary.
+
+##### `build_sheet_categories()`
+
+* **Input:** Workbook and category-summary DataFrame.
+* **Output:** `Worksheet` containing the category summary.
+
+##### `build_sheet_bestselling()`
+
+* **Input:** Workbook and Top 5 best-selling product data.
+* **Output:** `Worksheet` containing the best-selling product ranking.
+
+##### `build_sheet_top_income()`
+
+* **Input:** Workbook and Top 5 highest-income product data.
+* **Output:** `Worksheet` containing the highest-income product ranking.
+
+##### `build_sheet_city_summary()`
+
+* **Input:** Workbook and city-summary DataFrame.
+* **Output:** `Worksheet` containing the city analysis.
+
+##### `build_sheet_paymet_method_summary()`
+
+* **Input:** Workbook and payment-method-summary DataFrame.
+* **Output:** `Worksheet` containing the payment-method analysis.
+
+##### `build_sheet_validation_errors()`
+
+* **Input:** Workbook and validation error records.
+* **Output:** `Worksheet` containing validation error information.
+
+##### `build_sheet_warnings()`
+
+* **Input:** Workbook and validation warning records.
+* **Output:** `Worksheet` containing validation warning information.
+
+##### `save_report_xlsx()`
+
+* **Input:** Analysis-result dictionary, validation errors, validation warnings, destination folder, and shared base filename.
+* **Output:** `Path` pointing to the generated XLSX workbook.
 
 #### Error Handling
 
-File-system errors produced while creating destination directories, writing the text report, or writing the JSON analysis file are converted into the custom `ReportSaveError` exception.
+The module uses the custom:
 
-The TXT and JSON saving functions explicitly catch `OSError` exceptions and raise `ReportSaveError`.
+`ReportSaveError`
 
-CSV file creation currently does not convert file-system or pandas CSV-writing errors into `ReportSaveError`. Errors raised while creating or saving CSV files are propagated directly to the caller.
+exception for file-system failures handled during report storage.
+
+The following operations explicitly catch `OSError` and convert it into `ReportSaveError`:
+
+* TXT report creation.
+* JSON analysis creation.
+* Individual CSV file creation.
+* XLSX workbook storage.
+
+This provides a consistent application-specific error mechanism for common file-system failures.
+
+Errors that are not represented by `OSError`, including errors produced by invalid data structures or other library-specific failures, are not converted by these functions unless explicitly handled elsewhere in the application.
 
 #### Related Exception
 
@@ -1437,105 +1772,154 @@ This prevents the complete application workflow from running automatically when 
 
 The sales report controller module coordinates the complete sales-report generation workflow.
 
-It acts as the orchestration layer between the main application and the specialized modules responsible for file validation, CSV reading, data validation, sales analysis, report generation, and file storage.
+It acts as the orchestration layer between the graphical interface and the specialized modules responsible for file validation, CSV reading, data validation, sales analysis, report generation, and file storage.
 
-The controller receives teh source CSV file path and output folder, executes the complete processing workflow, generates all supported output files, measures the total execution time, and returns a structured dictionary containing processing totals, generated file paths, and execution information.
+The controller receives the source CSV file path and output folder, executes the complete processing workflow, generates all supported output files, measures the total execution time, and returns a structured dictionary containing processing totals, generated file paths, and execution information.
 
 The module currently provides the following function:
 
-- `generate_sales_report()`
+* `generate_sales_report()`
 
 #### Controller Workflow
 
-The `generate_sales_report()` function perfroms the following operations:
+The `generate_sales_report()` function performs the following operations:
 
 1. Starts the execution timer.
 2. Validates the source CSV file using `validator.validate_csv_file()`.
-3. Reads the validate CSV file using `csv_reader.read_csv_file()`.
-4. Normaizes and validates the sales records using `validator.validate_dataframe()`.
-5. Analyzes the valid sales records using `analyzer.analyze_sales()`. 
-6. Generates the complete plain-text sales report using `reporter.generate_report()`. 
-7. Stores the total number of processed, valid, and invalid rows in the controller result. 8. Generates a shared dynamic base filename using `file_manager.create_report_base_name()`. 9. Saves the plain-text sales report using `file_manager.save_report()`. 
-10. Saves the complete analysis result as a JSON file using `file_manager.save_analysis_json()`.
-11. Saves the available analysis summaries as independent CSV files using `file_manager.save_analysis_result_csv_files()`. 
-12. Calculates the total execution time. 
-13. Adds the execution time to the controller result. 
-14. Returns the complete result dictionary to the caller.
+3. Reads the validated CSV file using `csv_reader.read_csv_file()`.
+4. Normalizes and validates the sales records using `validator.validate_dataframe()`.
+5. Analyzes the valid sales records using `analyzer.analyze_sales()`.
+6. Generates the complete plain-text sales report using `reporter.generate_report()`.
+7. Stores the total number of processed, valid, and invalid rows in the controller result.
+8. Generates a shared timestamp-based filename using `file_manager.create_report_base_name()`.
+9. Saves the plain-text sales report using `file_manager.save_report()`.
+10. Saves the complete structured analysis as a JSON file using `file_manager.save_analysis_json()`.
+11. Saves the available analysis summaries as independent CSV files using `file_manager.save_analysis_result_csv_files()`.
+12. Generates the complete XLSX workbook using `file_manager.save_report_xlsx()`.
+13. Calculates the total execution time.
+14. Adds the execution time to the controller result.
+15. Returns the complete result dictionary to the caller.
 
 #### Module Coordination
 
-The controller coordinates th following module:
+The controller coordinates the following modules:
 
-- `validator`: Validates the source file path, normalizes sales data, validates records, and separates valid and invalid rows.
-- `csv_reader`: Reads the validated CSV file and converts its contents into a pandas `DataFrame`.
-- `analyzer`: Calculates sales metrics, aggregated summaries, rankings, and optional analyses.
-- `reporter`: Converts analysis results, validation errors, and warnings into a structured plain-text sales report.
-- `file_manager`: Generates the shared dynamic base filename and saves the generated TXT, JSON, and CSV files.
+* `validator`: Validates the source file path, normalizes sales data, validates records, detects warnings, and separates valid and invalid rows.
+* `csv_reader`: Reads the validated CSV file and converts its contents into a pandas `DataFrame`.
+* `analyzer`: Calculates sales metrics, aggregated summaries, rankings, and optional analyses.
+* `reporter`: Converts analysis results, validation errors, and warnings into a structured plain-text sales report.
+* `file_manager`: Generates the shared base filename and saves TXT, JSON, CSV, and XLSX output files.
 
 #### Validation Results
 
-The controller receives the validation result produced by `validator.validate_dataframe()`.
+The controller receives the validation result produced by:
 
-This information includes:
+`validator.validate_dataframe()`
 
-- Valid sales records.
-- Invlid sales records.
-- Validation errors.
-- Validation warnings.
-- Total processed rows.
-- Total valid rows.
-- Total invalid rows.
+This structure includes:
 
-The valid records are passe tod the analysis workflow, while validation errors and warnings are included in the generated plain-text report.
+* Valid sales records.
+* Invalid sales records.
+* Validation errors.
+* Validation warnings.
+* Total processed rows.
+* Total valid rows.
+* Total invalid rows.
+
+The validation result is passed to the analysis workflow.
+
+Validation errors and warnings are also passed to the report-generation and XLSX-generation workflows.
 
 #### Sales Analysis
 
-The controller send the validation result to `analyzer.analyze_sales()`
+The controller sends the validation result to:
 
-The analysis result contains the general sales metrics and aggregated summaries required by the reporting and file-management processes.
+`analyzer.analyze_sales()`
+
+The resulting analysis structure contains the metrics and aggregated summaries required by the reporting and file-management modules.
 
 These results may include:
 
-- Total income.
-- Total units sold. 
-- Product summary.
-- Category summary.
-- Best-selling products.
-- Highest-income products.
-- Highest-income categories.
-- Top 5 product rankings.
-- City analysis when `ciudad` is available.
-- Payment method analysis when `metodo_pago` is available.
+* Total processed rows.
+* Total valid rows.
+* Total invalid rows.
+* Total income.
+* Total units sold.
+* Product summary.
+* Category summary.
+* Best-selling product.
+* Highest-income product.
+* Highest-income category.
+* Top 5 best-selling products.
+* Top 5 highest-income products.
+* City summary and highest-income city when `ciudad` is available.
+* Payment-method summary and highest-income payment method when `metodo_pago` is available.
+
+#### Report Generation
+
+The controller passes the analysis result, validation errors, validation warnings, and source file path to:
+
+`reporter.generate_report()`
+
+The reporter generates the human-readable plain-text sales report.
+
+The resulting report text is later saved as a TXT file through the file-management module.
 
 #### Output File Coordination
 
-A single Dynamic base filename is generated during each controller execution.
+A single shared dynamic base filename is generated during each controller execution.
 
-The same base filename is used for all output files generated during that execution.
+The same base filename is reused for all files generated during that execution.
 
 The controller generates:
 
-- A plain-text sales report.
-- A JSON file containing the complete structured analysis result.
-- A product summary CSV file.
-- A category summary CSV file.
+* A TXT sales report.
+* A JSON analysis file.
+* Product and category CSV summary files.
+* An XLSX workbook containing the sales analysis and validation information.
 
-When optional analysis information is available, it may also generate.
+When optional analysis information is available, the CSV export may also generate:
 
-- A city summary CSV file.
-- A payment method summary CSV file.
+* A city summary CSV file.
+* A payment-method summary CSV file.
 
 For example:
 
-`sales_report_2026-08-29_09-30-25-125.txt` 
+`sales_report_2026-08-29_09-30-25-125.txt`
+
 `sales_report_2026-08-29_09-30-25-125.json`
-`sales_report_2026-08-29_09-30-25-125_products.csv` 
+
+`sales_report_2026-08-29_09-30-25-125.xlsx`
+
+`sales_report_2026-08-29_09-30-25-125_products.csv`
+
 `sales_report_2026-08-29_09-30-25-125_categories.csv`
 
-Optional files:
+Optional CSV files:
 
-`sales_report_2026-08-29_09-30-25-125_cities.csv` 
+`sales_report_2026-08-29_09-30-25-125_cities.csv`
+
 `sales_report_2026-08-29_09-30-25-125_payment_methods.csv`
+
+#### XLSX Report Coordination
+
+The controller generates the Excel report using:
+
+`file_manager.save_report_xlsx()`
+
+The function receives:
+
+* The complete `analysis_result`.
+* Validation errors.
+* Validation warnings.
+* The configured output folder.
+* The shared base filename.
+
+The resulting workbook path is stored in the controller result as:
+
+`report_path_xlsx`
+
+The workbook may contain general sales metrics, product and category summaries, Top 5 rankings, optional city and payment-method summaries, validation errors, and validation warnings.
 
 #### Controller Result
 
@@ -1543,42 +1927,96 @@ The `generate_sales_report()` function returns a dictionary containing informati
 
 The result contains:
 
-- `total_rows`: Total number of processed sales records.
-- `total_valid_rows`: Number of records that passed validation.
-- `total_invalid_rows`: Number of records containing validation errors.
-- `report_path_txt`: `Path` object pointing to the generated plain-text sales report.
-- `report_path_json`: `Path` object pointing to the generated JSON analysis file.
-- `reports_path_csv`: Dictionary containing the paths of the generated CSV analysis summary files.
-- `execution_tiem`: Formatted string containing the total execution time.
+* `total_rows`: Total number of processed sales records.
+* `total_valid_rows`: Number of records that passed validation.
+* `total_invalid_rows`: Number of records containing validation errors.
+* `report_path_txt`: `Path` pointing to the generated TXT report.
+* `report_path_json`: `Path` pointing to the generated JSON analysis.
+* `reports_path_csv`: Dictionary containing the generated CSV summary paths.
+* `report_path_xlsx`: `Path` pointing to the generated XLSX workbook.
+* `execution_time`: Formatted string containing the total workflow execution time.
+
+#### Controller Result Structure
+
+A simplified controller result follows this structure:
+
+```python
+{
+    "total_rows": ...,
+    "total_valid_rows": ...,
+    "total_invalid_rows": ...,
+    "report_path_txt": Path(...),
+    "report_path_json": Path(...),
+    "reports_path_csv": {
+        "resumen_producto": Path(...),
+        "resumen_categoria": Path(...),
+        "ciudad_resumen": Path(...),
+        "metodo_de_pago_resumen": Path(...)
+    },
+    "report_path_xlsx": Path(...),
+    "execution_time": "Execution time: 0.0123 seconds"
+}
+```
+
+The city and payment-method CSV entries are optional.
 
 #### CSV Report Paths
 
-The `reports_path_csv` value contains a nested dictionary.
+The `reports_path_csv` value contains a nested dictionary identifying each generated CSV summary.
 
-The following paths are always included:
+The following entries are always included:
 
-- `product_summary`
-- `category_summary`
+* `resumen_producto`
+* `resumen_categoria`
 
-The following paths are included only when the corresponding optional analysis is available:
+The following entries are included only when the corresponding optional analysis is available:
 
-- `city_summary`
-- `payment_method_summary`
+* `ciudad_resumen`
+* `metodo_de_pago_resumen`
 
 An example structure is:
 
+```python
 {
-    "product_summary": Path(...),
-    "category_summary": Path(...),
-    "city_summary": Path(...)
-    "payment_method_summary": Path(...)
+    "resumen_producto": Path(...),
+    "resumen_categoria": Path(...),
+    "ciudad_resumen": Path(...),
+    "metodo_de_pago_resumen": Path(...)
 }
+```
+
+The final two entries are optional.
+
+These keys identify the generated CSV reports inside the application.
+
+The physical filenames continue to use the English suffixes:
+
+* `_products.csv`
+* `_categories.csv`
+* `_cities.csv`
+* `_payment_methods.csv`
 
 #### Execution Time
 
-The controller uses `time.perf_counter()` to measure the duration of the complete sales-report generation workflow.
+The controller uses:
 
-The execution time includes validation, CSV readin, data analysis, report generation, and file storage.
+`time.perf_counter()`
+
+to measure the duration of the complete sales-report generation workflow.
+
+The measurement begins before source-file validation and finishes after all supported output files have been generated.
+
+The execution time therefore includes:
+
+* Source-file validation.
+* CSV reading.
+* Data normalization and validation.
+* Sales analysis.
+* Plain-text report generation.
+* TXT file storage.
+* JSON file storage.
+* CSV summary storage.
+* XLSX workbook generation and storage.
 
 The result is formatted in seconds with four decimal places.
 
@@ -1590,16 +2028,45 @@ For example:
 
 ##### `generate_sales_report()`
 
-- **Input:** A string containing the source CSV file path and a string containing the destination output folder.
-- **Output:** A dictionary containing processing totals, generated TXT, JSON, and CSV file paths, and the total execution time.
+* **Input:** A string containing the source CSV file path and a string containing the destination output folder.
+* **Output:** A dictionary containing processing totals, TXT, JSON, CSV, and XLSX file paths, and the total execution time.
 
 #### Error Propagation
 
-The controller does not handle application exceptions directly.
+The controller does not directly handle application exceptions.
 
-Errors raised by the validation, reading, analyisis, reporting, or file-management modules are propagated to the caller.
+Errors raised by the validation, CSV reading, analysis, reporting, or file-management modules are propagated to the caller.
 
-The main application is responsible for catching application-specific exceptions derived from `AppError` and unexpected Python exceptions.
+Application-specific exceptions derived from `AppError` are handled by the graphical interface.
+
+Unexpected Python exceptions may also propagate to the graphical layer, where they can be presented to the user through the application's error-handling workflow.
+
+#### Responsibilities
+
+The controller is responsible for:
+
+* Coordinating the complete backend workflow.
+* Passing information between specialized modules.
+* Maintaining the correct processing order.
+* Generating a shared base filename.
+* Coordinating TXT generation.
+* Coordinating JSON generation.
+* Coordinating CSV summary generation.
+* Coordinating XLSX workbook generation.
+* Measuring the total workflow execution time.
+* Returning generated-file paths and processing information to the caller.
+
+The controller is not responsible for:
+
+* Implementing CSV parsing logic.
+* Performing individual validation rules.
+* Calculating sales metrics directly.
+* Formatting the plain-text report directly.
+* Creating individual TXT, JSON, CSV, or XLSX files directly.
+* Displaying graphical interface elements.
+* Handling user interaction.
+
+These responsibilities belong to the specialized backend and graphical interface modules.
 
 ---
 

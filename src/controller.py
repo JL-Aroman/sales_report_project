@@ -1,16 +1,18 @@
-"""Salse report workflow controller module.
+"""Sales report workflow controller module.
 
 This module coordinates the complete sales-report generation workflow.
 
-It connects the validation, CSV reading, sales analysis, report generation,
-and file management module. The controller receives the source CSV path
-and output directory, processes the sales data, generates all supported
-output files, measures the total execution time, and returns a structured 
-dictionary containing processing totals, generated file paths, and execution
-information.
+It connects the file validation, CSV reading, data validation, sales analysis,
+report generation, and file management modules. The controller receives the
+source CSV path and output directory, processes the sales data, generates all
+supported output formats, measures the total execution time, and returns a
+structured dictionary containing processing totals, generated file paths, and
+execution information.
 
-The module acts as the orchestration layer between the application entry
-point and the specialized processing modules.
+The generated outputs currently include TXT, JSON, CSV, and XLSX files.
+
+The module acts as the orchestration layer between the application interface
+and the specialized backend processing modules.
 """
 
 
@@ -20,34 +22,48 @@ from typing import Dict, Any
 
 
 def generate_sales_report(input_file_path: str, output_folder: str) -> Dict[str, Any]:
-    """Execute the complete sales report generation workflow.
+    """Execute the complete sales-report generation workflow.
 
-    Coordinates the application modules to validate and read the source CSV
-    file, validate and normalize its records, analyze valid sales data,
-    generate the plain-text report, and save all supported output files.
+    Coordinates the specialized backend modules to validate the source CSV
+    file, read its contents, normalize and validate sales records, analyze
+    valid data, generate the human-readable report, and save all supported
+    output files.
 
-    A shared dynamic base filename is generated for the output files. The
-    function saves the plain-text report, the complete analysis result as 
-    JSON, and the available analysis summaries as independent CSV files.
+    A shared timestamp-based filename is generated and reused for all report
+    formats created during the same execution.
 
-    The total execution time is measured and included in the returned result.
+    The function generates:
+
+    - A human-readable TXT sales report.
+    - A JSON file containing the complete structured analysis.
+    - Independent CSV files containing analysis summaries.
+    - An XLSX workbook containing sales analysis, rankings, validation errors,
+      and validation warnings.
+
+    The total workflow execution time is measured and included in the returned
+    result.
 
     Args:
         input_file_path: Path of the source CSV file to process.
-        output_folder: Directory where the generated report files will 
-            be stored.
+        output_folder: Directory where the generated report files will be
+            stored.
 
     Returns:
-        A dictionary containing the following results:
+        A dictionary containing processing totals, generated file paths, and
+        execution information.
+
+        The dictionary contains:
 
         - `total_rows`: Total number of processed sales records.
-        - `total_invalid_rows`: Number of records that passed validation.
-        - `total invalid_rows`: Number of records containing validation errors.
-        - `report_path_txt`: Path of the generated plain-text report.
+        - `total_valid_rows`: Number of records that passed validation.
+        - `total_invalid_rows`: Number of records containing validation errors.
+        - `report_path_txt`: Path of the generated TXT report.
         - `report_path_json`: Path of the generated JSON analysis file.
-        - `reports_path_csv`: Dictionary containing the paths of the generated
-           CSV analysis summary files.
-        - `execution_tiem`: Formatted string containing the total workflow execution time.
+        - `reports_path_csv`: Dictionary containing the generated CSV summary
+          file paths.
+        - `report_path_xlsx`: Path of the generated XLSX workbook.
+        - `execution_time`: Formatted string containing the total workflow
+          execution time.
     """
     start = time.perf_counter()
     reports = {}
@@ -68,6 +84,7 @@ def generate_sales_report(input_file_path: str, output_folder: str) -> Dict[str,
     reports["report_path_txt"] = file_manager.save_report(report, output_folder, file_name)
     reports["report_path_json"] = file_manager.save_analysis_json(analysis_result, output_folder, file_name)
     reports["reports_path_csv"] = file_manager.save_analysis_result_csv_files(analysis_result, output_folder, file_name)
+    reports["report_path_xlsx"] = file_manager.save_report_xlsx(analysis_result, validation_result["errors"], validation_result["warnings"], output_folder, file_name)
     end = time.perf_counter()
     total_time = end - start
     reports["execution_time"] = f"Execution time: {total_time:.4f} seconds"
