@@ -2074,13 +2074,15 @@ These responsibilities belong to the specialized backend and graphical interface
 
 The graphical user interface module provides the main desktop window for the Sales Report application using PySide6.
 
-It allows the user to select a source CSV file, choose an output directory, generate sales reports through the backend controller, view the current application status, inspect generated TXT, JSON, and CSV files, and open the configured output directory directly from the application.
+It allows the user to select a source CSV file, choose an output directory, generate sales reports through the backend controller, inspect generated TXT, JSON, CSV, and XLSX files, and open the configured output directory directly from the application.
 
-The interface is divided into independent sections built through helper methods. Additional helper methods manage generated-file state, interface cleanup, and report-viewing controls.
+TXT, JSON, and CSV files are displayed through dedicated read-only `FileViewerWindow` instances. XLSX files are opened using the operating system's associated application.
 
-This structure keeps the graphical layer modular, maintainable, and easy to extend.
+The graphical layer separates widget creation, signal connection, layout construction, event handling, and generated-report state management into independent methods.
 
-The graphical interface is displayed in Spanish, while the project documentation remains in English.
+This structure reduces duplicated interface code and keeps the module modular, maintainable, and easier to extend.
+
+The graphical interface and user-facing messages are displayed in Spanish, while the project source code and technical documentation are maintained in English.
 
 The module currently provides the following class:
 
@@ -2094,14 +2096,131 @@ The window is configured with:
 
 * Title: `Generador de Reportes de Ventas`
 * Width: `900`
-* Height: `800`
+* Height: `900`
 * Default output folder: `reports/`
 
-The main window uses a central `QWidget` and a vertical `QVBoxLayout` to organize the different interface sections.
+The main window uses a central `QWidget` and a vertical `QVBoxLayout` to organize the application sections.
+
+#### Window Initialization
+
+During initialization, the class creates the initial application state:
+
+* `file_path`: `None`
+* `output_folder`: `reports/`
+* `txt_path`: `None`
+* `json_path`: `None`
+* `csv_paths`: Empty dictionary.
+* `xlsx_path`: `None`
+
+The initialization process also:
+
+1. Configures the window title.
+2. Configures the fixed window size.
+3. Creates the central widget.
+4. Creates interface labels through `create_labels()`.
+5. Creates interface buttons through `create_buttons()`.
+6. Connects button signals through `connect_buttons()`.
+7. Creates the main vertical layout.
+8. Builds the interface sections.
+9. Assigns the completed layout to the central widget.
+
+#### Interface Organization
+
+The graphical interface is organized through several categories of helper methods.
+
+Widget creation:
+
+* `create_labels()`
+* `create_buttons()`
+
+Signal configuration:
+
+* `connect_buttons()`
+
+Layout construction:
+
+* `build_selected_file_layout()`
+* `build_selected_folder_layout()`
+* `build_generate_report_layout()`
+* `build_status_layout()`
+* `build_generated_files_layout()`
+
+User actions:
+
+* `selected_file_path()`
+* `selected_folder_path()`
+* `generate_reports()`
+* `open_report_txt()`
+* `open_report_json()`
+* `open_report_csv()`
+* `open_report_xlsx()`
+* `open_output_folder()`
+
+Interface-state management:
+
+* `on_buttons()`
+* `off_buttons()`
+* `clean_labels()`
+* `clean_paths()`
+* `clean_layout()`
+
+#### Label Creation
+
+The `create_labels()` method centralizes creation of the labels used throughout the interface.
+
+It creates labels for:
+
+* Source CSV selection.
+* Output-folder information.
+* Application status.
+* TXT report information.
+* JSON analysis information.
+* CSV summary information.
+* XLSX report information.
+
+Generated TXT, JSON, and XLSX path labels are initially empty and are populated after successful report generation.
+
+Centralizing label creation keeps widget initialization separate from layout construction.
+
+#### Button Creation
+
+The `create_buttons()` method centralizes creation of the application buttons.
+
+The interface currently provides buttons for:
+
+* Selecting the source CSV file.
+* Selecting the output directory.
+* Generating reports.
+* Opening the TXT report.
+* Opening the JSON analysis.
+* Opening the selected CSV summary.
+* Opening the XLSX analysis.
+* Opening the output directory.
+
+The method creates the buttons and applies fixed sizes where required.
+
+Signal connections are handled separately by `connect_buttons()`.
+
+#### Button Signal Connections
+
+The `connect_buttons()` method connects each button's `clicked` signal to its corresponding event handler.
+
+The current connections are:
+
+* `button_selected_file` → `selected_file_path()`
+* `button_output_folder` → `selected_folder_path()`
+* `button_create_report` → `generate_reports()`
+* `button_txt_show_report` → `open_report_txt()`
+* `button_json_show_report` → `open_report_json()`
+* `button_csv_show_report` → `open_report_csv()`
+* `button_open_output_folder` → `open_output_folder()`
+* `button_xlsx_show_report` → `open_report_xlsx()`
+
+Separating widget creation from signal connection keeps interface initialization easier to understand and maintain.
 
 #### Interface Sections
 
-The main application window contains the following sections:
+The main application window contains the following primary sections:
 
 1. Source CSV file selection.
 2. Output folder selection.
@@ -2117,38 +2236,31 @@ The `build_selected_file_layout()` method creates the section used to select the
 
 The section contains:
 
-* A label displaying the currently selected file.
-* A `Seleccionar archivo` button.
-* A file-selection dialog restricted to `.csv` files.
+* The source-file label.
+* The `Seleccionar archivo` button.
 
 The button is connected to:
 
 `selected_file_path()`
 
-When no file has been selected, the interface displays:
-
-`Archivo no seleccionado.`
-
 #### CSV File Selection Process
 
-The `selected_file_path()` method opens a `QFileDialog` that allows the user to select a CSV file.
+The `selected_file_path()` method opens a `QFileDialog` restricted to CSV files.
 
-The dialog uses the following filter:
+The dialog uses:
 
 `Archivos CSV (*.csv)`
 
-When a new file is selected:
+When a new source file is selected:
 
-1. Report-viewing controls are disabled.
-2. Previously stored generated-file paths are cleared.
-3. Previously displayed TXT, JSON, and CSV results are removed.
+1. Generated-report controls are disabled.
+2. Previously stored TXT, JSON, CSV, and XLSX paths are cleared.
+3. Previously displayed generated-file information is cleared.
 4. The selected path is stored in `file_path`.
 5. The selected-file label is updated.
-6. The application status is updated according to the currently configured output folder.
+6. The application status is updated according to the currently configured output directory.
 
-Clearing previous results prevents report paths generated from an earlier source file from remaining associated with the new input.
-
-If the dialog is canceled, the current application state remains unchanged.
+If the dialog is canceled, the existing application state remains unchanged.
 
 #### Output Folder Selection
 
@@ -2156,18 +2268,16 @@ The `build_selected_folder_layout()` method creates the section used to configur
 
 The section contains:
 
-* A label displaying the current output directory.
-* A `Seleccionar carpeta` button.
+* The output-folder label.
+* The `Seleccionar carpeta` button.
 
 The button is connected to:
 
 `selected_folder_path()`
 
-The default output directory is:
+The default destination is:
 
 `reports/`
-
-The interface displays the currently configured output directory in the output-folder section.
 
 #### Output Folder Selection Process
 
@@ -2175,36 +2285,34 @@ The `selected_folder_path()` method opens a directory-selection dialog using:
 
 `QFileDialog.getExistingDirectory()`
 
-When a new folder is selected:
+When a new output folder is selected:
 
-1. Report-viewing controls are disabled.
-2. Previously stored generated-file paths are cleared.
-3. Previously displayed TXT, JSON, and CSV results are removed.
+1. Generated-report controls are disabled.
+2. Previously stored TXT, JSON, CSV, and XLSX paths are cleared.
+3. Previously displayed generated-file information is removed.
 4. The selected directory is stored in `output_folder`.
 5. The output-folder label is updated.
 6. The application status is updated according to whether a source CSV file has already been selected.
 
-Clearing the previous generated-file state prevents files created in an earlier destination directory from remaining associated with the new configuration.
-
-If the dialog is canceled, the current application state remains unchanged.
+If the dialog is canceled, the existing output-folder configuration remains unchanged.
 
 #### Report Generation Section
 
-The `build_generate_report_layout()` method creates the section containing the main report-generation button.
-
-The section contains:
+The `build_generate_report_layout()` method creates the section containing the:
 
 `Crear reporte`
+
+button.
 
 The button is connected to:
 
 `generate_reports()`
 
-The report-generation button starts the backend reporting workflow through the Sales Report controller.
+The button starts the complete backend workflow through the Sales Report controller.
 
 #### Report Generation Process
 
-The `generate_reports()` method coordinates the graphical report-generation process.
+The `generate_reports()` method coordinates report generation from the graphical interface.
 
 It performs the following operations:
 
@@ -2213,50 +2321,56 @@ It performs the following operations:
 3. Verifies that a source CSV file has been selected.
 4. Stops the process and displays a message when no source file is available.
 5. Disables controls associated with previously generated reports.
-6. Resets previously stored TXT, JSON, and CSV paths.
-7. Clears previously displayed file paths and CSV results.
-8. Calls `controller.generate_sales_report()` using the selected CSV path and output folder.
-9. Receives the processing results and generated file paths from the controller.
-10. Stores and displays the generated TXT report path.
-11. Stores and displays the generated JSON analysis path.
-12. Adds each generated CSV summary to the CSV selector.
-13. Creates individual labels containing the generated CSV paths.
-14. Stores the CSV summary names and paths for later access.
-15. Updates the application status when generation completes successfully.
-16. Enables the generated-report viewing controls.
-17. Displays application-specific or unexpected errors through a critical message box when necessary.
-18. Re-enables the report-generation button when processing finishes.
+6. Clears stored TXT, JSON, CSV, and XLSX paths.
+7. Clears previously displayed report information.
+8. Calls `controller.generate_sales_report()`.
+9. Receives the generated report information from the controller.
+10. Stores and displays the TXT report path.
+11. Stores and displays the JSON analysis path.
+12. Stores and displays the XLSX report path.
+13. Adds generated CSV summary names to the CSV selector.
+14. Creates labels containing generated CSV paths.
+15. Stores CSV summary names and paths in `csv_paths`.
+16. Updates the application status after successful generation.
+17. Enables generated-report controls.
+18. Displays application-specific or unexpected errors when necessary.
+19. Re-enables the report-generation button after processing.
 
 #### Backend Controller Integration
 
-The graphical interface is connected to the backend workflow through:
+The GUI delegates the complete backend processing workflow to:
 
 `controller.generate_sales_report()`
 
-The GUI provides the controller with:
+The graphical interface provides:
 
 * `file_path`
 * `output_folder`
 
-The controller performs the complete validation, reading, analysis, report-generation, and file-storage workflow.
+The controller returns processing information and generated output paths.
 
-The GUI receives the resulting data structure and uses the returned file paths to provide access to the generated reports.
+The GUI currently uses:
+
+* `report_path_txt`
+* `report_path_json`
+* `reports_path_csv`
+* `report_path_xlsx`
+
+The backend remains responsible for validation, reading, analysis, report generation, and file storage.
 
 #### Application Status
 
-The `build_status_layout()` method creates the status section of the interface.
+The `build_status_layout()` method creates the interface status section.
 
-The `status_label` provides feedback about the current application state.
-
-Its initial value is:
+The initial message is:
 
 `Seleccione un archivo CSV para comenzar.`
 
-The status may be updated when:
+The status can change when:
 
 * A CSV file is selected.
 * An output folder is selected.
-* Both the source file and output folder are configured.
+* Both input and output selections are configured.
 * Report generation starts.
 * No CSV file has been selected.
 * Report generation completes successfully.
@@ -2267,331 +2381,407 @@ The status may be updated when:
 
 The `build_generated_files_layout()` method creates the section used to display and access generated report files.
 
-The section provides dedicated controls for:
+The section provides controls for:
 
-* TXT report information.
-* JSON analysis information.
-* CSV summary information.
-* Opening the output directory.
+* TXT reports.
+* JSON analysis.
+* XLSX analysis.
+* CSV summaries.
+* Output-directory access.
 
-The main attributes include:
+Generated-report controls are initially disabled through:
 
-* `txt_file_label`
-* `txt_file_path_label`
-* `button_txt_show_report`
-* `json_file_label`
-* `json_file_path_label`
-* `button_json_show_report`
-* `csv_title_label`
-* `csv_combobox`
-* `button_csv_show_report`
-* `csv_summaries_layout`
-* `button_open_output_folder`
+`off_buttons()`
 
-Generated-file controls are initially disabled and become available after a successful report-generation process.
+They become available after successful report generation through:
+
+`on_buttons()`
 
 #### TXT Report Access
 
-The generated TXT path is displayed through:
+The generated TXT path is stored in:
+
+`txt_path`
+
+and displayed through:
 
 `txt_file_path_label`
 
-The `Reporte TXT` button is connected to:
+The:
+
+`Reporte TXT`
+
+button calls:
 
 `open_report_txt()`
 
-This method creates a `FileViewerWindow` using the generated TXT path and displays the report in an independent read-only viewer window.
+This creates a `FileViewerWindow` and displays the generated TXT report in read-only mode.
 
 #### JSON Analysis Access
 
-The generated JSON path is displayed through:
+The generated JSON path is stored in:
+
+`json_path`
+
+and displayed through:
 
 `json_file_path_label`
 
-The `Análisis JSON` button is connected to:
+The:
+
+`Análisis JSON`
+
+button calls:
 
 `open_report_json()`
 
-This method creates a `FileViewerWindow` using the generated JSON path and displays the analysis file in an independent read-only viewer window.
+This creates a `FileViewerWindow` and displays the JSON analysis in read-only mode.
 
 #### CSV Summary Selection and Access
 
-Generated CSV summaries are available through:
-
-`csv_combobox`
-
-Each generated CSV summary name is added to the combo box after report generation.
-
-The corresponding paths are stored in:
+Generated CSV summary paths are stored in:
 
 `csv_paths`
 
-The `Ver resumen CSV` button is connected to:
+Generated summary names are also added to:
+
+`csv_combobox`
+
+The:
+
+`Ver resumen CSV`
+
+button calls:
 
 `open_report_csv()`
 
-The method reads the currently selected summary from the combo box, retrieves its path from `csv_paths`, and opens the file through `FileViewerWindow`.
+The method reads the currently selected summary name, obtains its corresponding path from `csv_paths`, and creates a `FileViewerWindow` to display the CSV contents.
 
 #### Scrollable CSV Results
 
-Generated CSV summary paths are also displayed inside a `QScrollArea`.
+Generated CSV paths are also displayed inside a `QScrollArea`.
 
-The scrollable area contains a dedicated `QVBoxLayout` stored in:
+The scrollable area contains:
 
 `csv_summaries_layout`
 
-Each generated CSV report is represented by an independent `QLabel`.
+Each generated CSV path is represented by an independent `QLabel`.
 
-The scroll area automatically resizes its internal widget and uses a fixed height of:
+The scroll area is configured with a fixed height of:
 
 `150`
 
 pixels.
 
-This allows multiple CSV paths to remain visible without expanding the main application window.
+This allows multiple CSV summary paths to be displayed without increasing the size of the main window.
+
+#### XLSX Report Access
+
+The generated Excel workbook path is stored in:
+
+`xlsx_path`
+
+and displayed through the XLSX path label.
+
+The:
+
+`Análisis Excel`
+
+button calls:
+
+`open_report_xlsx()`
+
+Unlike TXT, JSON, and CSV reports, XLSX files are not displayed through `FileViewerWindow`.
+
+The method first verifies that the generated file exists.
+
+If the file cannot be found, the interface displays a warning message:
+
+`Archivo no encontrado`
+
+If the file exists, the local path is converted into a `QUrl` and opened through:
+
+`QDesktopServices.openUrl()`
+
+This allows the operating system to open the workbook using the application associated with XLSX files.
 
 #### Output Folder Access
 
-The generated-files section provides the:
+The:
 
 `Abrir carpeta de salida`
 
-button.
-
-The button is connected to:
+button calls:
 
 `open_output_folder()`
 
-This method converts the configured output directory into an absolute path and opens it using the operating-system file manager.
+The method converts the configured output folder into an absolute path and opens it through the operating-system file manager.
 
-The application uses:
+The platform-specific mechanisms are:
 
-* `os.startfile()` on Windows.
-* `open` on macOS.
-* `xdg-open` on Linux and compatible systems.
+* Windows: `os.startfile()`
+* macOS: `open`
+* Linux and compatible systems: `xdg-open`
 
-The button is enabled after a successful report-generation process.
+#### Generated-Report Control Management
 
-#### Result State Management
-
-The graphical interface provides several helper methods to manage generated-report state and avoid duplicated interface logic.
+The GUI centralizes enabling and disabling generated-report controls.
 
 ##### `on_buttons()`
 
-Enables the controls associated with successfully generated reports:
+Enables:
 
-* Output-folder button.
-* TXT viewer button.
-* JSON viewer button.
+* Output-folder access.
+* TXT report access.
+* JSON report access.
 * CSV selector.
-* CSV viewer button.
+* CSV report access.
+* XLSX report access.
 
-This method is called after a successful report-generation process.
+This method is called after successful report generation.
 
 ##### `off_buttons()`
 
-Disables controls associated with generated report results.
+Disables:
 
-It is used when the current generated files are no longer considered valid, such as when:
+* Output-folder access.
+* TXT report access.
+* JSON report access.
+* CSV selector.
+* CSV report access.
+* XLSX report access.
 
-* A new source CSV file is selected.
+This method is used when:
+
+* A new source CSV is selected.
 * A new output folder is selected.
 * A new report-generation process begins.
+* Previously generated results should no longer be treated as current.
+
+#### Generated-Report State Cleanup
+
+The GUI also separates internal path cleanup from visual cleanup.
 
 ##### `clean_paths()`
 
-Resets the internal generated-file state by:
+Resets internal generated-file references:
 
-* Setting `txt_path` to `None`.
-* Setting `json_path` to `None`.
-* Replacing `csv_paths` with an empty dictionary.
+* `txt_path` → `None`
+* `json_path` → `None`
+* `csv_paths` → `{}`
+* `xlsx_path` → `None`
 
-This prevents old generated-file references from remaining associated with a new configuration.
+This prevents previously generated reports from remaining associated with a new source file, output directory, or report-generation process.
 
 ##### `clean_labels()`
 
-Clears generated report information currently displayed in the interface.
+Clears generated-file information displayed in the interface.
 
 It:
 
 * Clears the TXT path label.
 * Clears the JSON path label.
-* Clears the CSV combo box.
+* Clears the XLSX path label.
+* Clears the CSV selector.
 * Removes dynamically generated CSV path labels.
-
-The method uses `clean_layout()` to remove the dynamically generated CSV widgets.
 
 ##### `clean_layout()`
 
-Removes all widgets currently contained in a provided Qt layout.
+Removes dynamically generated widgets from a provided Qt layout.
 
 The method iterates through the layout in reverse order and schedules each contained widget for deletion.
 
-It is primarily used to remove CSV summary labels from previous report-generation processes.
+It is primarily used to clear CSV summary labels before new results are displayed.
 
 #### Window State
 
 The `SalesReportWindow` class maintains the following primary state values:
 
-* `file_path`: Stores the selected source CSV path. Its initial value is `None`.
-* `output_folder`: Stores the destination directory for generated files. Its default value is `reports/`.
-* `txt_path`: Stores the generated TXT report path. Its initial value is `None`.
-* `json_path`: Stores the generated JSON analysis path. Its initial value is `None`.
-* `csv_paths`: Stores a mapping between generated CSV summary names and their file paths. Its initial value is an empty dictionary.
+* `file_path`: Selected source CSV path.
+* `output_folder`: Destination directory. Defaults to `reports/`.
+* `txt_path`: Generated TXT report path.
+* `json_path`: Generated JSON analysis path.
+* `csv_paths`: Mapping between CSV summary names and their generated paths.
+* `xlsx_path`: Generated XLSX workbook path.
 
-The class also maintains references to interface labels, buttons, layouts, selectors, viewer windows, and other graphical controls.
+The class also maintains interface widgets, layouts, buttons, selectors, and report-viewer window references.
 
 #### PySide6 Components
 
-The graphical interface currently uses the following PySide6 widgets:
+The graphical interface currently uses:
 
-* `QMainWindow`: Main application window.
+* `QMainWindow`: Main desktop window.
 * `QWidget`: Central window and internal containers.
 * `QPushButton`: Interactive application controls.
-* `QVBoxLayout`: Vertical organization of interface elements.
-* `QHBoxLayout`: Horizontal organization of CSV selection controls.
-* `QLabel`: File paths, messages, and status information.
-* `QGroupBox`: Visual grouping of related controls.
-* `QFileDialog`: File and directory selection dialogs.
-* `QScrollArea`: Scrollable display area for generated CSV paths.
-* `QComboBox`: Selection of generated CSV summaries.
-* `QMessageBox`: Presentation of application and unexpected error messages.
+* `QVBoxLayout`: Vertical organization.
+* `QHBoxLayout`: Horizontal CSV selection controls.
+* `QLabel`: Paths, titles, and status information.
+* `QGroupBox`: Visual grouping of interface sections.
+* `QFileDialog`: Source-file and output-directory selection.
+* `QScrollArea`: Scrollable CSV path display.
+* `QComboBox`: CSV summary selection.
+* `QMessageBox`: Critical and warning messages.
+* `QDesktopServices`: Opening generated XLSX files through the operating system.
+* `QUrl`: Conversion of local XLSX paths for `QDesktopServices`.
 
 #### Current GUI Workflow
 
 The current graphical workflow is:
 
-1. Open the Sales Report window.
+1. Launch `SalesReportWindow`.
 2. Select a source CSV file.
 3. Optionally select a custom output directory.
-4. Use `reports/` when no custom output folder is selected.
-5. Review the current application status.
-6. Press the `Crear reporte` button.
-7. Validate that a CSV file has been selected.
-8. Clear any previously generated report state.
-9. Send the selected source file and output directory to `controller.generate_sales_report()`.
-10. Execute the complete backend reporting workflow.
-11. Display the generated TXT report path.
-12. Display the generated JSON analysis path.
-13. Populate the CSV selector with the generated summaries.
-14. Display the generated CSV paths inside the scrollable area.
-15. Enable controls for accessing the generated files.
-16. Allow the user to open TXT, JSON, or CSV reports.
-17. Allow the user to open the configured output directory.
-18. Display the final success status or an error message.
+4. Use `reports/` when no custom directory is selected.
+5. Press `Crear reporte`.
+6. Verify that a source CSV file exists in the interface state.
+7. Disable previous report controls.
+8. Clear previous generated-file state.
+9. Send the source CSV and output folder to `controller.generate_sales_report()`.
+10. Execute the complete backend workflow.
+11. Receive TXT, JSON, CSV, and XLSX output paths.
+12. Display the generated TXT path.
+13. Display the generated JSON path.
+14. Display the generated XLSX path.
+15. Populate the CSV selector.
+16. Display CSV paths in the scrollable area.
+17. Enable generated-report controls.
+18. Allow TXT, JSON, and CSV reports to be inspected through `FileViewerWindow`.
+19. Allow the XLSX workbook to be opened with the operating system's associated application.
+20. Allow the output folder to be opened.
+21. Display the final success status or an error message.
 
 #### Error Handling
 
-The graphical interface handles two categories of errors during report generation:
+The graphical interface handles:
 
 * Application-specific exceptions derived from `AppError`.
 * Unexpected Python exceptions.
 
-When either type of error occurs:
-
-1. The application status is changed to:
+During report generation, errors update the status to:
 
 `Error en el proceso`
 
-2. A critical `QMessageBox` displays the corresponding error message.
+and are displayed through a critical `QMessageBox`.
 
-Application-specific errors normally contain Spanish user-facing messages provided by the custom exception hierarchy.
+The `open_report_xlsx()` method also handles a missing generated Excel file by displaying a warning message box.
 
-Errors do not automatically terminate the graphical application, allowing the user to correct the configuration and try again.
+The graphical application remains open after handled errors so the user can correct the configuration or try again.
 
 #### Input and Output
 
 ##### `SalesReportWindow`
 
 * **Input:** User interaction through the graphical interface.
-* **Output:** A desktop window for configuring, generating, displaying, and accessing sales-report results.
+* **Output:** Main desktop interface for configuring, generating, displaying, and accessing sales-report outputs.
+
+##### `create_labels()`
+
+* **Input:** None.
+* **Output:** Creates the labels required by the main interface.
+
+##### `create_buttons()`
+
+* **Input:** None.
+* **Output:** Creates the buttons required by the main interface.
+
+##### `connect_buttons()`
+
+* **Input:** None.
+* **Output:** Connects button signals to their corresponding event handlers.
 
 ##### `selected_file_path()`
 
-* **Input:** A CSV file selected through `QFileDialog`.
-* **Output:** Updates the source-file state and clears generated results associated with the previous source file.
+* **Input:** CSV file selected through `QFileDialog`.
+* **Output:** Updates the source-file state and resets previous generated-report state.
 
 ##### `selected_folder_path()`
 
-* **Input:** A directory selected through `QFileDialog`.
-* **Output:** Updates the output-folder state and clears generated results associated with the previous destination.
+* **Input:** Directory selected through `QFileDialog`.
+* **Output:** Updates the output-folder state and resets previous generated-report state.
 
 ##### `generate_reports()`
 
-* **Input:** The selected CSV path and configured output folder.
-* **Output:** Generates reports through the controller and updates the GUI with TXT, JSON, and CSV output information or an error message.
+* **Input:** Selected CSV path and configured output directory.
+* **Output:** Generates reports through the controller and updates the GUI with TXT, JSON, CSV, and XLSX results.
 
 ##### `open_report_txt()`
 
-* **Input:** The generated TXT path stored in `txt_path`.
-* **Output:** Opens the generated TXT report in a `FileViewerWindow`.
+* **Input:** Generated TXT path.
+* **Output:** Opens the TXT report in a `FileViewerWindow`.
 
 ##### `open_report_json()`
 
-* **Input:** The generated JSON path stored in `json_path`.
-* **Output:** Opens the generated JSON analysis in a `FileViewerWindow`.
+* **Input:** Generated JSON path.
+* **Output:** Opens the JSON analysis in a `FileViewerWindow`.
 
 ##### `open_report_csv()`
 
-* **Input:** The CSV summary selected through `csv_combobox`.
-* **Output:** Opens the corresponding CSV summary in a `FileViewerWindow`.
+* **Input:** CSV summary selected through `csv_combobox`.
+* **Output:** Opens the selected CSV summary in a `FileViewerWindow`.
+
+##### `open_report_xlsx()`
+
+* **Input:** Generated XLSX path stored in `xlsx_path`.
+* **Output:** Opens the workbook using the operating system's associated application or displays a warning if the file does not exist.
 
 ##### `open_output_folder()`
 
-* **Input:** The configured output directory.
-* **Output:** Opens the destination directory using the operating-system file manager.
+* **Input:** Configured output directory.
+* **Output:** Opens the directory using the operating-system file manager.
 
 ##### `clean_layout()`
 
-* **Input:** A Qt layout containing dynamically generated widgets.
-* **Output:** Removes the widgets currently contained in the layout.
+* **Input:** Qt layout containing dynamically generated widgets.
+* **Output:** Removes its dynamically generated widgets.
 
 ##### `clean_labels()`
 
-* **Input:** No external input.
-* **Output:** Clears generated-file information currently displayed in the interface.
+* **Input:** None.
+* **Output:** Clears TXT, JSON, CSV, and XLSX information displayed in the interface.
 
 ##### `clean_paths()`
 
-* **Input:** No external input.
-* **Output:** Resets stored TXT, JSON, and CSV report paths.
+* **Input:** None.
+* **Output:** Resets stored TXT, JSON, CSV, and XLSX paths.
 
 ##### `on_buttons()`
 
-* **Input:** No external input.
+* **Input:** None.
 * **Output:** Enables controls associated with generated reports.
 
 ##### `off_buttons()`
 
-* **Input:** No external input.
+* **Input:** None.
 * **Output:** Disables controls associated with generated reports.
 
 #### Current Development Status
 
-The graphical interface is connected to the existing Sales Report backend workflow.
+The graphical interface is fully connected to the Sales Report backend workflow.
 
 Currently available:
 
-* Main application window.
-* CSV file selection.
-* Output folder selection.
-* Default output folder.
+* Main PySide6 desktop window.
+* Source CSV selection.
+* Output-folder selection.
+* Default output directory.
 * Application status messages.
 * Backend controller integration.
-* Report-generation button.
-* TXT report path display.
-* JSON analysis path display.
-* Dynamic CSV summary path display.
-* CSV summary selector.
-* Scrollable CSV results area.
-* TXT report viewer integration.
-* JSON analysis viewer integration.
-* CSV summary viewer integration.
-* Output-folder access.
-* Generated-result state cleanup.
-* Generated-result control management.
+* TXT report generation and access.
+* JSON analysis generation and access.
+* CSV summary generation and selection.
+* Scrollable CSV results.
+* XLSX report generation and access.
+* Read-only TXT, JSON, and CSV viewer integration.
+* Operating-system XLSX opening.
+* Output-directory access.
+* Centralized label creation.
+* Centralized button creation.
+* Centralized signal connection.
+* Generated-report state cleanup.
+* Generated-report control management.
 * Application-specific error presentation.
 * Unexpected error presentation.
+* Missing-XLSX warning presentation.
 
 ---
 
