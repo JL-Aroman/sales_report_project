@@ -19,9 +19,9 @@ def main() -> None:
     """Execute the Sales Report application workflow.
 
     Defines the source CSV file and output directory and delegates the complete
-    processing workflow to `controller.generated_sales_report()`.
+    processing workflow to `controller.generate_sales_report()`.
 
-    The controller is reponsible for validationg and reading the source data,
+    The controller is responsible for validating and reading the source data,
     analyzing valid sales records, generating the report, and saving the
     resulting output files.
 

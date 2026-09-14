@@ -71,17 +71,17 @@ def generate_sales_report(input_file_path: str, output_folder: str) -> Dict[str,
     df_raw = csv_reader.read_csv_file(file_path)
     validation_result = validator.validate_dataframe(df_raw)
     analysis_result = analyzer.analyze_sales(validation_result)
-    report = reporter.generate_report(
+    report_text  = reporter.generate_report(
     analysis_result,
     validation_result["errors"],
     validation_result["warnings"],
     file_path
     )
     reports["total_rows"] = analysis_result["total_rows"]
-    reports["total_valid_rows"] = analysis_result ["total_valid_rows"]
+    reports["total_valid_rows"] = analysis_result["total_valid_rows"]
     reports["total_invalid_rows"] = analysis_result["total_invalid_rows"]
     file_name = file_manager.create_report_base_name()
-    reports["report_path_txt"] = file_manager.save_report(report, output_folder, file_name)
+    reports["report_path_txt"] = file_manager.save_report(report_text , output_folder, file_name)
     reports["report_path_json"] = file_manager.save_analysis_json(analysis_result, output_folder, file_name)
     reports["reports_path_csv"] = file_manager.save_analysis_result_csv_files(analysis_result, output_folder, file_name)
     reports["report_path_xlsx"] = file_manager.save_report_xlsx(analysis_result, validation_result["errors"], validation_result["warnings"], output_folder, file_name)

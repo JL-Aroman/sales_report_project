@@ -39,24 +39,29 @@ REQUIRED_COLUMNS = [
 def validate_csv_file(file_path: str) -> Path:
     """Validate a CSV file path and return it as a Path object.
 
-    Converts a string path into a Path object and verifies that the path
-    is not empty, exists in the file system, points to a regular file,
-    has a CSV extension, conatains data, and can be read.
+    Converts the provided string path into a `Path` object and verifies that
+    the path is not empty, exists in the file system, points to a regular
+    file, has a `.csv` extension, contains data, and can be opened for
+    reading.
+
+    File readability is verified by opening the file in binary mode and
+    reading a single byte. The CSV contents are not parsed or decoded by
+    this function; that responsibility belongs to the CSV reading module.
 
     Args:
         file_path: String containing the path of the CSV file to validate.
 
     Returns:
-        A validated Path object ready for the CSV readin process.
-    
+        A validated `Path` object ready for the CSV reading process.
+
     Raises:
-        EmtpyPathError: If the provided path is None or empty.
-        FileNotFoundApppError: If the path does not exist.
+        EmptyPathError: If the provided path is `None` or empty.
+        FileNotFoundAppError: If the path does not exist.
         InvalidFilePathError: If the path does not point to a regular file.
-        InvalidFileExtensionError: If the file extension is no `.csv`.
+        InvalidFileExtensionError: If the file extension is not `.csv`.
         EmptyFileError: If the file contains zero bytes.
-        FileReadError: If the file cannot be read.
-"""
+        FileReadError: If the file cannot be opened or read.
+    """
     if file_path is None or file_path.strip() == "":
         raise EmptyPathError()
     new_file_path = Path(file_path)
@@ -70,7 +75,8 @@ def validate_csv_file(file_path: str) -> Path:
     if new_file_path.stat().st_size == 0:
         raise EmptyFileError()
     try:
-        new_file_path.read_text()
+        with new_file_path.open("rb") as file:
+            file.read(1)
     except OSError as e:
         raise FileReadError() from e
     return new_file_path
@@ -420,5 +426,3 @@ def validate_dataframe(df_raw: pd.DataFrame) -> Dict[str, Any]:
         return validation_result
     else:
         raise MissingColumnsError()
-
-

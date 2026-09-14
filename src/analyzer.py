@@ -1,15 +1,18 @@
 """Sales data analysis module.
 
 This module processes previously validated sales records and calculates
-general sales metrics, product, category, and optional city and payment
-method summaries.
+general sales metrics, product summaries, category summaries, monthly
+summaries, and optional city and payment-method summaries.
 
-Each analysis operation is impolemented in a separate helper function to
-keep the analysis workflow modular, maintaiable, and easy to extend.
-The module also generates Top 5 prouct rankings and indentifies records with the highest values.
+Each analysis operation is implemented in a separate helper function to keep
+the analysis workflow modular, maintainable, and easy to extend.
 
-The main analysis funciton coordinates these gelpers and returns a
-structured dictionay ready for report generation.
+The module also generates Top 5 product rankings and identifies records tied
+for the highest values in the calculated summaries.
+
+The main `analyze_sales()` function coordinates the independent analysis
+helpers and returns a structured dictionary ready for report generation and
+file export.
 """
 
 from typing import Dict, Any, List
@@ -252,68 +255,117 @@ def get_top_5_highest_income_products(product_summary: pd.DataFrame) -> List[Dic
     df_top5 = product_summary.sort_values(by="ingreso_total", ascending=False).head(5).reset_index(drop=True)
     return df_top5.to_dict(orient="records")
 
+def get_monthly_summary(df_analysis: pd.DataFrame) -> pd.DataFrame:
+    """Create an aggregated monthly sales summary.
+
+    Converts values from the `fecha` column into `YYYY-MM` format and groups
+    valid sales records by month.
+
+    For each month, the function calculates the number of valid sales rows,
+    total units sold, and total income generated.
+
+    The resulting records are sorted chronologically from the earliest month
+    to the latest month.
+
+    Args:
+        df_analysis: DataFrame containing valid sales records, a datetime
+            `fecha` column, and the calculated `ingreso_fila` column.
+
+    Returns:
+        A DataFrame containing one row per month with the following columns:
+
+        - `mes`: Month represented in `YYYY-MM` format.
+        - `filas_validas`: Number of valid sales records for the month.
+        - `unidades_vendidas`: Total units sold during the month.
+        - `ingreso_total`: Total income generated during the month.
+    """
+    df_analysis_copy = df_analysis.copy()
+    df_analysis_copy["mes"] = df_analysis_copy["fecha"].dt.strftime("%Y-%m")
+    df_monthly = df_analysis_copy.groupby("mes").agg({
+        "producto_id": "count",
+        "cantidad": "sum",
+        "ingreso_fila": "sum"
+    })
+    df_monthly = df_monthly.rename(columns={
+        "producto_id": "filas_validas",
+        "cantidad": "unidades_vendidas",
+        "ingreso_fila": "ingreso_total"
+    })
+    df_monthly = df_monthly.sort_values(by="mes", ascending=True).reset_index()
+    return df_monthly
+
 def analyze_sales(validation_result: Dict[str, Any]) -> Dict[str, Any]:
     """Analyze validated sales records and calculate summary metrics.
 
     Receives the result produced by the DataFrame validation process,
-    extracts the valid sales records, and coordinates the independent 
-    analysis functions.
+    extracts the valid sales records, and coordinates the independent
+    analysis helper functions.
 
-    The function calculates row income, total income, total units sold,
-    product summaries, and category summaries. It also identifies the
-    best-selling product, the product with the highest income, and the
-    category with the highest income.
+    The function calculates row-level income, total income, total units sold,
+    product summaries, category summaries, and monthly sales summaries.
 
-    Additionally, it generates Top 5 rankings for best-selling and
-    highest-income products. If the optional `ciudad` column is available,
-    the function also creates a city summary and identifies the city or cities
-    with the highest total income.
+    It also identifies the best-selling product, the product with the highest
+    income, and the category with the highest income.
 
-    If the optional `metodo_pago` column is available, the function also
-    creates a payment method summary and identifies the payment method or 
-    payment methods with the highest total income.
+    Top 5 rankings are generated for best-selling products and
+    highest-income products.
+
+    If the optional `ciudad` column is available, the function generates a
+    city summary and identifies the city or cities with the highest total
+    income.
+
+    If the optional `metodo_pago` column is available, the function generates
+    a payment-method summary and identifies the payment method or methods with
+    the highest total income.
 
     Args:
-        validation_result: (Dictionary produced by the validation process.
+        validation_result: Dictionary produced by the validation process.
             It must contain the following keys:
 
-            - `df_valid_rows`: Dataframe containing valid sales records.
+            - `df_valid_rows`: DataFrame containing valid sales records.
             - `total_rows`: Total number of processed records.
             - `total_valid_rows`: Number of records that passed validation.
-            - `total_invalid_rows`: Number of records containing validation errors.
+            - `total_invalid_rows`: Number of records containing validation
+              errors.
 
     Returns:
-        A dictionary containing the following analysis results:
+        A dictionary containing the calculated sales analysis results.
+
+        The result always contains:
 
         - `total_rows`: Total number of processed records.
         - `total_valid_rows`: Number of valid records.
         - `total_invalid_rows`: Number of invalid records.
         - `total_income`: Total income generated by valid sales.
         - `total_units_sold`: Total number of units sold.
-        - `product_summary`: DataFrame containing aggregated results for each product.
-        - `category_summary`: DataFrame containing aggregated results for each category.
-        - `best_selling_product`: List containing the product or products with the 
-        highest number of units sold.
-        - `highest_income_product`: List containing the product or products with the highest
-        total income.
+        - `product_summary`: DataFrame containing aggregated product results.
+        - `category_summary`: DataFrame containing aggregated category results.
+        - `monthly_summary`: DataFrame containing aggregated monthly results.
+        - `best_selling_product`: List containing the product or products tied
+          for the highest number of units sold.
+        - `highest_income_product`: List containing the product or products
+          tied for the highest total income.
         - `highest_income_category`: List containing the category or categories
-        with the highest total income.
-        - `top_5_best_selling_products`: List containing up to five products with the highest 
-            number of units sold.
-        - `top_5_highest_income_products`: List containing up to five products with the highest total income.
+          tied for the highest total income.
+        - `top_5_best_selling_products`: List containing up to five products
+          with the highest number of units sold.
+        - `top_5_highest_income_products`: List containing up to five products
+          with the highest total income.
 
-        When the optional `ciudad` column is available, the result also contains:
+        When the optional `ciudad` column is available, the result also
+        contains:
 
-        - `city_summary`: DataFrame containing aggregated sales results for each city.
-        - `highest_income_city`: List containing the city or cities with the highest total income.
+        - `city_summary`: DataFrame containing aggregated city results.
+        - `highest_income_city`: List containing the city or cities tied for
+          the highest total income.
 
-        When the optional `metodo_pago` column is available, the result contains:
-        
-        - `payment_method_summary`: DataFrame containing aggregated sales results
-          for each payment method.
-        - `highest_income_payment_method`: List containing the payment method or
-          payment methods with the highest total income.
+        When the optional `metodo_pago` column is available, the result also
+        contains:
 
+        - `payment_method_summary`: DataFrame containing aggregated
+          payment-method results.
+        - `highest_income_payment_method`: List containing the payment method
+          or methods tied for the highest total income.
 
     Raises:
         NoValidRowsError: If no valid sales records are available for analysis.
@@ -335,6 +387,7 @@ def analyze_sales(validation_result: Dict[str, Any]) -> Dict[str, Any]:
     analysis_result["total_units_sold"] = get_total_units_sold(df_analysis)
     analysis_result["product_summary"] = get_product_summary(df_analysis)
     analysis_result["category_summary"] = get_category_summary(df_analysis)
+    analysis_result["monthly_summary"] = get_monthly_summary(df_analysis)
     analysis_result["best_selling_product"] = get_records_with_max_value(analysis_result["product_summary"], "unidades_vendidas")
     analysis_result["highest_income_product"] = get_records_with_max_value(analysis_result["product_summary"], "ingreso_total")
     analysis_result["highest_income_category"] = get_records_with_max_value(analysis_result["category_summary"], "ingreso_total")

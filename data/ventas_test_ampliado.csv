@@ -1,0 +1,160 @@
+﻿producto_id,producto,categoria,precio,cantidad,fecha,ciudad,metodo_pago
+L1-003,León Geometrico,Artesanía,250,10,2026-07-11,Guadalajara,Efectivo
+L1-003,Leon geometrico,Artesanía,250,2,2026-07-11,,Efectivo
+L2-001,Florero doble, Cerámica,190,5,2026-07-11,Tonalá,
+G1-001,Buda Gordo,Artesanía,200,2,2026-07-11,,Tarjeta
+L1-002,,Artesanía,150,5,2026-07-11,Zapopan,
+L1-001,Anubis figura,,350,1,2026-07-11,,Transferencia
+Y1-013,Mascara silencio,Artesanía,,4,2026-07-11,Tlaquepaque,Mercado Pago
+L1-009,Buda meditando,Artesanía,150,,2026-11-12,,Mercado Pago
+N1-009,Busto Apolo,Artesanía,200,8,07-12-2026,Guadalajara,PayPal
+,Alas Doradas,Artesanía,160,3,2026-07-11,,PayPal
+A1-001, Indio Sentado, Artesanía,839,2,2026-07-11,Tonalá,Efectivo
+A1-002,Gato baset,Artesanía,1030,2,2026-07-11,,
+Y1-002,Cabeza León Rey,Artesanía,399,1,2026-07-11,Zapopan,Tarjeta
+Y1-020,Cráneo Azteca, Artesanía,299,3,2026-07-11,,Transferencia
+N1-004,David platead,Artesanía,450,5,2026-07-11,Tlaquepaque,Transferencia
+G1-001,Cabeza Dragon,Artesanía,499,3,2026-07-11,,Tarjeta
+N1-004,david plateado,Artesanía,450,12,2026-01-20,Tlaquepaque,
+Y1-002,Cabeza Leon Rey,Artesanía,399,10,2026-01-24,Guadalajara,
+Y1-002,Cabeza León Rey,artesanía,399,12,2026-01-24,Zapopan,PayPal
+L3-001,León sentado  ,Artesanía,720,4,2026-01-18,Zapopan,Efectivo
+Y1-002,Cabeza León Rey,Artesanía, 399,12,2026-01-06,Zapopan,Tarjeta
+L1-002,Ángel de pie,Artesanía,150,2 ,2026-01-17,Zapopan,Transferencia
+E1-001,Elefante decorativo,Artesanía,525,8,2026-01-02,Tlaquepaque,
+,Buda Gordo,Artesanía,200,4,2026-01-17,Zapopan,Tarjeta
+B1-001,,Artesanía,340,7,2026-01-06,,Tarjeta
+A1-001,Indio Sentado,,839,1,2026-01-13,Tonalá,Mercado Pago
+G1-002,Cabeza Dragon,Artesanía,,9,2026-02-04,Guadalajara,Mercado Pago
+A1-002,Gato baset,Artesanía,1030,,2026-02-10,Zapopan,Efectivo
+A1-003,Alas Doradas,Artesanía,160,8,17-02-2026,Guadalajara,
+L2-001,Florero doble,Cerámica,doscientos,1,2026-02-13,Guadalajara,
+M1-001,Medusa clásica,Artesanía,590,cinco,2026-02-01,Zapopan,Mercado Pago
+A1-003, Alas Doradas,Artesanía,160,6,2026-02-20,,Transferencia
+L1-001,Anubis figura, Artesanía,350,9,2026-02-12,Tonalá,
+L2-001,florero doble,Cerámica,190,6,2026-02-08,Zapopan,Mercado Pago
+N1-004,David plateado,Artesanía,450,12,2026-02-21,Zapopan,Transferencia
+A2-001,Ángel arrodillado,artesanía,475,8,2026-02-16,Zapopan,PayPal
+Y1-020,Cráneo Azteca  ,Artesanía,299,3,2026-03-05,Guadalajara,Mercado Pago
+B1-001,Buda oriental,Artesanía, 340,6,2026-03-04,,
+B1-001,Buda oriental,Artesanía,340,6 ,2026-03-01,Guadalajara,Efectivo
+N1-004,David plateado,Artesanía,450,7,2026-03-04,,Mercado Pago
+,Buda oriental,Artesanía,340,10,2026-03-05,,Tarjeta
+M1-001,,Artesanía,590,12,2026-03-15,Zapopan,Efectivo
+C1-001,Cayo Octavio César,,1250,3,2026-03-20,Guadalajara,PayPal
+A1-001,Indio Sentado,Artesanía,,9,2026-03-13,Guadalajara,Transferencia
+L1-009,Buda meditando,Artesanía,150,,2026-03-18,Guadalajara,Tarjeta
+C1-001,Cayo Octavio César,Artesanía,1250,9,17-03-2026,Zapopan,Transferencia
+B1-001,Buda oriental,Artesanía,doscientos,5,2026-04-06,Tonalá,Efectivo
+A1-001,Indio Sentado,Artesanía,839,cinco,2026-04-20,Guadalajara,Efectivo
+A1-003, Alas Doradas,Artesanía,160,8,2026-04-11,Tlaquepaque,Efectivo
+B1-001,Buda oriental, Artesanía,340,4,2026-04-14,,Mercado Pago
+Y1-013,mascara silencio,Artesanía,310,2,2026-04-16,Tlaquepaque,Efectivo
+B1-001,Buda oriental,Artesanía,340,3,2026-04-03,Zapopan,
+Y1-013,Mascara silencio,artesanía,310,3,2026-04-15,Guadalajara,PayPal
+A2-001,Ángel arrodillado  ,Artesanía,475,12,2026-04-16,Tlaquepaque,
+G1-001,Buda Gordo,Artesanía, 200,6,2026-04-07,Tlaquepaque,Mercado Pago
+A2-001,Ángel arrodillado,Artesanía,475,7 ,2026-04-14,,Tarjeta
+E1-001,Elefante decorativo,Artesanía,525,7,2026-05-02,Tlaquepaque,PayPal
+,Cráneo Azteca,Artesanía,299,9,2026-05-12,Tonalá,Tarjeta
+L1-001,,Artesanía,350,6,2026-05-03,Tonalá,PayPal
+L2-001,Florero doble,,190,7,2026-05-09,,PayPal
+F1-001,Frutero imperial,Cerámica,,10,2026-05-11,Tlaquepaque,Transferencia
+E1-001,Elefante decorativo,Artesanía,525,,2026-05-08,Zapopan,Tarjeta
+A1-002,Gato baset,Artesanía,1030,8,02-05-2026,Tlaquepaque,Mercado Pago
+A1-003,Alas Doradas,Artesanía,doscientos,3,2026-05-01,Tonalá,Mercado Pago
+A1-003,Alas Doradas,Artesanía,160,cinco,2026-05-20,,Tarjeta
+Y1-002, Cabeza León Rey,Artesanía,399,8,2026-05-14,Zapopan,Transferencia
+L1-009,Buda meditando, Artesanía,150,3,2026-06-16,Zapopan,Efectivo
+L1-009,buda meditando,Artesanía,150,12,2026-06-02,Tonalá,PayPal
+Y1-020,Craneo Azteca,Artesanía,299,1,2026-06-25,Tlaquepaque,Transferencia
+Y1-002,Cabeza León Rey,artesanía,399,8,2026-06-05,Tlaquepaque,
+N1-004,David plateado  ,Artesanía,450,8,2026-06-15,Tonalá,
+A2-001,Ángel arrodillado,Artesanía, 475,7,2026-06-14,Tonalá,PayPal
+F1-001,Frutero imperial,Cerámica,680,6 ,2026-06-14,Tonalá,Tarjeta
+N1-004,David plateado,Artesanía,450,12,2026-06-22,Zapopan,Transferencia
+,Buda Gordo,Artesanía,200,10,2026-06-08,,Transferencia
+L1-003,,Artesanía,250,4,2026-06-14,Tonalá,Transferencia
+L1-009,Buda meditando,,150,7,2026-07-20,Guadalajara,Transferencia
+B1-001,Buda oriental,Artesanía,,6,2026-07-16,Tonalá,Tarjeta
+L2-001,Florero doble,Cerámica,190,,2026-07-07,Guadalajara,Transferencia
+L2-001,Florero doble,Cerámica,190,4,01-07-2026,Tlaquepaque,Tarjeta
+F1-001,Frutero imperial,Cerámica,doscientos,2,2026-07-25,Guadalajara,Efectivo
+M1-001,Medusa clásica,Artesanía,590,cinco,2026-07-01,Tlaquepaque,Tarjeta
+N1-009, Busto Apolo,Artesanía,200,12,2026-07-07,,Mercado Pago
+A1-001,Indio Sentado, Artesanía,839,8,2026-07-19,Tlaquepaque,Transferencia
+C1-001,cayo octavio césar,Artesanía,1250,10,2026-07-04,Zapopan,Efectivo
+F1-001,Frutero imperial,Cerámica,680,1,2026-07-19,Guadalajara,PayPal
+C1-001,Cayo Octavio César,artesanía,1250,5,2026-08-04,Zapopan,
+L1-009,Buda meditando  ,Artesanía,150,3,2026-08-04,Zapopan,Mercado Pago
+Y1-013,Mascara silencio,Artesanía, 310,7,2026-08-01,Zapopan,Transferencia
+M1-001,Medusa clásica,Artesanía,590,11 ,2026-08-15,Zapopan,Efectivo
+F1-001,Frutero imperial,Cerámica,680,7,2026-08-13,Zapopan,Transferencia
+,León sentado,Artesanía,720,5,2026-08-10,Tonalá,
+G1-001,,Artesanía,200,6,2026-08-12,Zapopan,Mercado Pago
+B1-001,Buda oriental,,340,9,2026-08-19,,Mercado Pago
+A1-003,Alas Doradas,Artesanía,,7,2026-08-15,,PayPal
+L1-009,Buda meditando,Artesanía,150,,2026-08-03,Tonalá,Mercado Pago
+L1-003,León Geometrico,Artesanía,250,1,20-09-2026,,
+A1-001,Indio Sentado,Artesanía,doscientos,10,2026-09-16,Guadalajara,Efectivo
+A1-003,Alas Doradas,Artesanía,160,cinco,2026-09-03,Tonalá,Efectivo
+C1-001, Cayo Octavio César,Artesanía,1250,3,2026-09-07,Guadalajara,Mercado Pago
+G1-001,Buda Gordo, Artesanía,200,12,2026-09-21,Zapopan,PayPal
+G1-001,buda gordo,Artesanía,200,1,2026-09-14,Tlaquepaque,Mercado Pago
+A1-002,Gato baset,Artesanía,1030,2,2026-09-07,Zapopan,Transferencia
+L3-001,León sentado,artesanía,720,10,2026-09-22,Zapopan,
+A1-002,Gato baset  ,Artesanía,1030,10,2026-09-18,Guadalajara,Mercado Pago
+Y1-020,Cráneo Azteca,Artesanía, 299,12,2026-09-03,Guadalajara,Mercado Pago
+A1-003,Alas Doradas,Artesanía,160,4 ,2026-10-15,Tonalá,Efectivo
+N1-009,Busto Apolo,Artesanía,200,10,2026-10-09,Zapopan,Efectivo
+,Mascara silencio,Artesanía,310,11,2026-10-01,,Transferencia
+A2-001,,Artesanía,475,9,2026-10-05,Guadalajara,Transferencia
+N1-004,David plateado,,450,4,2026-10-06,Guadalajara,PayPal
+N1-004,David plateado,Artesanía,,4,2026-10-24,Tlaquepaque,Mercado Pago
+L2-001,Florero doble,Cerámica,190,,2026-10-05,Guadalajara,Efectivo
+L1-001,Anubis figura,Artesanía,350,1,14-10-2026,Tlaquepaque,Efectivo
+E1-001,Elefante decorativo,Artesanía,doscientos,7,2026-10-08,Zapopan,
+A1-002,Gato baset,Artesanía,1030,cinco,2026-10-22,Zapopan,
+Y1-013, Mascara silencio,Artesanía,310,12,2026-11-17,,PayPal
+N1-009,Busto Apolo, Artesanía,200,1,2026-11-04,Zapopan,PayPal
+L1-001,anubis figura,Artesanía,350,11,2026-11-18,Zapopan,Transferencia
+B1-001,Buda oriental,Artesanía,340,12,2026-11-19,Tonalá,
+A1-003,Alas Doradas,artesanía,160,9,2026-11-02,Zapopan,PayPal
+A1-001,Indio Sentado  ,Artesanía,839,10,2026-11-17,,Tarjeta
+L2-001,Florero doble,Cerámica, 190,9,2026-11-01,Guadalajara,
+A1-003,Alas Doradas,Artesanía,160,3 ,2026-11-05,Tlaquepaque,Transferencia
+L1-003,León Geometrico,Artesanía,250,9,2026-11-25,Guadalajara,Efectivo
+,Ángel arrodillado,Artesanía,475,9,2026-11-18,Zapopan,Transferencia
+N1-004,,Artesanía,450,2,2026-12-23,Tlaquepaque,Tarjeta
+L1-002,Ángel de pie,,150,6,2026-12-21,,PayPal
+A1-002,Gato baset,Artesanía,,11,2026-12-09,,Transferencia
+A1-003,Alas Doradas,Artesanía,160,,2026-12-14,Zapopan,Tarjeta
+C1-001,Cayo Octavio César,Artesanía,1250,2,05-12-2026,Tonalá,Mercado Pago
+E1-001,Elefante decorativo,Artesanía,doscientos,9,2026-12-15,Tlaquepaque,Transferencia
+L1-002,Ángel de pie,Artesanía,150,cinco,2026-12-01,Zapopan,
+L1-001, Anubis figura,Artesanía,350,5,2026-12-02,,Efectivo
+N1-004,David plateado, Artesanía,450,12,2026-12-17,Tonalá,Efectivo
+G1-002,cabeza dragon,Artesanía,499,2,2026-12-10,Tonalá,Tarjeta
+Z1-001,Guerrero Jaguar,Artesanía,650,2,2026-02-14,Guadalajara,Tarjeta
+Z1-002,Guerrero Águila,Artesanía,680,3,2026-03-21,Tonalá,Efectivo
+Z1-003,Calendario Azteca,Artesanía,920,1,2026-04-09,Zapopan,Transferencia
+Z1-004,Quetzalcóatl,Artesanía,780,4,2026-05-16,Tlaquepaque,Mercado Pago
+Z1-005,Xólotl,Artesanía,610,2,2026-06-18,Guadalajara,PayPal
+Z1-006,Tláloc,Artesanía,540,5,2026-08-03,Tonalá,Efectivo
+Z1-007,Coatlicue,Artesanía,870,1,2026-09-05,Zapopan,Tarjeta
+Z1-008,Mictlantecuhtli,Artesanía,990,2,2026-10-10,Tlaquepaque,Transferencia
+Z1-009,Coyolxauhqui,Artesanía,760,3,2026-11-11,Guadalajara,Mercado Pago
+Z1-010,Piedra del Sol,Artesanía,1100,1,2026-12-20,Tonalá,PayPal
+BAD-001,Figura123,Artesanía,300,2,2026-03-03,Guadalajara,Efectivo
+BAD-002,Figura válida,Arte99,300,2,2026-04-04,Tonalá,Tarjeta
+BAD-003,Figura válida,Artesanía,3O0,2,2026-05-05,Zapopan,Transferencia
+BAD-004,Figura válida,Artesanía,300,2x,2026-06-06,Tlaquepaque,PayPal
+BAD-005,Figura válida,Artesanía,300,2,2026/07/07,Guadalajara,Mercado Pago
+BAD-006,,,,,31-02-2026,,
+BAD-007,  Buda pequeño  , Artesanía , 225 , 3 ,2026-08-08,Tonalá,Efectivo
+BAD-008,León@Casa,Artesanía,450,4,2026-09-09,Zapopan,Tarjeta
+BAD-009,Ángel bello,Artesanía!,500,1,2026-10-10,Guadalajara,Transferencia
+BAD-010,Florero triple,Cerámica,-250,2,2026-11-11,Tonalá,PayPal
+FUT-001,Busto Romano,Artesanía,480,2,2026-10-25,Guadalajara,Tarjeta
+FUT-002,León Imperial,Artesanía,790,1,2026-11-20,Tonalá,Transferencia
+FUT-003,Ángel Dorado,Artesanía,620,3,2026-12-15,Zapopan,Efectivo

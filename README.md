@@ -1,6 +1,6 @@
 # Sales Report
 
-> **Project Status:** Version 2.0 completed - Functional desktop application with PySide6. This project has been manually tested with a sample sales CSV file.
+> **Project Status:** Version 3.0.2 completed - Functional desktop application with PySide6. This project has been manually tested with a sample sales CSV file.
 
 Sales Report is a modular Python application for validating sales data, analyzing valid records, generating structured reports, and exporting analysis results in multiple formats.
 
@@ -545,16 +545,27 @@ The moudle also supports optional fields, such as `ciudad` and `metodo_pago`, wi
 
 #### File Validation Process
 
-The `validate_csv_file()` function performs the following checks:
+The `validate_csv_file()` function validates the physical source file before the CSV reading stage.
+
+It performs the following checks:
 
 1. Verifies that the provided path is not `None` or empty.
 2. Converts the string path into a `Path` object.
 3. Confirms that the path exists in the file system.
-4. Ensures that the path points to a file rather than a directory.
+4. Ensures that the path points to a regular file rather than a directory.
 5. Validates that the file has a `.csv` extension.
-6. Ensures that the file is not empty.
-7. Confirms that the file can be read.
+6. Ensures that the file is not empty by checking its file size.
+7. Verifies that the file can be opened and read.
 8. Returns the validated `Path` object.
+
+File readability is checked by opening the file in binary mode and reading a single byte.
+
+This step only verifies that the file is physically accessible. It does not parse the CSV structure or decode the file contents.
+
+CSV decoding, parsing, and conversion into a pandas `DataFrame` are handled later by the CSV reading module.
+
+If the file cannot be opened or read because of a file-system error, the original `OSError` is converted into `FileReadError`.
+
 
 #### Data Normalization Process
 
@@ -688,254 +699,518 @@ The module may raise the following custom exceptions:
 
 ### CSV Reading Module
 
-The CSV reading module converts a previously validated CSV file into a pandas `DataFrame`.
+The CSV reading module reads a previously validated CSV file and converts its contents into a pandas `DataFrame` for subsequent validation and analysis.
 
-Its main function, `read_csv_file()`, receives a `Path` object, reads the CSV file using pandas, and returns the raw data in a tabular structure ready for validation and processing.
+Its main function, `read_csv_file()`, receives a validated `Path` object and reads the source file using `pandas.read_csv()` with UTF-8 encoding.
 
-All columns are initially read as strings, and empty cells are preserved as empty strings. This prevents automatic data type conversion and allows the validation module to inspect the original values consistently.
+All columns are loaded as strings, and empty cells are preserved as empty strings instead of being automatically converted into missing values.
 
-#### Reading Process
+This keeps the original CSV values available for consistent validation by later application modules.
+
+#### CSV Reading Process
+
+The `read_csv_file()` function performs the following operations:
 
 1. Receives a previously validated `Path` object.
 2. Reads the CSV file using `pandas.read_csv()`.
-3. Loads all column values as strings.
-4. Preserves empty cells as empty strings instead of converting them into `NaN` values.
-5. Converts the file contents into a pandas `DataFrame`.
-6. Returns the raw `DataFrame` for the next stage of the application workflow.
-7. Converts file-reading, empty-data, and CSV-parsing failures into a custom `FileReadError`.
+3. Uses UTF-8 encoding.
+4. Loads all columns as strings through `dtype=str`.
+5. Preserves empty cells through `keep_default_na=False`.
+6. Converts the CSV contents into a pandas `DataFrame`.
+7. Returns the raw `DataFrame` for the validation stage.
+8. Converts supported file-reading, empty-data, and CSV-parsing failures into the custom `FileReadError` exception.
+
+#### pandas Reading Configuration
+
+The CSV file is read using the following configuration:
+
+```python
+pd.read_csv(
+    file_path,
+    dtype=str,
+    keep_default_na=False,
+    encoding="utf-8"
+)
+```
+
+The configuration is intentionally designed to preserve raw input values before validation.
+
+* `dtype=str`: Loads all columns as strings and prevents automatic numeric or date conversion.
+* `keep_default_na=False`: Preserves empty CSV cells as empty strings instead of converting them into `NaN`.
+* `encoding="utf-8"`: Reads the source file using UTF-8 encoding.
+
+This behavior allows the validation module to inspect and normalize the source values consistently.
 
 #### Input and Output
 
-- **Input:** A validated `Path` object pointing to the CSV file.
-- **Output:** A pandas `DataFrame` containing the raw CSV data as strings, with empty cells preserved for validation.
+##### `read_csv_file()`
 
-#### Related Exceptions
+* **Input:** A validated `Path` object pointing to the source CSV file.
+* **Output:** A pandas `DataFrame` containing the raw CSV data with all columns loaded as strings and empty cells preserved.
 
-- `FileReadError`
+#### Error Handling
+
+The function converts the following exceptions into:
+
+`FileReadError`
+
+Handled exceptions include:
+
+* `OSError`: File-system or file-reading failure.
+* `pandas.errors.EmptyDataError`: The CSV file contains no readable data.
+* `pandas.errors.ParserError`: pandas cannot parse the CSV structure correctly.
+
+The original exception is preserved through exception chaining when `FileReadError` is raised.
+
+#### Workflow Relationship
+
+The CSV reading module operates after source-file validation and before DataFrame validation.
+
+The relationship can be represented as:
+
+`validator.validate_csv_file()`
+
+→ `csv_reader.read_csv_file()`
+
+→ raw pandas `DataFrame`
+
+→ `validator.validate_dataframe()`
+
+The module is responsible only for reading the validated CSV file and converting it into the raw DataFrame expected by the validation workflow.
+
+#### Related Exception
+
+* `FileReadError`
 
 ---
 
 ### Sales Analysis Module
 
-The sales analysis module processes previously validated sales records and calculates the main metrics required for report generation.
+The sales analysis module processes previously validated sales records and calculates the main metrics and aggregated summaries required for report generation and file export.
 
-Each analysis operation is implemented in a separate helper function. This modular structure makes the analysis workflow easier to maintain, test, and extend without modifying the entire module.
+Each analysis operation is implemented in an independent helper function. This modular structure keeps the analysis workflow easier to maintain, test, understand, and extend without modifying the complete analysis process.
+
+The module calculates general sales metrics, product and category summaries, monthly sales summaries, Top 5 product rankings, maximum-value records, and optional city and payment-method analyses.
 
 The module currently provides the following functions:
 
-- `create_income_column()`
-- `get_total_income()`
-- `get_total_units_sold()`
-- `get_product_summary()`
-- `get_category_summary()`
-- `get_records_with_max_value()`
-- `analyze_sales()`
-- `get_city_summary()`
-- `get_top_5_best_selling_products()`
-- `get_top_5_highest_income_products()`
-- `get_payment_method_summary()`
+* `create_income_column()`
+* `get_total_income()`
+* `get_total_units_sold()`
+* `get_product_summary()`
+* `get_category_summary()`
+* `get_city_summary()`
+* `get_payment_method_summary()`
+* `get_records_with_max_value()`
+* `get_top_5_best_selling_products()`
+* `get_top_5_highest_income_products()`
+* `get_monthly_summary()`
+* `analyze_sales()`
 
 #### Income Calculation
 
 The `create_income_column()` function calculates the income generated by each valid sales record.
 
-It multiplies `precio` by `cantidad` and stores the result in a new `ingreso_fila` column.
+It multiplies:
+
+`precio`
+
+by:
+
+`cantidad`
+
+and stores the result in:
+
+`ingreso_fila`
+
+The provided DataFrame is modified directly and returned with the calculated column.
 
 #### General Sales Metrics
 
 The module calculates the following general metrics:
 
-- `get_total_income()`: Adds all values from the `ingreso_fila` column.
-- `get_total_units_sold()`: Adds all values from the `cantidad` column.
+* `get_total_income()`: Adds all values from the `ingreso_fila` column and returns the result as a standard Python `float`.
+* `get_total_units_sold()`: Adds all values from the `cantidad` column and returns the result as a standard Python `int`.
 
-These functions return standard Python numeric values ready to be included in the final analysis result.
+These values are later stored in the complete analysis result.
 
 #### Product Summary
 
-The `get_product_summary()` function groups valid sales records by `producto_id`.
+The `get_product_summary()` function groups valid sales records by:
 
-For each product, it preserves the first associated product name and category and calculates the total units sold and total income.
+`producto_id`
 
-The product summary contains the following fields:
+For each product, it preserves the first associated:
 
-- `producto_id`
-- `producto`
-- `categoria`
-- `unidades_vendidas`
-- `ingreso_total`
+* Product name.
+* Product category.
+
+It also calculates:
+
+* Total units sold.
+* Total income generated.
+
+The resulting DataFrame contains:
+
+* `producto_id`
+* `producto`
+* `categoria`
+* `unidades_vendidas`
+* `ingreso_total`
 
 #### Category Summary
 
-The `get_category_summary()` function groups valid sales records by `categoria` and calculates the total units sold and total income for each category.
+The `get_category_summary()` function groups valid sales records by:
 
-The category summary contains the following fields:
+`categoria`
 
-- `categoria`
-- `unidades_vendidas`
-- `ingreso_total`
+For each category, it calculates:
+
+* Total units sold.
+* Total income generated.
+
+The resulting DataFrame contains:
+
+* `categoria`
+* `unidades_vendidas`
+* `ingreso_total`
+
+#### Monthly Summary
+
+The `get_monthly_summary()` function creates an aggregated sales summary grouped by month.
+
+The `fecha` column is converted into the following format:
+
+`YYYY-MM`
+
+Sales records are then grouped by month.
+
+For each month, the function calculates:
+
+* Number of valid sales rows.
+* Total units sold.
+* Total income generated.
+
+The resulting DataFrame contains:
+
+* `mes`: Month represented in `YYYY-MM` format.
+* `filas_validas`: Number of valid sales records for the month.
+* `unidades_vendidas`: Total units sold during the month.
+* `ingreso_total`: Total income generated during the month.
+
+The monthly summary is sorted chronologically from the earliest month to the latest month.
 
 #### City Summary
 
-The `get_city_summary()` function groups valid sales records by `ciudad` when the optional city column is available.
+The `get_city_summary()` function groups valid sales records by:
 
-It excludes empty city values and calculates the total units sold and total income for each city.
+`ciudad`
+
+when the optional city column is available.
+
+Records containing empty city values are excluded before aggregation.
+
+For each city, the function calculates:
+
+* Total units sold.
+* Total income generated.
+
+The resulting DataFrame contains:
+
+* `ciudad`
+* `unidades_vendidas`
+* `ingreso_total`
 
 The city summary is sorted from highest to lowest total income.
-
-The city summary contains following fields:
-
-- `ciudad`
-- `unidades_vendidas`
-- `ingreso_total`
 
 City analysis is optional and is only performed when the `ciudad` column is present.
 
 #### Payment Method Summary
 
-The `get_payment_method_summary()` function groups valid sales records by `metodo_pago` when the optional payment method column is available.
+The `get_payment_method_summary()` function groups valid sales records by:
 
-It excludes empty payment method values and calculates the total units sold and total income for each payment method.
+`metodo_pago`
 
-The payment method summary contains the following fields:
+when the optional payment-method column is available.
 
-- `metodo_pago`
-- `unidades_vendidas`
-- `ingreso_total`
+Records containing empty payment-method values are excluded before aggregation.
 
-Payment method analysis is optional and is only performed when the `metodo_pago` column is present.
+For each payment method, the function calculates:
+
+* Total units sold.
+* Total income generated.
+
+The resulting DataFrame contains:
+
+* `metodo_pago`
+* `unidades_vendidas`
+* `ingreso_total`
+
+The payment-method summary is sorted from highest to lowest total income.
+
+Payment-method analysis is optional and is only performed when the `metodo_pago` column is present.
 
 #### Maximum-Value Records
 
-The `get_records_with_max_value()` function identifies all records containing the maximum value in a specified column.
+The `get_records_with_max_value()` function identifies all records containing the maximum value in a specified numeric column.
+
+The function determines the maximum value and preserves every record tied for that value.
+
+The selected records are returned as a list of dictionaries.
 
 This reusable function is used to determine:
 
-- The product or products with the highest number of units sold.
-- The product or products with the highest total income.
-- The category or categories with the highest total income.
-- The city or cities with the highest total income when city data is available.
-- The payment method or payment methods with the highest total income when payment method data is available.
+* The product or products with the highest number of units sold.
+* The product or products with the highest total income.
+* The category or categories with the highest total income.
+* The city or cities with the highest total income when city data is available.
+* The payment method or payment methods with the highest total income when payment-method data is available.
 
-If multiple records share the maximum value, all tied records are included in the result.
+If multiple records share the maximum value, all tied records are included.
 
 #### Top Product Rankings
 
-The also generates Top 5 products rankings:
+The module generates two Top 5 product rankings.
 
-- `get_top_5_best_selling_products()`: Returns up to five products with the highest number of units sold. Total income is used as a secondary sorting criterion.
-- `get_top_5_highest_income_products()`: Returns up to five products with th highest total income.
+##### `get_top_5_best_selling_products()`
 
-Both functions return the selected products as lists of dictionaries.
+Sorts the product summary by:
+
+1. `unidades_vendidas` in descending order.
+2. `ingreso_total` in descending order as a secondary criterion.
+
+The function returns up to five products as a list of dictionaries.
+
+##### `get_top_5_highest_income_products()`
+
+Sorts the product summary by:
+
+`ingreso_total`
+
+in descending order and returns up to five products.
+
+The result is returned as a list of dictionaries.
 
 #### Sales Analysis Process
 
-The `analyze_sales()` function coordinates the complete analysis workflow.
+The `analyze_sales()` function coordinates the complete sales-analysis workflow.
 
 It performs the following operations:
 
-1. Extracts the valid sales rows and validation totals.
-2. Creates a copy of the valid sales `DataFrame`.
+1. Extracts valid sales rows and validation totals.
+2. Creates a copy of the valid sales DataFrame.
 3. Verifies that at least one valid row is available.
 4. Creates the `ingreso_fila` column.
-5. Calculates the total income generated by valid sales.
-6. Calculates the total number of units sold.
+5. Calculates total income.
+6. Calculates total units sold.
 7. Creates the product summary.
 8. Creates the category summary.
-9. Identifies the best-selling product or products.
-10. Identifies the product or products with the highest income.
-11. Identifies the category or categories with the highest income.
-12. Creates the Top 5 best-selling products ranking.
-13. Cretaes the Top 5 highest-income products ranking.
-14. If the optional `ciudad` column is present, creates the city summary.
-15. Identifies the city or cities with th highest income then city data is available.
-16. If the optional `metodo_pago` column is present, creates the payment method summary.
-17. Identifies the payment method or payment methods with the highest income when payment method data is available.
-18. Returns the complete analysis result.
+9. Creates the monthly summary.
+10. Identifies the best-selling product or products.
+11. Identifies the product or products with the highest income.
+12. Identifies the category or categories with the highest income.
+13. Creates the Top 5 best-selling products ranking.
+14. Creates the Top 5 highest-income products ranking.
+15. Creates the city summary when the optional `ciudad` column is available.
+16. Identifies the city or cities with the highest income when city analysis is available.
+17. Creates the payment-method summary when the optional `metodo_pago` column is available.
+18. Identifies the payment method or methods with the highest income when payment-method analysis is available.
+19. Returns the complete analysis result.
 
 #### Analysis Result
 
-The `analyze_sales()` function returns a dictionary containing:
+The `analyze_sales()` function returns a dictionary containing the complete sales-analysis result.
 
-- `total_rows`: The total number of processed sales records.
-- `total_valid_rows`: The number of records that passed validation.
-- `total_invalid_rows`: The number of records containing validation errors.
-- `total_income`: The total income generated by valid sales.
-- `total_units_sold`: The total number of units sold.
-- `product_summary`: A pandas `DataFrame` containing aggregated results for each product.
-- `category_summary`: A pandas `DataFrame` containing aggregated results for each category.
-- `best_selling_product`: A list containing the product or products with the highest number of units sold.
-- `highest_income_product`: A list containing the product or products with the highest total income.
-- `highest_income_category`: A list containing the category or categories with the highest total income.
-- `top_5_best_selling_products`: A list containing up to five products with the highest number of units sold.
-- `top_5_highest_income_products`: A list containing up to five products with the highest total income.
+The following entries are always included:
 
-When the optional `ciudad` column is present, the analysis result also contains:
+* `total_rows`: Total number of processed sales records.
+* `total_valid_rows`: Number of records that passed validation.
+* `total_invalid_rows`: Number of records containing validation errors.
+* `total_income`: Total income generated by valid sales.
+* `total_units_sold`: Total number of units sold.
+* `product_summary`: pandas `DataFrame` containing aggregated product results.
+* `category_summary`: pandas `DataFrame` containing aggregated category results.
+* `monthly_summary`: pandas `DataFrame` containing aggregated monthly sales results.
+* `best_selling_product`: List containing the product or products tied for the highest number of units sold.
+* `highest_income_product`: List containing the product or products tied for the highest total income.
+* `highest_income_category`: List containing the category or categories tied for the highest total income.
+* `top_5_best_selling_products`: List containing up to five products with the highest number of units sold.
+* `top_5_highest_income_products`: List containing up to five products with the highest total income.
 
-- `city_summary`: A pandas `DataFrame` containing aggregated results for each city.
-- `highest_income_city`: A list containing the city or cities with the highest total income.
+When the optional `ciudad` column is present, the result also contains:
 
-When the optional `metodo_pago` column is present, the analysis result also contains:
+* `city_summary`: pandas `DataFrame` containing aggregated city results.
+* `highest_income_city`: List containing the city or cities tied for the highest total income.
 
-- `payment_method_summary`: A pandas `DataFrame` containing aggregated results for each payment method.
-- `highest_income_payment_method`: A list containing the payment method or payment methods with the highes total income.
+When the optional `metodo_pago` column is present, the result also contains:
+
+* `payment_method_summary`: pandas `DataFrame` containing aggregated payment-method results.
+* `highest_income_payment_method`: List containing the payment method or methods tied for the highest total income.
+
+#### Monthly Analysis Result
+
+The `monthly_summary` DataFrame follows this structure:
+
+```text
+mes | filas_validas | unidades_vendidas | ingreso_total
+```
+
+For example:
+
+```text
+2026-07 | 25 | 84 | 15420.50
+2026-08 | 31 | 102 | 18750.00
+2026-09 | 18 | 56 | 9320.75
+```
+
+This structure allows other application modules to use monthly information for reporting, spreadsheet export, or future visual analysis.
+
+#### Optional Analysis
+
+City and payment-method analyses depend on the presence of their corresponding optional columns.
+
+If `ciudad` exists:
+
+`analyze_sales()` adds:
+
+* `city_summary`
+* `highest_income_city`
+
+If `metodo_pago` exists:
+
+`analyze_sales()` adds:
+
+* `payment_method_summary`
+* `highest_income_payment_method`
+
+The remaining core analysis results, including `monthly_summary`, are generated independently of these optional fields.
 
 #### Input and Output
 
-##### Analysis Helper Functions
+##### `create_income_column()`
 
-- **Input:** A pandas `DataFrame` containing valid sales records or aggregated sales information and, when required, the name of the column to evaluate.
-- **Output:** A calculated value, and aggregated `DataFrame`, a list of records containing a maximum value, or a Top 5 product ranking.
+* **Input:** Valid sales DataFrame containing numeric `precio` and `cantidad`.
+* **Output:** The same DataFrame with `ingreso_fila` added.
+
+##### `get_total_income()`
+
+* **Input:** DataFrame containing `ingreso_fila`.
+* **Output:** Total sales income as a Python `float`.
+
+##### `get_total_units_sold()`
+
+* **Input:** DataFrame containing `cantidad`.
+* **Output:** Total units sold as a Python `int`.
+
+##### `get_product_summary()`
+
+* **Input:** Valid sales DataFrame containing `ingreso_fila`.
+* **Output:** Product-summary DataFrame.
+
+##### `get_category_summary()`
+
+* **Input:** Valid sales DataFrame containing `ingreso_fila`.
+* **Output:** Category-summary DataFrame.
+
+##### `get_monthly_summary()`
+
+* **Input:** Valid sales DataFrame containing a datetime `fecha` column and `ingreso_fila`.
+* **Output:** Monthly-summary DataFrame containing `mes`, `filas_validas`, `unidades_vendidas`, and `ingreso_total`.
+
+##### `get_city_summary()`
+
+* **Input:** Valid sales DataFrame containing `ciudad` and `ingreso_fila`.
+* **Output:** City-summary DataFrame.
+
+##### `get_payment_method_summary()`
+
+* **Input:** Valid sales DataFrame containing `metodo_pago` and `ingreso_fila`.
+* **Output:** Payment-method-summary DataFrame.
+
+##### `get_records_with_max_value()`
+
+* **Input:** DataFrame and numeric column name.
+* **Output:** List of dictionaries containing all records tied for the maximum value.
+
+##### `get_top_5_best_selling_products()`
+
+* **Input:** Product-summary DataFrame.
+* **Output:** List containing up to five best-selling products.
+
+##### `get_top_5_highest_income_products()`
+
+* **Input:** Product-summary DataFrame.
+* **Output:** List containing up to five highest-income products.
 
 ##### `analyze_sales()`
 
-- **Input:** A dictionary containing valid sales rows and validation totals.
-- **Output:** A dictionary containing general sales metrics, product summries, category summaries, Top 5 product rankings, highest-performing records, and optional ciy and payment method analysis result.
+* **Input:** Dictionary containing validated sales rows and validation totals.
+* **Output:** Dictionary containing general sales metrics, product, category, and monthly summaries, Top 5 rankings, highest-performing records, and optional city and payment-method analysis.
 
-#### Related Exceptions
+#### Error Handling
 
-- `NoValidRowsError`
+The analysis workflow verifies that valid sales records are available before calculating metrics.
+
+If the validated DataFrame contains no valid rows:
+
+`NoValidRowsError`
+
+is raised.
+
+This prevents the remaining analysis operations from being performed on an empty sales dataset.
+
+#### Related Exception
+
+* `NoValidRowsError`
 
 ---
 
 ### Sales Report Generation Module
 
-The sales report generation module converts sales analysis results, validation errors, and warnings into a structured plain-text report.
+The sales report generation module converts sales analysis results, validation errors, and warnings into a structured plain-text sales report.
 
-Each report section is generated by an independent helper function. This modular structure makes the reporting workflow easier to maintain, test, modify, and extend.
+Each report section is generated by an independent helper function. This modular structure keeps the reporting workflow easier to maintain, test, modify, and extend.
 
-The report can also include Top 5 product rankings and optional city-based and payment-method-based information when these data are available.
+The generated report includes general sales metrics, highest-performing records, Top 5 product rankings, product, category, and monthly summaries, validation errors, and validation warnings.
+
+Optional city-based and payment-method-based sections are also included when the corresponding analysis information is available.
 
 The module currently provides the following functions:
 
-- `get_general_summary()`
-- `get_best_selling_product()`
-- `get_highest_income_product()`
-- `get_highest_income_category()`
-- `get_product_summary()`
-- `get_category_summary()`
-- `get_errors()`
-- `get_warnings()`
-- `generate_report()`
-- `get_highest_income_city()`
-- `get_top_5_best_selling_products()`
-- `get_top_5_highest_income_products()`
-- `get_city_summary()`
-- `get_highest_income_payment_method()`
-- `get_payment_method_summary()`
+* `get_general_summary()`
+* `get_best_selling_product()`
+* `get_highest_income_product()`
+* `get_highest_income_category()`
+* `get_highest_income_city()`
+* `get_highest_income_payment_method()`
+* `get_top_5_best_selling_products()`
+* `get_top_5_highest_income_products()`
+* `get_product_summary()`
+* `get_category_summary()`
+* `get_city_summary()`
+* `get_payment_method_summary()`
+* `get_monthly_summary()`
+* `get_errors()`
+* `get_warnings()`
+* `generate_report()`
 
 #### General Summary
 
-The `get_general_summary()` function generates the main sales metrics section.
+The `get_general_summary()` function generates the main sales-metrics section.
 
 It includes:
 
-- Total processed rows.
-- Total valid rows.
-- Total invalid rows.
-- Total income.
-- Total units sold.
+* Total processed rows.
+* Total valid rows.
+* Total invalid rows.
+* Total income.
+* Total units sold.
 
 The total income is formatted with thousands separators and two decimal places.
+
+The generated section begins with:
+
+`RESUMEN GENERAL`
 
 #### Best-Selling Product
 
@@ -943,11 +1218,15 @@ The `get_best_selling_product()` function formats the product or products with t
 
 For each product, the section includes:
 
-- `producto_id`
-- `producto`
-- `unidades_vendidas`
+* `producto_id`
+* `producto`
+* `unidades_vendidas`
 
 If multiple products share the highest number of units sold, all tied products are included.
+
+The generated section begins with:
+
+`PRODUCTO MÁS VENDIDO`
 
 #### Highest-Income Product
 
@@ -955,11 +1234,17 @@ The `get_highest_income_product()` function formats the product or products that
 
 For each product, the section includes:
 
-- `producto_id`
-- `producto`
-- `ingreso_total`
+* `producto_id`
+* `producto`
+* `ingreso_total`
+
+The income value is formatted as currency.
 
 If multiple products share the highest income, all tied products are included.
+
+The generated section begins with:
+
+`PRODUCTO CON MAYOR INGRESO`
 
 #### Highest-Income Category
 
@@ -967,24 +1252,34 @@ The `get_highest_income_category()` function formats the category or categories 
 
 For each category, the section includes:
 
-- `categoria`
-- `ingreso_total`
+* `categoria`
+* `ingreso_total`
+
+The income value is formatted as currency.
 
 If multiple categories share the highest income, all tied categories are included.
 
+The generated section begins with:
+
+`CATEGORÍA CON MAYOR INGRESO`
+
 #### Highest-Income City
 
-The `get_highest_income_city()` function fromats the city or cities that generated the highest total income.
+The `get_highest_income_city()` function formats the city or cities that generated the highest total income.
 
 For each city, the section includes:
 
-- `ciudad`
-- `ingreso_total`
-- `unidades_vendidas`
+* `ciudad`
+* `ingreso_total`
+* `unidades_vendidas`
 
-If multiple citites share the highest income, all tied cities, are included. 
+If multiple cities share the highest income, all tied cities are included.
 
-This section is only generated when city analysis is available.
+This section is generated only when city analysis is available.
+
+The generated section begins with:
+
+`CIUDAD CON MAYOR INGRESO`
 
 #### Highest-Income Payment Method
 
@@ -992,60 +1287,160 @@ The `get_highest_income_payment_method()` function formats the payment method or
 
 For each payment method, the section includes:
 
-- `metodo_pago`
-- `ingreso_total`
-- `unidades_vendidas`
+* `metodo_pago`
+* `ingreso_total`
+* `unidades_vendidas`
 
 If multiple payment methods share the highest income, all tied payment methods are included.
 
-This section is only generated when payment method analysis is available.
+This section is generated only when payment-method analysis is available.
+
+The generated section begins with:
+
+`MÉTODO DE PAGO CON MAYOR INGRESO`
 
 #### Top Product Rankings
 
-The module generates two Top 5 product ranking sections:
+The module generates two Top 5 product-ranking sections.
 
-- `get_top_5_best_selling_products()`: Formats up to five products with the higest number of units sold.
-- `get_top_5_highest_income_products()`: Formats up to five products with the highest total income.
+##### `get_top_5_best_selling_products()`
 
-Each ranking includes the product position, identifier, name, units sold, and total income.
+Formats up to five products with the highest number of units sold.
 
-#### Product, Category, City and Payment Method Summaries
+Each ranking entry includes:
 
-The module converts the aggregated pandas `DataFrame` objects into plain-text tables.
+* Ranking position.
+* `producto_id`
+* `producto`
+* `unidades_vendidas`
+* `ingreso_total`
 
-- `get_product_summary()`: Generates the complete product summary table.
-- `get_category_summary()`: Generates the complete category summary table.
-- `get_city_summary()`: Generates the complete city summary table when city data is available.
-- `get_payment_method_summary()`: Generates the complete payment method summary table when payment method data is available.
+The generated section begins with:
 
-The `ingreso_total` values are formmated as corruncy before the summaries are converted into plain-text tables.
+`TOP 5 PRODUCTOS MÁS VENDIDOS`
 
-The city summary is optional and is only included when `city_summary` is available in the analysis result.
+##### `get_top_5_highest_income_products()`
 
-The payment method summary is optional and is only included when `payment_method_summary` is available in the analysis result.
+Formats up to five products with the highest total income.
 
-The pandas indexes are excluded from the generated tables.
+Each ranking entry includes:
+
+* Ranking position.
+* `producto_id`
+* `producto`
+* `ingreso_total`
+* `unidades_vendidas`
+
+The generated section begins with:
+
+`TOP 5 PRODUCTOS CON MAYOR INGRESO`
+
+#### Product Summary
+
+The `get_product_summary()` function converts the aggregated `product_summary` DataFrame into a plain-text table.
+
+Before conversion, a copy of the DataFrame is created so that display formatting does not modify the original analysis result.
+
+The `ingreso_total` column is formatted as currency.
+
+The pandas index is excluded from the generated table.
+
+The generated section begins with:
+
+`RESUMEN POR PRODUCTO`
+
+#### Category Summary
+
+The `get_category_summary()` function converts the aggregated `category_summary` DataFrame into a plain-text table.
+
+A display copy of the DataFrame is created and the `ingreso_total` column is formatted as currency.
+
+The pandas index is excluded.
+
+The generated section begins with:
+
+`RESUMEN POR CATEGORÍA`
+
+#### City Summary
+
+The `get_city_summary()` function converts the optional `city_summary` DataFrame into a plain-text table.
+
+A display copy is created and `ingreso_total` values are formatted as currency.
+
+The city summary is included only when `city_summary` is available in the analysis result.
+
+The pandas index is excluded.
+
+The generated section begins with:
+
+`RESUMEN POR CIUDAD`
+
+#### Payment-Method Summary
+
+The `get_payment_method_summary()` function converts the optional `payment_method_summary` DataFrame into a plain-text table.
+
+A display copy is created and `ingreso_total` values are formatted as currency.
+
+The payment-method summary is included only when `payment_method_summary` is available in the analysis result.
+
+The pandas index is excluded.
+
+The generated section begins with:
+
+`RESUMEN POR MÉTODO DE PAGO`
+
+#### Monthly Summary
+
+The `get_monthly_summary()` function converts the `monthly_summary` DataFrame into a plain-text table.
+
+A display copy of the DataFrame is created before formatting.
+
+The `ingreso_total` column is formatted as currency before the DataFrame is converted into plain text.
+
+The monthly summary contains the aggregated monthly analysis produced by the sales-analysis module, including:
+
+* `mes`
+* `filas_validas`
+* `unidades_vendidas`
+* `ingreso_total`
+
+The pandas index is excluded from the generated table.
+
+The generated section begins with:
+
+`RESUMEN POR MES`
+
+Unlike city and payment-method summaries, the monthly summary is part of the standard report-generation workflow.
 
 #### Validation Errors
 
-The `get_errors()` function generates the validation errors section.
+The `get_errors()` function generates the validation-errors section.
 
 It performs the following operations:
 
-1. Sorts errors by CSV line number.
-2. Includes the affected column.
-3. Includes the error type.
-4. Includes the descriptive error message.
-5. Includes the original value when one is available.
-6. Indicates when no validation errors were found.
+1. Adds the validation-errors section title.
+2. Detects when no validation errors are available.
+3. Sorts errors by CSV line number.
+4. Includes the affected column.
+5. Includes the error type.
+6. Includes the descriptive error message.
+7. Includes the original value when one is available.
 
 Each validation error may contain:
 
-- `line_number`
-- `column`
-- `error_type`
-- `message`
-- `original_value`
+* `line_number`
+* `column`
+* `error_type`
+* `message`
+* `original_value`
+
+When no errors are available, the report indicates:
+
+`No se encontraron errores de validación.`
+
+The generated section begins with:
+
+`ERRORES DE VALIDACIÓN`
 
 #### Validation Warnings
 
@@ -1053,78 +1448,242 @@ The `get_warnings()` function generates the non-critical warnings section.
 
 It performs the following operations:
 
-1. Sorts warnings by the affected product identifier.
-2. Includes the warning type.
-3. Includes the warning message.
-4. Includes the inconsistent values detected.
-5. Indicates when no warnings were found.
+1. Adds the warning section title.
+2. Detects when no warnings are available.
+3. Sorts warnings by `affected_value`.
+4. Includes the affected value.
+5. Includes the warning type.
+6. Includes the warning message.
+7. Includes the warning details.
 
 Each warning may contain:
 
-- `affected_value`
-- `warning_type`
-- `message`
-- `details`
+* `affected_value`
+* `warning_type`
+* `message`
+* `details`
 
-Warnings are included in the report without invalidating the affected sales records.
+When `details` contains multiple values, they are joined into comma-separated text for display.
+
+When no warnings are available, the report indicates:
+
+`No se encontraron advertencias.`
+
+Warnings are included without automatically invalidating the corresponding sales records.
+
+The generated section begins with:
+
+`ADVERTENCIAS`
+
+#### Report Header
+
+The `generate_report()` function begins the report with:
+
+`REPORTE DE VENTAS`
+
+The report header also includes:
+
+* The original source CSV filename.
+* The report generation date.
+
+The source filename is obtained from:
+
+`source_filename.name`
+
+The generation date is obtained using:
+
+`date.today()`
 
 #### Report Generation Process
 
-The `generate_report()` function coordinates the complete report generation workflow.
+The `generate_report()` function coordinates the complete plain-text report-generation workflow.
 
 It performs the following operations:
 
-1. Creates the sales report title.
-2. Includes the source CSV filename.
-3. Includes the report generation date.
+1. Creates the `REPORTE DE VENTAS` title.
+2. Adds the source CSV filename.
+3. Adds the report generation date.
 4. Adds the general sales summary.
 5. Adds the best-selling product section.
 6. Adds the highest-income product section.
 7. Adds the highest-income category section.
-8. Adds the highest-income city section when city data is available.
-9. Adds the highest-income payment method section when payment method data is available-
+8. Adds the highest-income city section when city analysis is available.
+9. Adds the highest-income payment-method section when payment-method analysis is available.
 10. Adds the Top 5 best-selling products section.
 11. Adds the Top 5 highest-income products section.
 12. Adds the complete product summary.
 13. Adds the complete category summary.
-14. Add the complete city summary when city data is available.
-15. Adds the complete payment method summary when payment method data is available.
-16. Adds the validation errors sections.
-17. Adds the validation warnings section.
-18. Combines all sections into a sinble plain-text report.
+14. Adds the complete city summary when city analysis is available.
+15. Adds the complete payment-method summary when payment-method analysis is available.
+16. Adds the monthly sales summary.
+17. Adds the validation-errors section.
+18. Adds the validation-warnings section.
+19. Combines all generated sections into a single plain-text report.
+
+#### Optional Report Sections
+
+City and payment-method sections depend on optional analysis results.
+
+When `highest_income_city` is available, the report includes:
+
+`CIUDAD CON MAYOR INGRESO`
+
+When `city_summary` is available, the report includes:
+
+`RESUMEN POR CIUDAD`
+
+When `highest_income_payment_method` is available, the report includes:
+
+`MÉTODO DE PAGO CON MAYOR INGRESO`
+
+When `payment_method_summary` is available, the report includes:
+
+`RESUMEN POR MÉTODO DE PAGO`
+
+These sections are omitted when their corresponding analysis results are unavailable.
 
 #### Report Structure
 
-The generated report contains the following sections:
+The complete report follows this general order:
 
-1. `SALES REPORT`
-2. Source file and generation date.
-3. `GENERAL SUMMARY`
-4. `BEST SELLING PRODUCT`
-5. `HIGHEST INCOME PRODUCT`
-6. `HIGHEST INCOME CATEGORY`
-7. `HIGHEST INCOME CITY` when city data is available.
-8. `HIGHEST INCOME PAYMENT METHOD` when payment method data is available.
-9. `TOP 5 BEST SELLING PRODUCTS`
-10. `TOP 5 HIGHEST INCOME PRODUCTS`
-11. `PRODUCT SUMMARY`
-12. `CATEGORY SUMMARY`
-13. `CITY SUMMARY` when city data is available.
-14. `PAYMENT METHOD SUMMARY`when payment method data is available.
-15. `VALIDATIONS ERRORS`
-16. `WARNINGS`
+1. `REPORTE DE VENTAS`
+2. Source filename and generation date.
+3. `RESUMEN GENERAL`
+4. `PRODUCTO MÁS VENDIDO`
+5. `PRODUCTO CON MAYOR INGRESO`
+6. `CATEGORÍA CON MAYOR INGRESO`
+7. `CIUDAD CON MAYOR INGRESO` when city analysis is available.
+8. `MÉTODO DE PAGO CON MAYOR INGRESO` when payment-method analysis is available.
+9. `TOP 5 PRODUCTOS MÁS VENDIDOS`
+10. `TOP 5 PRODUCTOS CON MAYOR INGRESO`
+11. `RESUMEN POR PRODUCTO`
+12. `RESUMEN POR CATEGORÍA`
+13. `RESUMEN POR CIUDAD` when city analysis is available.
+14. `RESUMEN POR MÉTODO DE PAGO` when payment-method analysis is available.
+15. `RESUMEN POR MES`
+16. `ERRORES DE VALIDACIÓN`
+17. `ADVERTENCIAS`
+
+#### Display Formatting
+
+The reporter does not modify the original analysis DataFrames when preparing summary tables for display.
+
+For product, category, city, payment-method, and monthly summaries, a copy of the corresponding DataFrame is created.
+
+The `ingreso_total` column is then formatted using currency notation.
+
+For example:
+
+`$12,450.75`
+
+The resulting DataFrame is converted into plain text using:
+
+`DataFrame.to_string(index=False)`
+
+This preserves the tabular structure while excluding pandas indexes.
 
 #### Input and Output
 
 ##### Report Helper Functions
 
-- **Input:** Sales analyis results, including general metrics, rankings, product, category, city, and payment method summaries, validation errors, or validation warnings.
-- **Output:** A formatted string containing a specific report section.
+* **Input:** Sales-analysis results, rankings, summary DataFrames, validation errors, or validation warnings.
+* **Output:** A formatted string representing a specific plain-text report section.
+
+##### `get_general_summary()`
+
+* **Input:** Analysis-result dictionary.
+* **Output:** General sales metrics section.
+
+##### `get_best_selling_product()`
+
+* **Input:** Analysis-result dictionary.
+* **Output:** Best-selling product section.
+
+##### `get_highest_income_product()`
+
+* **Input:** Analysis-result dictionary.
+* **Output:** Highest-income product section.
+
+##### `get_highest_income_category()`
+
+* **Input:** Analysis-result dictionary.
+* **Output:** Highest-income category section.
+
+##### `get_highest_income_city()`
+
+* **Input:** Analysis-result dictionary containing city analysis.
+* **Output:** Highest-income city section.
+
+##### `get_highest_income_payment_method()`
+
+* **Input:** Analysis-result dictionary containing payment-method analysis.
+* **Output:** Highest-income payment-method section.
+
+##### `get_top_5_best_selling_products()`
+
+* **Input:** Analysis-result dictionary.
+* **Output:** Top 5 best-selling products section.
+
+##### `get_top_5_highest_income_products()`
+
+* **Input:** Analysis-result dictionary.
+* **Output:** Top 5 highest-income products section.
+
+##### `get_product_summary()`
+
+* **Input:** Analysis-result dictionary containing `product_summary`.
+* **Output:** Formatted product-summary table.
+
+##### `get_category_summary()`
+
+* **Input:** Analysis-result dictionary containing `category_summary`.
+* **Output:** Formatted category-summary table.
+
+##### `get_city_summary()`
+
+* **Input:** Analysis-result dictionary containing `city_summary`.
+* **Output:** Formatted city-summary table.
+
+##### `get_payment_method_summary()`
+
+* **Input:** Analysis-result dictionary containing `payment_method_summary`.
+* **Output:** Formatted payment-method-summary table.
+
+##### `get_monthly_summary()`
+
+* **Input:** Analysis-result dictionary containing `monthly_summary`.
+* **Output:** Formatted monthly-summary table.
+
+##### `get_errors()`
+
+* **Input:** List containing validation-error dictionaries.
+* **Output:** Formatted validation-errors section.
+
+##### `get_warnings()`
+
+* **Input:** List containing validation-warning dictionaries.
+* **Output:** Formatted validation-warnings section.
 
 ##### `generate_report()`
 
-- **Input:** An analysis-result dictionary, a list of validation errors, a list of warnings, and the source CSV `Path`.
-- **Output:** A complete plain-text sales report ready to be displayed or saved.
+* **Input:** Analysis-result dictionary, validation-error list, validation-warning list, and source CSV `Path`.
+* **Output:** Complete plain-text sales report ready to be displayed or saved.
+
+#### Module Responsibility
+
+The report-generation module is responsible for presentation formatting only.
+
+It receives already calculated analysis results and converts them into human-readable text.
+
+It does not:
+
+* Validate the source CSV file.
+* Read the source CSV file.
+* Validate individual sales records.
+* Calculate sales metrics.
+* Save report files directly.
+
+Those responsibilities belong to the validation, reading, analysis, and file-management modules.
 
 ---
 
@@ -1132,7 +1691,9 @@ The generated report contains the following sections:
 
 The report file management module handles the storage and export of generated sales reports and structured analysis results.
 
-The module creates destination directories when necessary, generates a shared timestamp-based base filename, saves the human-readable report as TXT, exports the complete analysis as JSON, generates independent CSV analysis summaries, and creates a multi-sheet Excel workbook containing sales analysis and validation information.
+The module creates destination directories when necessary, generates a shared timestamp-based base filename, saves the human-readable report as TXT, exports the complete structured analysis as JSON, generates independent CSV analysis summaries, and creates a multi-sheet Excel workbook containing sales analysis and validation information.
+
+The exported analysis may include product, category, monthly, city, and payment-method summaries, together with general metrics, Top 5 product rankings, validation errors, and validation warnings.
 
 The module uses:
 
@@ -1156,13 +1717,14 @@ The module currently provides the following functions:
 * `build_sheet_top_income()`
 * `build_sheet_city_summary()`
 * `build_sheet_payment_method_summary()`
+* `build_sheet_monthly_summary()`
 * `build_sheet_validation_errors()`
 * `build_sheet_warnings()`
 * `save_report_xlsx()`
 
 #### Supported Output Formats
 
-The module currently supports four report-output formats:
+The module currently supports four output formats:
 
 * TXT
 * JSON
@@ -1202,7 +1764,7 @@ For example:
 
 `sales_report_2026-08-23_13-45-30-125`
 
-The same base filename can be reused by all supported output formats.
+The same base filename is reused across all supported output formats.
 
 For example:
 
@@ -1218,6 +1780,8 @@ CSV summaries use the same base filename followed by a descriptive suffix:
 
 `sales_report_2026-08-23_13-45-30-125_categories.csv`
 
+`sales_report_2026-08-23_13-45-30-125_months.csv`
+
 Optional CSV files may also be generated:
 
 `sales_report_2026-08-23_13-45-30-125_cities.csv`
@@ -1226,7 +1790,7 @@ Optional CSV files may also be generated:
 
 #### JSON Analysis Saving Process
 
-The `save_analysis_json()` function saves the complete sales analysis result as a JSON file.
+The `save_analysis_json()` function saves the complete structured sales analysis as a JSON file.
 
 Before serialization, the function creates a shallow copy of the original `analysis_result` dictionary.
 
@@ -1236,8 +1800,9 @@ The following summaries are always converted:
 
 * `product_summary`
 * `category_summary`
+* `monthly_summary`
 
-The following summaries are converted when they are present and available:
+The following summaries are converted when available:
 
 * `city_summary`
 * `payment_method_summary`
@@ -1246,7 +1811,7 @@ The function:
 
 1. Creates a copy of the analysis result.
 2. Converts required DataFrames into JSON-compatible records.
-3. Converts optional summary DataFrames when available.
+3. Converts optional DataFrames when available.
 4. Adds the `.json` extension to the shared base filename.
 5. Creates the destination directory when necessary.
 6. Writes the JSON file using UTF-8 encoding.
@@ -1264,6 +1829,7 @@ The following summaries are always exported:
 
 * `product_summary`
 * `category_summary`
+* `monthly_summary`
 
 The following summaries are exported when available:
 
@@ -1280,7 +1846,7 @@ The function returns a dictionary containing the generated CSV paths.
 
 #### CSV Result Dictionary
 
-The dictionary returned by `save_analysis_result_csv_files()` uses Spanish keys to identify generated summaries.
+The dictionary returned by `save_analysis_result_csv_files()` uses Spanish keys to identify the generated summaries.
 
 It follows this structure:
 
@@ -1288,6 +1854,7 @@ It follows this structure:
 {
     "resumen_producto": Path(...),
     "resumen_categoria": Path(...),
+    "resumen_mensual": Path(...),
     "ciudad_resumen": Path(...),
     "metodo_de_pago_resumen": Path(...)
 }
@@ -1297,20 +1864,20 @@ The following entries are always included:
 
 * `resumen_producto`: Product summary CSV path.
 * `resumen_categoria`: Category summary CSV path.
+* `resumen_mensual`: Monthly summary CSV path.
 
 The following entries are optional:
 
 * `ciudad_resumen`: City summary CSV path.
 * `metodo_de_pago_resumen`: Payment-method summary CSV path.
 
-These dictionary keys are used internally by the application to identify generated CSV files.
+These dictionary keys identify generated files inside the application and do not modify the physical CSV filenames.
 
-They do not modify the physical filenames.
-
-The internal analysis dictionary continues to use the following English keys:
+The internal analysis dictionary continues to use the following keys:
 
 * `product_summary`
 * `category_summary`
+* `monthly_summary`
 * `city_summary`
 * `payment_method_summary`
 
@@ -1325,7 +1892,7 @@ It receives:
 * The shared base filename.
 * A descriptive filename suffix.
 
-The function performs the following operations:
+The function:
 
 1. Builds the filename using the shared base filename and suffix.
 2. Adds the `.csv` extension.
@@ -1339,8 +1906,13 @@ The descriptive suffixes currently used are:
 
 * `products`
 * `categories`
+* `months`
 * `cities`
 * `payment_methods`
+
+The first three correspond to summaries generated during the standard analysis workflow.
+
+The final two correspond to optional city and payment-method analyses.
 
 File-system `OSError` exceptions are converted into `ReportSaveError`.
 
@@ -1359,11 +1931,16 @@ The function:
 7. Creates the destination directory when necessary.
 8. Creates a new openpyxl `Workbook`.
 9. Removes the default worksheet created by openpyxl.
-10. Builds the required sales-analysis worksheets.
-11. Builds optional worksheets when corresponding analysis data is available.
-12. Builds validation error and warning worksheets.
-13. Saves the completed workbook.
-14. Returns the resulting XLSX file path.
+10. Builds the general summary worksheet.
+11. Builds the product summary worksheet.
+12. Builds the category summary worksheet.
+13. Builds the monthly summary worksheet.
+14. Builds optional city and payment-method worksheets when available.
+15. Builds the Top 5 best-selling products worksheet.
+16. Builds the Top 5 highest-income products worksheet.
+17. Builds validation error and warning worksheets.
+18. Saves the completed workbook.
+19. Returns the resulting XLSX path.
 
 The Excel file uses the same shared base filename as the TXT, JSON, and CSV outputs.
 
@@ -1377,17 +1954,27 @@ The XLSX workbook can contain the following worksheets:
 
 * `Resumen General`
 * `Productos`
-* `Categorias`
+* `Categorías`
+* `Resumen por mes`
 * `Productos mejor vendidos`
 * `Productos con mejor ingreso`
 * `Resumen por ciudad`
-* `Resumen por metodo de pago`
+* `Resumen por método de pago`
 * `Validación de errores`
-* `Advetencias`
+* `Advertencias`
 
-The city and payment-method worksheets depend on the corresponding analysis data being present.
+The following worksheets are always generated:
 
-The remaining analysis and validation worksheets are generated as part of the standard Excel report workflow.
+* General summary.
+* Product summary.
+* Category summary.
+* Monthly summary.
+* Best-selling product ranking.
+* Highest-income product ranking.
+* Validation errors.
+* Validation warnings.
+
+The city and payment-method worksheets are generated only when the corresponding analysis results are available.
 
 #### General Summary Worksheet
 
@@ -1424,7 +2011,7 @@ The `build_sheet_products()` function creates:
 
 `Productos`
 
-It receives the product-summary pandas `DataFrame` and converts its contents into Excel rows using:
+It receives the `product_summary` pandas `DataFrame` and converts its contents into Excel rows using:
 
 `dataframe_to_rows()`
 
@@ -1436,9 +2023,30 @@ The function returns the generated worksheet.
 
 The `build_sheet_categories()` function creates:
 
-`Categorias`
+`Categorías`
 
-It receives the category-summary pandas `DataFrame` and converts it into worksheet rows using `dataframe_to_rows()`.
+It receives the `category_summary` pandas `DataFrame` and converts its contents into worksheet rows using:
+
+`dataframe_to_rows()`
+
+The DataFrame headers are included and the pandas index is excluded.
+
+The function returns the generated worksheet.
+
+#### Monthly Summary Worksheet
+
+The `build_sheet_monthly_summary()` function creates:
+
+`Resumen por mes`
+
+It receives the `monthly_summary` pandas `DataFrame` generated by the analysis module.
+
+The worksheet contains the monthly analysis data, including:
+
+* `mes`
+* `filas_validas`
+* `unidades_vendidas`
+* `ingreso_total`
 
 The DataFrame headers are included and the pandas index is excluded.
 
@@ -1450,7 +2058,7 @@ The `build_sheet_bestselling()` function creates:
 
 `Productos mejor vendidos`
 
-It receives the Top 5 best-selling product data, converts it into a pandas `DataFrame`, and exports the resulting structure into the Excel worksheet.
+It receives the Top 5 best-selling product records, converts them into a pandas `DataFrame`, and writes the resulting rows into the worksheet.
 
 The DataFrame headers are included and the pandas index is excluded.
 
@@ -1460,7 +2068,7 @@ The `build_sheet_top_income()` function creates:
 
 `Productos con mejor ingreso`
 
-It receives the Top 5 products ranked by generated income, converts the information into a pandas `DataFrame`, and writes the resulting structure to the worksheet.
+It receives the Top 5 products ranked by generated income, converts them into a pandas `DataFrame`, and writes the resulting rows into the worksheet.
 
 The DataFrame headers are included and the pandas index is excluded.
 
@@ -1472,19 +2080,19 @@ The `build_sheet_city_summary()` function creates:
 
 The worksheet is generated from the `city_summary` DataFrame.
 
-It is included in the workbook when city analysis information is available.
+It is included only when city analysis information is available.
 
 The DataFrame headers are included and the pandas index is excluded.
 
 #### Payment-Method Summary Worksheet
 
-The `build_sheet_paymet_method_summary()` function creates:
+The `build_sheet_payment_method_summary()` function creates:
 
-`Resumen por metodo de pago`
+`Resumen por método de pago`
 
 The worksheet is generated from the `payment_method_summary` DataFrame.
 
-It is included in the workbook when payment-method analysis information is available.
+It is included only when payment-method analysis information is available.
 
 The DataFrame headers are included and the pandas index is excluded.
 
@@ -1494,9 +2102,11 @@ The `build_sheet_validation_errors()` function creates:
 
 `Validación de errores`
 
-The worksheet contains the validation errors detected while processing the source sales records.
+The worksheet contains validation errors detected while processing the source sales records.
 
-The current columns are:
+Internal dictionary keys are mapped to Spanish worksheet headers.
+
+The columns are:
 
 * `línea`
 * `columna`
@@ -1506,15 +2116,19 @@ The current columns are:
 
 Each validation error is added as an independent worksheet row.
 
+Missing values are represented by empty strings.
+
 #### Validation Warnings Worksheet
 
 The `build_sheet_warnings()` function creates:
 
-`Advetencias`
+`Advertencias`
 
-The worksheet contains the warnings detected while validating and normalizing sales records.
+The worksheet contains warnings detected while validating and normalizing sales records.
 
-The current columns are:
+Internal dictionary keys are mapped to Spanish worksheet headers.
+
+The columns are:
 
 * `tipo_advertencia`
 * `campo`
@@ -1522,7 +2136,9 @@ The current columns are:
 * `valor_afectado`
 * `detalles`
 
-When a warning value contains a list, the values are converted into comma-separated text before being written to the worksheet.
+Missing values are represented by empty strings.
+
+When a warning value contains a list, its values are converted into comma-separated text before being written to the worksheet.
 
 #### DataFrame to Excel Conversion
 
@@ -1544,7 +2160,7 @@ This causes:
 
 * DataFrame column names to become worksheet headers.
 * DataFrame rows to become worksheet rows.
-* pandas indexes to be excluded from the generated Excel report.
+* pandas indexes to be excluded from the generated workbook.
 
 #### Workbook Creation
 
@@ -1560,7 +2176,7 @@ The module removes this worksheet using:
 wb.remove(wb.active)
 ```
 
-The application then builds its report-specific worksheets before saving the workbook.
+The application then builds the report-specific worksheets before saving the workbook.
 
 #### Input and Output
 
@@ -1582,7 +2198,7 @@ The application then builds its report-specific worksheets before saving the wor
 ##### `save_analysis_result_csv_files()`
 
 * **Input:** Analysis-result dictionary, destination folder, and shared base filename.
-* **Output:** Dictionary containing generated CSV `Path` objects.
+* **Output:** Dictionary containing product, category, monthly, and optional city/payment-method CSV paths.
 
 ##### `create_save_analysis_result_csv_files_and_path()`
 
@@ -1604,14 +2220,19 @@ The application then builds its report-specific worksheets before saving the wor
 * **Input:** Workbook and category-summary DataFrame.
 * **Output:** `Worksheet` containing the category summary.
 
+##### `build_sheet_monthly_summary()`
+
+* **Input:** Workbook and monthly-summary DataFrame.
+* **Output:** `Worksheet` containing the monthly sales summary.
+
 ##### `build_sheet_bestselling()`
 
-* **Input:** Workbook and Top 5 best-selling product data.
+* **Input:** Workbook and Top 5 best-selling product records.
 * **Output:** `Worksheet` containing the best-selling product ranking.
 
 ##### `build_sheet_top_income()`
 
-* **Input:** Workbook and Top 5 highest-income product data.
+* **Input:** Workbook and Top 5 highest-income product records.
 * **Output:** `Worksheet` containing the highest-income product ranking.
 
 ##### `build_sheet_city_summary()`
@@ -1619,7 +2240,7 @@ The application then builds its report-specific worksheets before saving the wor
 * **Input:** Workbook and city-summary DataFrame.
 * **Output:** `Worksheet` containing the city analysis.
 
-##### `build_sheet_paymet_method_summary()`
+##### `build_sheet_payment_method_summary()`
 
 * **Input:** Workbook and payment-method-summary DataFrame.
 * **Output:** `Worksheet` containing the payment-method analysis.
@@ -1645,7 +2266,7 @@ The module uses the custom:
 
 `ReportSaveError`
 
-exception for file-system failures handled during report storage.
+exception for supported file-system failures during report storage.
 
 The following operations explicitly catch `OSError` and convert it into `ReportSaveError`:
 
@@ -1656,7 +2277,7 @@ The following operations explicitly catch `OSError` and convert it into `ReportS
 
 This provides a consistent application-specific error mechanism for common file-system failures.
 
-Errors that are not represented by `OSError`, including errors produced by invalid data structures or other library-specific failures, are not converted by these functions unless explicitly handled elsewhere in the application.
+Errors that are not represented by `OSError`, including invalid data structures or other library-specific failures, are propagated unless explicitly handled elsewhere in the application.
 
 #### Related Exception
 

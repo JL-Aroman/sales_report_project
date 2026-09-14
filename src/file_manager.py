@@ -9,9 +9,9 @@ exports complete analysis results as JSON, saves aggregated analysis
 summaries as independent CSV files, and generates Excel workbooks containing
 multiple analysis and validation worksheets.
 
-Excel files are created using openpyxl and may contain general sales metrics,
-product and category summaries, Top 5 product rankings, optional city and
-payment-method summaries, validation errors, and validation warnings.
+Exported analysis data may include product, category, monthly, city, and
+payment-method summaries, together with general metrics, Top 5 product
+rankings, validation errors, and validation warnings.
 
 TXT and JSON files are written using UTF-8 encoding. CSV files are generated
 from pandas DataFrames, while XLSX worksheets are populated from analysis
@@ -97,7 +97,7 @@ def save_analysis_json(
     summaries into lists of dictionaries so that they can be serialized
     to JSON.
 
-    Product and category summaries are always converted. City and
+    Product, category, and monthly summaries are always converted. City and
     payment-method summaries are also converted when they are present and
     contain analysis data.
 
@@ -121,6 +121,7 @@ def save_analysis_json(
     analysis_json = analysis_result.copy()
     analysis_json["product_summary"] = analysis_json["product_summary"].to_dict(orient="records")
     analysis_json["category_summary"] = analysis_json["category_summary"].to_dict(orient="records")
+    analysis_json["monthly_summary"] = analysis_json["monthly_summary"].to_dict(orient="records")
     if "city_summary" in analysis_json.keys() and analysis_json["city_summary"] is not None:
         analysis_json["city_summary"] = analysis_json["city_summary"].to_dict(orient="records")
     if "payment_method_summary" in analysis_json.keys() and analysis_json["payment_method_summary"] is not None:
@@ -143,9 +144,9 @@ def save_analysis_result_csv_files(
 ) -> Dict[str, Any]:
     """Save analysis summary DataFrames as independent CSV files.
 
-    Creates individual CSV files for the product and category summaries.
-    Optional city and payment-method summaries are also exported when they
-    are available in the analysis result.
+    Creates individual CSV files for the product, category, and monthly
+    summaries. Optional city and payment-method summaries are also exported
+    when they are available in the analysis result.
 
     Each generated file uses the shared report base filename followed by a
     descriptive suffix identifying the corresponding analysis summary.
@@ -161,14 +162,16 @@ def save_analysis_result_csv_files(
 
     Returns:
         A dictionary containing the generated CSV file paths. The dictionary
-        always contains `resumen_producto` and `resumen_categoria`. It may also
-        contain `ciudad_resumen` and `metodo_de_pago_resumen` when the
-        corresponding analyses are available.
+        always contains `resumen_producto`, `resumen_categoria`, and
+        `resumen_mensual`. It may also contain `ciudad_resumen` and
+        `metodo_de_pago_resumen` when the corresponding optional analyses
+        are available.
     """
     analysis_csv = analysis_result.copy()
     reports = {}
     reports["resumen_producto"] = create_save_analysis_result_csv_files_and_path(analysis_csv["product_summary"], output_folder, file_name, "products")
     reports["resumen_categoria"] = create_save_analysis_result_csv_files_and_path(analysis_csv["category_summary"], output_folder, file_name, "categories")
+    reports["resumen_mensual"] = create_save_analysis_result_csv_files_and_path(analysis_result["monthly_summary"], output_folder, file_name, "months")
     if "city_summary" in analysis_csv and analysis_csv["city_summary"] is not None:
         reports["ciudad_resumen"] = create_save_analysis_result_csv_files_and_path(analysis_csv["city_summary"], output_folder, file_name, "cities")
     if "payment_method_summary" in analysis_csv and analysis_csv["payment_method_summary"] is not None:
@@ -368,6 +371,30 @@ def build_sheet_payment_method_summary(wb: Workbook, df: pd.DataFrame) -> Worksh
         ws.append(row)
     return ws
 
+def build_sheet_monthly_summary(wb: Workbook, df: pd.DataFrame) -> Worksheet:
+    """Build the monthly sales summary worksheet.
+
+    Creates a worksheet named `Resumen por mes` and populates it with the
+    monthly-summary DataFrame.
+
+    The DataFrame column names are included as worksheet headers, while the
+    pandas index is excluded.
+
+    The worksheet contains the monthly sales information calculated by the
+    analysis module, including valid row totals, units sold, and total income.
+
+    Args:
+        wb: Excel workbook where the worksheet will be created.
+        df: DataFrame containing aggregated monthly sales analysis.
+
+    Returns:
+        The created `Worksheet` containing the monthly sales summary.
+    """
+    ws = wb.create_sheet("Resumen por mes")
+    for row in dataframe_to_rows(df, index=False, header=True):
+        ws.append(row)
+    return ws
+
 def build_sheet_validation_errors(wb: Workbook, errors: List[Dict[str, Any]]) -> Worksheet:
     """Build the validation-errors worksheet.
 
@@ -448,18 +475,18 @@ def save_report_xlsx(
     """Generate and save the complete sales analysis as an Excel workbook.
 
     Creates an XLSX workbook containing multiple worksheets representing the
-    main sales analysis, rankings, optional summaries, validation errors, and
-    validation warnings.
+    main sales analysis, monthly analysis, rankings, optional summaries,
+    validation errors, and validation warnings.
 
     The default worksheet created by openpyxl is removed before the report
     worksheets are generated.
 
-    The workbook always includes general, product, category, Top 5
-    best-selling product, Top 5 highest-income product, validation-error, and
-    validation-warning worksheets.
-
+    The workbook always includes general, product, category, monthly,
+    Top 5 best-selling product, Top 5 highest-income product, validation-error,
+    and validation-warning worksheets.
+                        
     City and payment-method worksheets are also generated when the
-    corresponding analysis keys are present.
+    corresponding analysis results are available.
 
     The function receives a previously generated shared base filename, adds
     the `.xlsx` extension, creates the destination directory when necessary,
@@ -479,7 +506,7 @@ def save_report_xlsx(
     Raises:
         ReportSaveError: If the destination directory cannot be created or the
             workbook cannot be saved because of a file-system error.
-    """
+    """ 
     output_filename = f"{file_name}.xlsx"
     try:
         folder = Path(output_folder)
@@ -492,6 +519,7 @@ def save_report_xlsx(
         build_sheet_general_summary(wb, analysis_result)
         build_sheet_products(wb, analysis_result["product_summary"])
         build_sheet_categories(wb, analysis_result["category_summary"])
+        build_sheet_monthly_summary(wb, analysis_result["monthly_summary"])
         if "city_summary" in analysis_result and analysis_result["city_summary"] is not None:
             build_sheet_city_summary(wb, analysis_result["city_summary"])
         if "payment_method_summary" in analysis_result and analysis_result["payment_method_summary"] is not None:
