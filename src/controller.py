@@ -1,67 +1,74 @@
 """Sales report workflow controller module.
 
-This module coordinates the complete sales-report generation workflow.
+This module coordinates the complete Sales Report processing workflow.
 
-It connects the file validation, CSV reading, data validation, sales analysis,
-report generation, and file management modules. The controller receives the
-source CSV path and output directory, processes the sales data, generates all
-supported output formats, measures the total execution time, and returns a
-structured dictionary containing processing totals, generated file paths, and
-execution information.
+It connects file validation, CSV reading, DataFrame validation, sales analysis,
+plain-text report generation, file export, and chart generation modules.
 
-The generated outputs currently include TXT, JSON, CSV, and XLSX files.
+The controller receives the source CSV path and output directory, processes
+the sales data, generates all supported report files and chart images, measures
+the total execution time, and returns a structured dictionary containing
+processing totals, generated output paths, and execution information.
+
+The generated outputs currently include TXT, JSON, CSV, XLSX, and PNG chart
+files.
 
 The module acts as the orchestration layer between the application interface
 and the specialized backend processing modules.
 """
 
-
-from src import validator, csv_reader, analyzer, reporter, file_manager
+from src import validator, csv_reader, analyzer, reporter, file_manager, chart_manager
 import time
+from pathlib import Path
 from typing import Dict, Any
 
 
-def generate_sales_report(input_file_path: str, output_folder: str) -> Dict[str, Any]:
+def generate_sales_report(input_file_path: str, output_folder: str | Path) -> Dict[str, Any]:
     """Execute the complete sales-report generation workflow.
 
     Coordinates the specialized backend modules to validate the source CSV
     file, read its contents, normalize and validate sales records, analyze
-    valid data, generate the human-readable report, and save all supported
-    output files.
+    valid data, generate the human-readable report, export the supported
+    report files, and generate chart images.
 
-    A shared timestamp-based filename is generated and reused for all report
-    formats created during the same execution.
+    A shared base filename is created from the validated source file and is
+    reused by the generated report files and chart outputs produced during
+    the same execution.
 
     The function generates:
 
     - A human-readable TXT sales report.
     - A JSON file containing the complete structured analysis.
     - Independent CSV files containing analysis summaries.
-    - An XLSX workbook containing sales analysis, rankings, validation errors,
-      and validation warnings.
+    - An XLSX workbook containing sales analysis, rankings, validation
+      information, and structured summaries.
+    - PNG chart images generated from the sales analysis results.
 
-    The total workflow execution time is measured and included in the returned
-    result.
+    The total workflow execution time is measured and included in the
+    returned result.
 
     Args:
         input_file_path: Path of the source CSV file to process.
-        output_folder: Directory where the generated report files will be
-            stored.
+        output_folder: Directory where generated report files and chart
+            images will be stored.
 
     Returns:
-        A dictionary containing processing totals, generated file paths, and
-        execution information.
+        A dictionary containing processing totals, generated output paths,
+        and execution information.
 
         The dictionary contains:
 
         - `total_rows`: Total number of processed sales records.
         - `total_valid_rows`: Number of records that passed validation.
-        - `total_invalid_rows`: Number of records containing validation errors.
+        - `total_invalid_rows`: Number of records containing validation
+          errors.
         - `report_path_txt`: Path of the generated TXT report.
         - `report_path_json`: Path of the generated JSON analysis file.
-        - `reports_path_csv`: Dictionary containing the generated CSV summary
+        - `reports_path_csv`: Dictionary containing generated CSV summary
           file paths.
         - `report_path_xlsx`: Path of the generated XLSX workbook.
+        - `reports_path_charts`: Dictionary containing generated chart
+          image paths.
         - `execution_time`: Formatted string containing the total workflow
           execution time.
     """
@@ -71,7 +78,7 @@ def generate_sales_report(input_file_path: str, output_folder: str) -> Dict[str,
     df_raw = csv_reader.read_csv_file(file_path)
     validation_result = validator.validate_dataframe(df_raw)
     analysis_result = analyzer.analyze_sales(validation_result)
-    report_text  = reporter.generate_report(
+    report_text = reporter.generate_report(
     analysis_result,
     validation_result["errors"],
     validation_result["warnings"],
@@ -80,11 +87,12 @@ def generate_sales_report(input_file_path: str, output_folder: str) -> Dict[str,
     reports["total_rows"] = analysis_result["total_rows"]
     reports["total_valid_rows"] = analysis_result["total_valid_rows"]
     reports["total_invalid_rows"] = analysis_result["total_invalid_rows"]
-    file_name = file_manager.create_report_base_name()
+    file_name = file_manager.create_report_base_name(file_path)
     reports["report_path_txt"] = file_manager.save_report(report_text , output_folder, file_name)
     reports["report_path_json"] = file_manager.save_analysis_json(analysis_result, output_folder, file_name)
     reports["reports_path_csv"] = file_manager.save_analysis_result_csv_files(analysis_result, output_folder, file_name)
     reports["report_path_xlsx"] = file_manager.save_report_xlsx(analysis_result, validation_result["errors"], validation_result["warnings"], output_folder, file_name)
+    reports["reports_path_charts"] = chart_manager.save_chart_images(analysis_result, output_folder, file_name)
     end = time.perf_counter()
     total_time = end - start
     reports["execution_time"] = f"Execution time: {total_time:.4f} seconds"

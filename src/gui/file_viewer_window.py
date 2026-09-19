@@ -1,7 +1,7 @@
 """Generated report file viewer module.
 
 This module provides a dedicated PySide6 window for displaying the contents
-of generated report files.
+of generated text-based report files.
 
 It receives a window title and file path, reads the target file using UTF-8
 encoding, displays its contents inside a read-only text area, and provides
@@ -25,12 +25,15 @@ from PySide6.QtWidgets import(
 class FileViewerWindow(QMainWindow):
     """Window used to display the contents of a generated report file.
 
-    Creates an independent read-only report viewer using PySide6. The file
-    specified by `file_path` is loaded from the file system and displayed
-    inside a QTextEdit widget.
+    Creates an independent read-only file viewer using PySide6. The file
+    specified by `file_path` is loaded from the file system using UTF-8
+    encoding and displayed inside a `QTextEdit` widget.
+
+    The viewer is intended for text-based report formats such as TXT, JSON,
+    and CSV.
 
     The window also provides a button that allows the user to close the
-    report viewer.
+    viewer.
 
     Attributes:
         title: Title displayed in the viewer window.
@@ -40,9 +43,9 @@ class FileViewerWindow(QMainWindow):
     def __init__(self, title: str, file_path: str) -> None:
         """Initialize the report file viewer window.
 
-        Stores the window title and target file path, configures the fixed
-        window size, creates the central widget, and builds the text-display
-        and close-button areas.
+        Stores the window title and target file path, configures the window with
+        a fixed size of 900 x 900 pixels, creates the central widget, and builds
+        the text-display and close-button areas.
 
         Args:
             title: Title to display in the viewer window.
@@ -53,7 +56,7 @@ class FileViewerWindow(QMainWindow):
         self.file_path = file_path
 
         self.setWindowTitle(self.title)
-        self.setFixedSize(700,900)
+        self.setFixedSize(900,900)
 
         widget_central = QWidget()
         self.setCentralWidget(widget_central)
@@ -68,12 +71,14 @@ class FileViewerWindow(QMainWindow):
     def build_text_area(self) -> QGroupBox:
         """Build the read-only report display area.
 
-        Creates a group box containing a read-only QTextEdit widget. The target
-        file specified by `file_path` is read using UTF-8 encoding and its
-        complete contents are displayed as plain text.
+        Creates a group box containing a read-only `QTextEdit` widget.
+
+        The file specified by `file_path` is read using UTF-8 encoding and its
+        complete contents are displayed as plain text without modifying the
+        source file.
 
         Returns:
-            A QGroupBox containing the read-only report text area.
+            A `QGroupBox` containing the read-only report text area.
         """
         group = QGroupBox("Contenido del archivo")
         layout = QVBoxLayout()
@@ -88,11 +93,11 @@ class FileViewerWindow(QMainWindow):
     def build_button_area(self) -> QHBoxLayout:
         """Build the report viewer button area.
 
-        Creates a horizontal layout containing the `Cerrar reporte` button.
-        The button is connected directly to the window's `close()` method.
+        Creates a horizontal layout containing the `Cerrar reporte` button and
+        connects its `clicked` signal directly to the window's `close()` method.
 
         Returns:
-            A QHBoxLayout containing the report viewer close button.
+            A `QHBoxLayout` containing the report viewer close button.
         """
         layout = QHBoxLayout()
         self.button_close = QPushButton("Cerrar reporte")

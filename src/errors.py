@@ -4,13 +4,15 @@ This module defines application-specific exceptions used across the
 Sales Report application.
 
 All custom exceptions inherit from `AppError`, providing a common exception
-hierarchy that allows application-specific failures to be handled consistently.
+hierarchy that allows application-specific failures to be handled
+consistently.
 
 Default error messages are written in Spanish because they are intended to
 be displayed directly to users through the graphical interface.
 
 The exceptions cover file validation, CSV structure, data validation,
-sales analysis, report generation, and report file storage failures.
+sales analysis, report generation, report file storage, and chart generation
+or storage failures.
 """
 
 class AppError(Exception):
@@ -167,11 +169,22 @@ class ReportGenerationError(AppError):
 
 
 class ReportSaveError(AppError):
-    """Raised when the report file cannot be saved."""
+    """Raised when a generated report file cannot be saved."""
     def __init__(self, message: str = "No se pudo guardar el archivo del reporte.") -> None:
         """
         Args:
             message: descriptive message of the error. If
                 not specified, a generic message is used.
+        """
+        super().__init__(message)
+
+class ChartGenerationError(AppError):
+    """Raised when a chart image cannot be generated or saved."""
+    def __init__(self, message: str = "No se pudo generar la gráfica.") -> None:
+        """Initialize a chart-generation error.
+
+        Args:
+            message: Descriptive error message. If not specified, a default
+                Spanish message is used.
         """
         super().__init__(message)

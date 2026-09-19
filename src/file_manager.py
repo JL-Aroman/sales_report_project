@@ -3,22 +3,29 @@
 This module handles the storage and export of generated sales reports and
 structured analysis results.
 
-It creates destination directories when necessary, generates a shared
-timestamp-based filename, saves human-readable reports as TXT files,
-exports complete analysis results as JSON, saves aggregated analysis
-summaries as independent CSV files, and generates Excel workbooks containing
-multiple analysis and validation worksheets.
+It creates destination directories when necessary, generates a shared base
+filename using the source CSV filename and a timestamp, saves human-readable
+reports as TXT files, exports structured analysis results as JSON, saves
+aggregated analysis summaries as independent CSV files, and generates
+multi-sheet Excel workbooks.
 
 Exported analysis data may include product, category, monthly, city, and
-payment-method summaries, together with general metrics, Top 5 product
-rankings, validation errors, and validation warnings.
+payment-method summaries, monthly growth metrics, monthly best-selling
+products, monthly highest-income categories, Top 5 product rankings,
+validation errors, and validation warnings.
+
+JSON-compatible analysis structures convert pandas missing values into
+`None` before serialization.
 
 TXT and JSON files are written using UTF-8 encoding. CSV files are generated
 from pandas DataFrames, while XLSX worksheets are populated from analysis
 results using openpyxl.
 """
+
+
 from pathlib import Path
 from datetime import datetime
+import numpy as np
 import pandas as pd
 import json
 from openpyxl import Workbook
@@ -66,24 +73,31 @@ def save_report(
         raise ReportSaveError() from error
     return path
 
-def create_report_base_name() -> str:
-    """Generate a shared timestamp-based filename for report output files.
+def create_report_base_name(input_file_path: str | Path) -> str:
+    """Generate a shared base filename for generated output files.
 
-    Uses the current local date and time to create a timestamp containing the
-    year, month, day, hour, minute, second, and milliseconds.
+    Extracts the source CSV filename without its extension and combines it
+    with the current local date and time.
 
-    The timestamp is combined with the `sales_report` prefix. The resulting
-    base filename can be reused by the TXT, JSON, CSV, and XLSX export
-    functions so that files generated during the same report process share
-    the same identifier.
+    The timestamp contains the year, month, day, hour, minute, second, and
+    milliseconds.
+
+    The resulting base filename is reused by report-file and chart-generation
+    workflows so outputs created during the same execution share a common
+    identifier.
+
+    Args:
+        input_file_path: Path of the source CSV file whose filename will be
+            used as the output filename prefix.
 
     Returns:
         A base filename formatted as
-        `sales_report_YYYY-MM-DD_HH-MM-SS-fff`.
+        `<source_filename>_YYYY-MM-DD_HH-MM-SS-fff`.
     """
+    file_path = Path(input_file_path).stem
     now = datetime.now()
     timestamp = now.strftime("%Y-%m-%d_%H-%M-%S-%f")[:-3]
-    file_name = f"sales_report_{timestamp}"
+    file_name = f"{file_path}_{timestamp}"
     return file_name
 
 def save_analysis_json(
@@ -93,21 +107,28 @@ def save_analysis_json(
 ) -> Path:
     """Save the complete sales analysis result as a JSON file.
 
-    Creates a copy of the analysis result and converts pandas DataFrame
-    summaries into lists of dictionaries so that they can be serialized
-    to JSON.
+    Creates a shallow copy of the analysis result and converts pandas DataFrame
+    structures into lists of dictionaries so they can be serialized to JSON.
 
-    Product, category, and monthly summaries are always converted. City and
-    payment-method summaries are also converted when they are present and
-    contain analysis data.
+    Before conversion, pandas `NaN` values are replaced with `None` so missing
+    analysis values are represented as JSON `null` values.
 
-    The function receives a previously generated shared base filename, adds
-    the `.json` extension, creates the destination directory when necessary,
-    and writes the resulting structure using UTF-8 encoding.
+    The following DataFrames are always converted:
+
+    - `product_summary`
+    - `category_summary`
+    - `monthly_summary`
+    - `monthly_best_selling_product`
+    - `monthly_highest_income_category`
+
+    Optional city and payment-method summaries are also converted when available.
+
+    The function adds the `.json` extension to the shared base filename, creates
+    the destination directory when necessary, and writes the resulting structure
+    using UTF-8 encoding.
 
     Args:
-        analysis_result: Dictionary containing the complete sales analysis
-            results.
+        analysis_result: Dictionary containing the complete sales-analysis result.
         output_folder: Directory where the JSON analysis file will be stored.
         file_name: Shared base filename without a file extension.
 
@@ -119,13 +140,15 @@ def save_analysis_json(
             JSON file cannot be written because of a file-system error.
     """
     analysis_json = analysis_result.copy()
-    analysis_json["product_summary"] = analysis_json["product_summary"].to_dict(orient="records")
-    analysis_json["category_summary"] = analysis_json["category_summary"].to_dict(orient="records")
-    analysis_json["monthly_summary"] = analysis_json["monthly_summary"].to_dict(orient="records")
+    analysis_json["product_summary"] = analysis_json["product_summary"].replace({np.nan: None}).to_dict(orient="records")
+    analysis_json["category_summary"] = analysis_json["category_summary"].replace({np.nan: None}).to_dict(orient="records")
+    analysis_json["monthly_summary"] = analysis_json["monthly_summary"].replace({np.nan: None}).to_dict(orient="records")
+    analysis_json["monthly_best_selling_product"] = analysis_json["monthly_best_selling_product"].replace({np.nan: None}).to_dict(orient="records")
+    analysis_json["monthly_highest_income_category"] = analysis_json["monthly_highest_income_category"].replace({np.nan: None}).to_dict(orient="records")
     if "city_summary" in analysis_json.keys() and analysis_json["city_summary"] is not None:
-        analysis_json["city_summary"] = analysis_json["city_summary"].to_dict(orient="records")
+        analysis_json["city_summary"] = analysis_json["city_summary"].replace({np.nan: None}).to_dict(orient="records")
     if "payment_method_summary" in analysis_json.keys() and analysis_json["payment_method_summary"] is not None:
-        analysis_json["payment_method_summary"] = analysis_json["payment_method_summary"].to_dict(orient="records")
+        analysis_json["payment_method_summary"] = analysis_json["payment_method_summary"].replace({np.nan: None}).to_dict(orient="records")
     output_filename = f"{file_name}.json"
     try:
         folder = Path(output_folder)
@@ -141,41 +164,52 @@ def save_analysis_result_csv_files(
         analysis_result: Dict[str, Any], 
         output_folder: str | Path, 
         file_name: str
-) -> Dict[str, Any]:
+) -> Dict[str, Path]:
     """Save analysis summary DataFrames as independent CSV files.
 
-    Creates individual CSV files for the product, category, and monthly
-    summaries. Optional city and payment-method summaries are also exported
-    when they are available in the analysis result.
+        Creates individual CSV files for product, category, monthly, monthly
+        best-selling-product, and monthly highest-income-category analyses.
 
-    Each generated file uses the shared report base filename followed by a
-    descriptive suffix identifying the corresponding analysis summary.
+        Optional city and payment-method summaries are also exported when available.
 
-    The creation and storage of each individual CSV file is delegated to
-    `create_save_analysis_result_csv_files_and_path()`.
+        Each generated file uses the shared report base filename followed by a
+        descriptive suffix identifying the corresponding analysis structure.
 
-    Args:
-        analysis_result: Dictionary containing the complete sales analysis
-            results and summary DataFrames.
-        output_folder: Directory where the CSV files will be stored.
-        file_name: Shared base filename without a file extension.
+        The creation and storage of each individual CSV file is delegated to
+        `create_save_analysis_result_csv_files_and_path()`.
 
-    Returns:
-        A dictionary containing the generated CSV file paths. The dictionary
-        always contains `resumen_producto`, `resumen_categoria`, and
-        `resumen_mensual`. It may also contain `ciudad_resumen` and
-        `metodo_de_pago_resumen` when the corresponding optional analyses
-        are available.
-    """
-    analysis_csv = analysis_result.copy()
+        Args:
+            analysis_result: Dictionary containing the complete sales-analysis result
+                and its DataFrame structures.
+            output_folder: Directory where the CSV files will be stored.
+            file_name: Shared base filename without a file extension.
+
+        Returns:
+            A dictionary containing generated CSV paths.
+
+            The dictionary always contains:
+
+            - `resumen_producto`
+            - `resumen_categoria`
+            - `resumen_mensual`
+            - `resumen_mejores_vendidos_por_mes`
+            - `resumen_categoria_mayor_ingreso_por_mes`
+
+            It may also contain:
+
+            - `ciudad_resumen`
+            - `metodo_de_pago_resumen`
+        """
     reports = {}
-    reports["resumen_producto"] = create_save_analysis_result_csv_files_and_path(analysis_csv["product_summary"], output_folder, file_name, "products")
-    reports["resumen_categoria"] = create_save_analysis_result_csv_files_and_path(analysis_csv["category_summary"], output_folder, file_name, "categories")
-    reports["resumen_mensual"] = create_save_analysis_result_csv_files_and_path(analysis_result["monthly_summary"], output_folder, file_name, "months")
-    if "city_summary" in analysis_csv and analysis_csv["city_summary"] is not None:
-        reports["ciudad_resumen"] = create_save_analysis_result_csv_files_and_path(analysis_csv["city_summary"], output_folder, file_name, "cities")
-    if "payment_method_summary" in analysis_csv and analysis_csv["payment_method_summary"] is not None:
-        reports["metodo_de_pago_resumen"] = create_save_analysis_result_csv_files_and_path(analysis_csv["payment_method_summary"], output_folder, file_name, "payment_methods")
+    reports["resumen_producto"] = create_save_analysis_result_csv_files_and_path(analysis_result["product_summary"], output_folder, file_name, "productos")
+    reports["resumen_categoria"] = create_save_analysis_result_csv_files_and_path(analysis_result["category_summary"], output_folder, file_name, "categorias")
+    reports["resumen_mensual"] = create_save_analysis_result_csv_files_and_path(analysis_result["monthly_summary"], output_folder, file_name, "meses")
+    reports["resumen_mejores_vendidos_por_mes"] = create_save_analysis_result_csv_files_and_path(analysis_result["monthly_best_selling_product"], output_folder, file_name, "producto_top_mensual")
+    reports["resumen_categoria_mayor_ingreso_por_mes"] = create_save_analysis_result_csv_files_and_path(analysis_result["monthly_highest_income_category"], output_folder, file_name, "categoria_top_ingreso_mensual")
+    if "city_summary" in analysis_result and analysis_result["city_summary"] is not None:
+        reports["ciudad_resumen"] = create_save_analysis_result_csv_files_and_path(analysis_result["city_summary"], output_folder, file_name, "ciudades")
+    if "payment_method_summary" in analysis_result and analysis_result["payment_method_summary"] is not None:
+        reports["metodo_de_pago_resumen"] = create_save_analysis_result_csv_files_and_path(analysis_result["payment_method_summary"], output_folder, file_name, "metodos_pago")
     return reports
 
 def create_save_analysis_result_csv_files_and_path(
@@ -239,158 +273,27 @@ def build_sheet_general_summary(wb: Workbook, analysis_result: Dict[str, Any]) -
     ws.append(["Unidades vendidas", analysis_result["total_units_sold"]])
     return ws
 
-def build_sheet_products(wb: Workbook, df: pd.DataFrame) -> Worksheet:
-    """Build the product summary worksheet.
+def build_sheet(wb: Workbook, df: pd.DataFrame, title_str: str) -> Worksheet:
+    """Build a worksheet from a pandas DataFrame.
 
-    Creates a worksheet named `Productos` and populates it with the complete
-    product-summary DataFrame.
+    Creates a new worksheet using the provided title and writes the complete
+    DataFrame into it.
 
-    The DataFrame column names are included as worksheet headers, while the
+    DataFrame column names are included as worksheet headers, while the
     pandas index is excluded.
+
+    This generic helper is reused for multiple analysis worksheets to avoid
+    duplicating DataFrame-to-Excel conversion logic.
 
     Args:
         wb: Excel workbook where the worksheet will be created.
-        df: DataFrame containing the aggregated product analysis.
+        df: DataFrame containing the analysis data to export.
+        title_str: Title assigned to the new worksheet.
 
     Returns:
-        The created `Worksheet` containing the product summary.
+        The created `Worksheet` containing the DataFrame data.
     """
-    ws = wb.create_sheet("Productos")
-    for row in dataframe_to_rows(df, index=False, header=True):
-        ws.append(row)
-    return ws
-
-def build_sheet_categories(wb: Workbook, df: pd.DataFrame) -> Worksheet:
-    """Build the categories summary worksheet.
-
-    Creates a worksheet named `Categorías` and populates it with the complete
-    category-summary DataFrame.
-
-    The DataFrame column names are included as worksheet headers, while the
-    pandas index is excluded.
-
-    Args:
-        wb: Excel workbook where the worksheet will be created.
-        df: DataFrame containing the aggregated category analysis.
-
-    Returns:
-        The created `Worksheet` containing the category summary.
-    """
-    ws = wb.create_sheet("Categorías")
-    for row in dataframe_to_rows(df, index=False, header=True):
-        ws.append(row)
-    return ws
-
-def build_sheet_bestselling(wb: Workbook, top_best_products: List[Dict[str, Any]]) -> Worksheet:
-    """Build the Top 5 best-selling products worksheet.
-
-    Creates a worksheet named `Productos mejor vendidos`, converts the
-    received Top 5 product data into a pandas DataFrame, and writes the
-    resulting rows to the worksheet.
-
-    The DataFrame column names are included as worksheet headers, while the
-    pandas index is excluded.
-
-    Args:
-        wb: Excel workbook where the worksheet will be created.
-        top_best_products: Collection containing the Top 5 best-selling
-            product records.
-
-    Returns:
-        The created `Worksheet` containing the best-selling product ranking.
-    """
-    ws = wb.create_sheet("Productos mejor vendidos")
-    df = pd.DataFrame(top_best_products)
-    for row in dataframe_to_rows(df, index=False, header=True):
-        ws.append(row)
-    return ws
-
-def build_sheet_top_income(wb: Workbook, top_highest_income_products: List[Dict[str,Any]]) -> Worksheet:
-    """Build the Top 5 highest-income products worksheet.
-
-    Creates a worksheet named `Productos con mejor ingreso`, converts the
-    received Top 5 product data into a pandas DataFrame, and writes the
-    resulting rows to the worksheet.
-
-    The DataFrame column names are included as worksheet headers, while the
-    pandas index is excluded.
-
-    Args:
-        wb: Excel workbook where the worksheet will be created.
-        top_highest_income_products: Collection containing the Top 5 products
-            ranked by generated income.
-
-    Returns:
-        The created `Worksheet` containing the highest-income product ranking.
-    """
-    ws = wb.create_sheet("Productos con mejor ingreso")
-    df = pd.DataFrame(top_highest_income_products)
-    for row in dataframe_to_rows(df, index=False, header=True):
-        ws.append(row)
-    return ws
-
-def build_sheet_city_summary(wb: Workbook, df: pd.DataFrame) -> Worksheet:
-    """Build the city summary worksheet.
-
-    Creates a worksheet named `Resumen por ciudad` and populates it with the
-    city-summary DataFrame.
-
-    The DataFrame column names are included as worksheet headers, while the
-    pandas index is excluded.
-
-    Args:
-        wb: Excel workbook where the worksheet will be created.
-        df: DataFrame containing aggregated sales analysis by city.
-
-    Returns:
-        The created `Worksheet` containing the city summary.
-    """
-    ws = wb.create_sheet("Resumen por ciudad")
-    for row in dataframe_to_rows(df, index=False, header=True):
-        ws.append(row)
-    return ws
-
-def build_sheet_payment_method_summary(wb: Workbook, df: pd.DataFrame) -> Worksheet:
-    """Build the payment-method summary worksheet.
-
-    Creates a worksheet named `Resumen por metodo de pago` and populates it
-    with the payment-method summary DataFrame.
-
-    The DataFrame column names are included as worksheet headers, while the
-    pandas index is excluded.
-
-    Args:
-        wb: Excel workbook where the worksheet will be created.
-        df: DataFrame containing aggregated sales analysis by payment method.
-
-    Returns:
-        The created `Worksheet` containing the payment-method summary.
-    """
-    ws = wb.create_sheet("Resumen por método de pago")
-    for row in dataframe_to_rows(df, index=False, header=True):
-        ws.append(row)
-    return ws
-
-def build_sheet_monthly_summary(wb: Workbook, df: pd.DataFrame) -> Worksheet:
-    """Build the monthly sales summary worksheet.
-
-    Creates a worksheet named `Resumen por mes` and populates it with the
-    monthly-summary DataFrame.
-
-    The DataFrame column names are included as worksheet headers, while the
-    pandas index is excluded.
-
-    The worksheet contains the monthly sales information calculated by the
-    analysis module, including valid row totals, units sold, and total income.
-
-    Args:
-        wb: Excel workbook where the worksheet will be created.
-        df: DataFrame containing aggregated monthly sales analysis.
-
-    Returns:
-        The created `Worksheet` containing the monthly sales summary.
-    """
-    ws = wb.create_sheet("Resumen por mes")
+    ws = wb.create_sheet(title_str)
     for row in dataframe_to_rows(df, index=False, header=True):
         ws.append(row)
     return ws
@@ -474,27 +377,41 @@ def save_report_xlsx(
 ) -> Path:
     """Generate and save the complete sales analysis as an Excel workbook.
 
-    Creates an XLSX workbook containing multiple worksheets representing the
-    main sales analysis, monthly analysis, rankings, optional summaries,
-    validation errors, and validation warnings.
+    Creates an XLSX workbook containing general sales metrics, aggregated
+    summaries, product rankings, monthly analysis, validation errors, and
+    validation warnings.
 
-    The default worksheet created by openpyxl is removed before the report
+    The default worksheet created by openpyxl is removed before application
     worksheets are generated.
 
-    The workbook always includes general, product, category, monthly,
-    Top 5 best-selling product, Top 5 highest-income product, validation-error,
-    and validation-warning worksheets.
-                        
-    City and payment-method worksheets are also generated when the
-    corresponding analysis results are available.
+    The workbook always includes:
 
-    The function receives a previously generated shared base filename, adds
-    the `.xlsx` extension, creates the destination directory when necessary,
-    and saves the completed workbook.
+    - `Resumen General`
+    - `Productos`
+    - `Categorías`
+    - `Resumen por mes`
+    - `Productos mejor vendidos`
+    - `Productos con mejor Ingreso`
+    - `Producto más vendido por mes`
+    - `Categoría mayor ingreso por mes`
+    - `Validación de errores`
+    - `Advertencias`
+
+    The following worksheets are generated when their corresponding optional
+    analysis results are available:
+
+    - `Resumen por ciudad`
+    - `Resumen por método de pago`
+
+    Most DataFrame-based worksheets are created through the reusable
+    `build_sheet()` helper.
+
+    The function adds the `.xlsx` extension to the shared base filename, creates
+    the destination directory when necessary, and saves the completed workbook.
 
     Args:
-        analysis_result: Dictionary containing the complete sales analysis
-            results and summary structures.
+        analysis_result: Dictionary containing the complete sales-analysis result
+            and summary structures.
         errors: Collection containing validation error records.
         warnings: Collection containing validation warning records.
         output_folder: Directory where the XLSX workbook will be stored.
@@ -517,15 +434,20 @@ def save_report_xlsx(
         wb.remove(wb.active)
 
         build_sheet_general_summary(wb, analysis_result)
-        build_sheet_products(wb, analysis_result["product_summary"])
-        build_sheet_categories(wb, analysis_result["category_summary"])
-        build_sheet_monthly_summary(wb, analysis_result["monthly_summary"])
+
+        build_sheet(wb, analysis_result["product_summary"], "Productos")
+        build_sheet(wb, analysis_result["category_summary"], "Categorías")
+        build_sheet(wb, analysis_result["monthly_summary"], "Resumen por mes")
         if "city_summary" in analysis_result and analysis_result["city_summary"] is not None:
-            build_sheet_city_summary(wb, analysis_result["city_summary"])
+            build_sheet(wb, analysis_result["city_summary"], "Resumen por ciudad")
         if "payment_method_summary" in analysis_result and analysis_result["payment_method_summary"] is not None:
-            build_sheet_payment_method_summary(wb, analysis_result["payment_method_summary"])
-        build_sheet_bestselling(wb, analysis_result["top_5_best_selling_products"])
-        build_sheet_top_income(wb, analysis_result["top_5_highest_income_products"])
+            build_sheet(wb, analysis_result["payment_method_summary"], "Resumen por método de pago")
+        df_top_best_products = pd.DataFrame(analysis_result["top_5_best_selling_products"])
+        df_top_highest_income_products = pd.DataFrame(analysis_result["top_5_highest_income_products"])
+        build_sheet(wb, df_top_best_products, "Productos mejor vendidos")
+        build_sheet(wb, df_top_highest_income_products, "Productos con mejor Ingreso")
+        build_sheet(wb, analysis_result["monthly_best_selling_product"], "Producto más vendido por mes")
+        build_sheet(wb, analysis_result["monthly_highest_income_category"], "Categoría mayor ingreso por mes")
         build_sheet_validation_errors(wb, errors)
         build_sheet_warnings(wb, warnings)
         wb.save(path)

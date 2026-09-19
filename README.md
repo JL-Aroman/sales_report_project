@@ -1,10 +1,10 @@
 # Sales Report
 
-> **Project Status:** Version 3.0.2 completed - Functional desktop application with PySide6. This project has been manually tested with a sample sales CSV file.
+> **Project Status:** Version **3.0.3 completed** — Functional desktop application with PySide6, multi-format report export, monthly analysis, and automatic chart generation. This project has been manually tested with sample sales CSV files.
 
-Sales Report is a modular Python application for validating sales data, analyzing valid records, generating structured reports, and exporting analysis results in multiple formats.
+Sales Report is a modular Python desktop application for validating sales data, analyzing valid records, generating structured reports, exporting analysis results in multiple formats, and producing automatic sales charts.
 
-The project includes a PySide6 graphical interface that allows users to select a source CSV file, choose an output directory, generate reports, inspect generated TXT, JSON, and CSV files, and open the output directory directly from the application.
+The application includes a PySide6 graphical interface that allows users to select a source CSV file, choose an output directory, generate reports and charts, inspect generated TXT, JSON, and CSV files, open XLSX reports, open generated PNG charts, and access the output directory directly from the application.
 
 The application interface and user-facing messages are displayed in Spanish, while the project source code and technical documentation are maintained in English.
 
@@ -14,40 +14,56 @@ The application interface and user-facing messages are displayed in Spanish, whi
 
 The project follows a modular architecture in which each module is responsible for a specific part of the application workflow.
 
-The application separates graphical presentation, workflow orchestration, validation, analysis, report generation, file management, and error handling.
+The application separates graphical presentation, workflow orchestration, validation, CSV reading, sales analysis, report formatting, file management, chart generation, and custom error handling.
 
 The current application relationship can be represented as:
 
-`Graphical Application Entry Point`
+```text
+Graphical Application Entry Point
+        ↓
+SalesReportWindow
+        ↓
+controller.generate_sales_report()
+        ↓
+validator
+        ↓
+csv_reader
+        ↓
+validator.validate_dataframe()
+        ↓
+analyzer
+        ↓
+reporter
+        ↓
+├── file_manager
+│   ├── TXT
+│   ├── JSON
+│   ├── CSV
+│   └── XLSX
+│
+└── chart_manager
+    └── PNG charts
+        ↓
+Controller Result
+        ↓
+SalesReportWindow
+```
 
-→ `SalesReportWindow`
-
-→ `controller.generate_sales_report()`
-
-→ `validator`
-
-→ `csv_reader`
-
-→ `analyzer`
-
-→ `reporter`
-
-→ `file_manager`
-
-→ TXT / JSON / CSV output files
-
-Generated report files can then be opened from the graphical interface through:
+Generated TXT, JSON, and CSV files can be inspected through:
 
 `FileViewerWindow`
 
+Generated XLSX reports and PNG charts are opened using the operating system's associated applications.
+
 The main modules include:
 
-* `controller`: Coordinates the complete sales-report generation workflow.
-* `validator`: Validates the source file, normalizes records, validates sales data, and detects warnings.
+* `controller`: Coordinates the complete sales-report and chart-generation workflow.
+* `validator`: Validates the source file, normalizes records, validates sales data, detects warnings, and separates valid and invalid rows.
 * `csv_reader`: Reads the validated CSV file into a pandas `DataFrame`.
-* `analyzer`: Calculates sales metrics, rankings, and aggregated summaries.
-* `reporter`: Generates the structured plain-text sales report.
-* `file_manager`: Saves TXT, JSON, and CSV output files.
+* `analyzer`: Calculates general metrics, aggregated summaries, rankings, monthly growth, and monthly performance results.
+* `reporter`: Generates the structured human-readable plain-text sales report.
+* `file_manager`: Saves TXT, JSON, CSV, and XLSX output files.
+* `chart_manager`: Generates PNG chart images from sales-analysis results.
 * `errors`: Defines application-specific exceptions and Spanish user-facing error messages.
 * `gui.main_window`: Provides the main PySide6 graphical interface.
 * `gui.file_viewer_window`: Displays generated TXT, JSON, and CSV files in read-only viewer windows.
@@ -64,9 +80,16 @@ Before running the project, make sure the following tools are installed:
 * Python 3.10 or later.
 * `pip`, the Python package installer.
 * Git, if the project will be cloned from GitHub.
-* `PySide6`, used to build and run the graphical desktop interface.
 
-The required Python libraries, including PySide6 and the data-processing dependencies, are listed in:
+The application uses libraries including:
+
+* `PySide6`
+* `pandas`
+* `numpy`
+* `openpyxl`
+* `matplotlib`
+
+The complete dependency list is maintained in:
 
 `requirements.txt`
 
@@ -141,9 +164,9 @@ The application also supports the following optional columns:
 * `ciudad`
 * `metodo_pago`
 
-These columns are not required for the core validation process.
+These columns are not required for the core validation workflow.
 
-When present, they are normalized and used to generate additional sales analysis summaries.
+When present, they are normalized and used to generate additional analysis summaries, report sections, exported files, and charts.
 
 ### Minimum CSV Example
 
@@ -172,11 +195,15 @@ When the application starts, the main window allows the user to:
 1. Select a source CSV file.
 2. Optionally select a custom output directory.
 3. Use `reports/` as the default output directory when no custom folder is selected.
-4. Start the sales-report generation process.
+4. Start the complete report-generation process.
 5. View the current application status.
-6. View the paths of generated report files.
-7. Open generated TXT, JSON, and CSV files.
-8. Open the configured output directory.
+6. View generated TXT, JSON, XLSX, and CSV paths.
+7. Select generated CSV summaries from a combo box.
+8. Open TXT, JSON, and CSV files through read-only viewer windows.
+9. Open the generated XLSX workbook through the operating system.
+10. Select generated charts from a combo box.
+11. Open generated PNG charts through the operating system.
+12. Open the configured output directory.
 
 ---
 
@@ -192,28 +219,41 @@ When the user starts report generation, the application performs the following w
 6. Normalizes and validates the sales records.
 7. Separates valid and invalid rows.
 8. Detects validation warnings.
-9. Analyzes the valid sales records.
-10. Calculates general sales metrics.
-11. Generates product and category summaries.
-12. Generates Top 5 product rankings.
-13. Generates city analysis when `ciudad` is available.
-14. Generates payment-method analysis when `metodo_pago` is available.
-15. Generates the structured plain-text sales report.
-16. Creates a shared dynamic base filename.
-17. Saves the plain-text report as a TXT file.
-18. Saves the complete structured analysis as a JSON file.
-19. Saves product and category summaries as independent CSV files.
-20. Saves city and payment-method CSV summaries when those optional analyses are available.
-21. Calculates the total execution time.
-22. Returns processing results and generated file paths to the graphical interface.
-23. Displays the generated file paths in the application.
-24. Enables the controls used to inspect the generated reports.
+9. Verifies that valid records are available for analysis.
+10. Calculates row-level income.
+11. Calculates total income and total units sold.
+12. Generates the product summary.
+13. Generates the category summary.
+14. Generates the monthly summary.
+15. Calculates monthly income growth.
+16. Calculates monthly income percentage growth.
+17. Calculates monthly unit-sales growth.
+18. Calculates monthly unit-sales percentage growth.
+19. Determines overall highest-performing records.
+20. Generates Top 5 product rankings.
+21. Determines the best-selling product or tied products for each month.
+22. Determines the highest-income category or tied categories for each month.
+23. Generates city analysis when `ciudad` is available.
+24. Generates payment-method analysis when `metodo_pago` is available.
+25. Generates the structured plain-text report.
+26. Creates a shared base filename using the source CSV filename and current timestamp.
+27. Saves the plain-text report as TXT.
+28. Saves the complete structured analysis as JSON.
+29. Saves five standard CSV analysis summaries.
+30. Saves optional city and payment-method CSV summaries when available.
+31. Generates the XLSX workbook.
+32. Generates ten standard PNG charts.
+33. Generates optional city and payment-method charts when available.
+34. Calculates total execution time.
+35. Returns processing results and generated output paths to the graphical interface.
+36. Displays generated file and chart paths.
+37. Enables controls used to inspect generated outputs.
 
 ---
 
 ## Generated Output Files
 
-Generated report files are stored in the selected output directory.
+Generated outputs are stored in the selected output directory.
 
 If no custom directory is selected, the default directory is:
 
@@ -223,37 +263,34 @@ reports/
 
 If the destination directory does not exist, the application creates it when necessary.
 
-All files generated during the same execution share a dynamically generated base filename containing the current local date and time.
+All files generated during the same execution share a base filename containing:
+
+* The original source CSV filename without its extension.
+* The current local date.
+* The current local time.
+* Milliseconds.
 
 The base filename follows this format:
 
 ```text
-sales_report_YYYY-MM-DD_HH-MM-SS-fff
+<source_filename>_YYYY-MM-DD_HH-MM-SS-fff
 ```
 
-For example:
+For example, when the source file is:
 
 ```text
-sales_report_2026-08-28_16-30-25-125
+ventas_agosto.csv
 ```
 
-A normal execution generates:
+a generated base filename may be:
 
 ```text
-reports/sales_report_2026-08-28_16-30-25-125.txt
-reports/sales_report_2026-08-28_16-30-25-125.json
-reports/sales_report_2026-08-28_16-30-25-125_products.csv
-reports/sales_report_2026-08-28_16-30-25-125_categories.csv
+ventas_agosto_2026-09-19_07-45-30-125
 ```
 
-When optional analysis data is available, the application may also generate:
+A normal execution generates TXT, JSON, XLSX, CSV, and PNG files that reuse this base filename.
 
-```text
-reports/sales_report_2026-08-28_16-30-25-125_cities.csv
-reports/sales_report_2026-08-28_16-30-25-125_payment_methods.csv
-```
-
-Each execution generates a new dynamic base filename, allowing report files from different executions to be stored independently.
+Each execution generates a new timestamp, allowing outputs from different processing runs to coexist independently.
 
 ---
 
@@ -261,16 +298,16 @@ Each execution generates a new dynamic base filename, allowing report files from
 
 The TXT file contains the human-readable sales report.
 
-Depending on the available data, the report may include:
+Depending on the available data, it includes:
 
 * General sales summary.
 * Total processed rows.
 * Valid and invalid row totals.
 * Total income.
 * Total units sold.
-* Best-selling product.
-* Highest-income product.
-* Highest-income category.
+* Best-selling product or tied products.
+* Highest-income product or tied products.
+* Highest-income category or tied categories.
 * Highest-income city when available.
 * Highest-income payment method when available.
 * Top 5 best-selling products.
@@ -279,8 +316,19 @@ Depending on the available data, the report may include:
 * Category summary.
 * City summary when available.
 * Payment-method summary when available.
+* Monthly sales summary.
+* Monthly income variation.
+* Monthly income percentage variation.
+* Monthly unit-sales variation.
+* Monthly unit-sales percentage variation.
+* Best-selling product or tied products for each month.
+* Highest-income category or tied categories for each month.
 * Validation errors.
 * Validation warnings.
+
+Monthly growth values that cannot be calculated, such as those for the first available month, are displayed as:
+
+`N/D`
 
 The report is saved using UTF-8 encoding.
 
@@ -288,88 +336,380 @@ The report is saved using UTF-8 encoding.
 
 ## Generated JSON Analysis
 
-The JSON file contains the structured sales analysis results.
+The JSON file contains the complete structured sales-analysis result.
 
-pandas `DataFrame` summaries are converted into JSON-compatible lists of dictionaries before serialization.
+Before serialization, pandas DataFrames are converted into lists of dictionaries.
 
-The JSON output always contains the product and category analysis results and may also contain city and payment-method analysis when those optional fields are available.
+The following analysis DataFrames are always converted:
 
-The file is written using UTF-8 encoding and formatted indentation.
+* `product_summary`
+* `category_summary`
+* `monthly_summary`
+* `monthly_best_selling_product`
+* `monthly_highest_income_category`
+
+The following are included when available:
+
+* `city_summary`
+* `payment_method_summary`
+
+pandas `NaN` values are replaced with Python `None` before serialization so missing values are represented as:
+
+`null`
+
+inside JSON.
+
+The file is written using:
+
+* UTF-8 encoding.
+* Formatted indentation.
+* `ensure_ascii=False`.
 
 ---
 
 ## Generated CSV Summaries
 
-The application generates independent CSV files for aggregated sales summaries.
+The application generates five standard CSV analysis files.
 
-The following summaries are always generated:
+The standard summaries are:
 
 * Product summary.
 * Category summary.
+* Monthly summary.
+* Monthly best-selling products.
+* Monthly highest-income categories.
 
-The following summaries are generated when the corresponding optional data is available:
+The CSV-path dictionary uses the following keys:
 
-* City summary.
-* Payment-method summary.
+```text
+resumen_producto
+resumen_categoria
+resumen_mensual
+resumen_mejores_vendidos_por_mes
+resumen_categoria_mayor_ingreso_por_mes
+```
 
-The physical filenames use the following suffixes:
+When optional data is available, the application may also generate:
 
-* `_products.csv`
-* `_categories.csv`
-* `_cities.csv`
-* `_payment_methods.csv`
+```text
+ciudad_resumen
+metodo_de_pago_resumen
+```
 
-The CSV-path dictionary returned by the file-management workflow uses the following Spanish keys:
+The physical filename suffixes are:
 
-* `resumen_producto`
-* `resumen_categoria`
-* `ciudad_resumen`
-* `metodo_de_pago_resumen`
+```text
+_productos.csv
+_categorias.csv
+_meses.csv
+_producto_top_mensual.csv
+_categoria_top_ingreso_mensual.csv
+_ciudades.csv
+_metodos_pago.csv
+```
 
-The city and payment-method entries are optional.
+The city and payment-method CSV files are optional.
 
 ---
 
-## Graphical Report Viewing
+## Generated XLSX Workbook
 
-After a successful report-generation process, the graphical interface displays the generated output paths.
+The application generates a structured Excel workbook using `openpyxl`.
 
-The user can:
+The workbook always contains:
 
-* Open the generated TXT report.
-* Open the generated JSON analysis file.
-* Select a generated CSV summary from a combo box.
-* Open the selected CSV summary.
-* Open the output directory using the operating system file manager.
+* `Resumen General`
+* `Productos`
+* `Categorías`
+* `Resumen por mes`
+* `Productos mejor vendidos`
+* `Productos con mejor Ingreso`
+* `Producto más vendido por mes`
+* `Categoría mayor ingreso por mes`
+* `Validación de errores`
+* `Advertencias`
 
-TXT, JSON, and CSV files are displayed through an independent read-only `FileViewerWindow`.
+When optional analyses are available, the workbook can also contain:
 
-The viewer reads the selected report using UTF-8 encoding and displays its contents without modifying the original file.
+* `Resumen por ciudad`
+* `Resumen por método de pago`
+
+The default worksheet created by openpyxl is removed before the report worksheets are created.
+
+Most DataFrame-based worksheets are generated through a reusable worksheet-building helper.
+
+The XLSX file is opened from the graphical interface through the operating system's associated application.
+
+---
+
+## Generated PNG Charts
+
+Version 3.0.3 includes automatic chart generation through:
+
+`chart_manager`
+
+All charts are generated as bar charts using pandas and Matplotlib.
+
+Generated images use:
+
+* PNG format.
+* 150 DPI.
+* Custom titles.
+* Custom axis labels.
+* 90-degree x-axis label rotation.
+* Automatic layout adjustment through `tight_layout()`.
+
+The standard workflow generates ten charts.
+
+### Standard Charts
+
+The standard chart identifiers are:
+
+```text
+grafica_de_ingresos_mensuales
+grafica_de_unidades_vendidas_mensualmente
+grafica_crecimiento_porcentaje_mensual
+grafica_crecimiento_porcentaje_unidades
+grafica_producto_top_mensual
+grafica_categoria_top_ingreso
+grafica_producto_top_ingreso
+grafica_unidades_producto_top
+grafica_ingreso_categoria
+grafica_unidades_categoria
+```
+
+These charts represent:
+
+* Monthly income.
+* Monthly units sold.
+* Monthly income percentage variation.
+* Monthly unit-sales percentage variation.
+* Best-selling products by month.
+* Highest-income categories by month.
+* Top 5 highest-income products.
+* Top 5 products by units sold.
+* Income by category.
+* Units sold by category.
+
+### Optional City Charts
+
+When `city_summary` is available and contains data, the application also generates:
+
+```text
+grafica_ingreso_ciudad
+grafica_unidades_ciudad
+```
+
+These represent:
+
+* Income by city.
+* Units sold by city.
+
+### Optional Payment-Method Charts
+
+When `payment_method_summary` is available and contains data, the application also generates:
+
+```text
+grafica_ingreso_metodo_pago
+grafica_unidades_metodo_pago
+```
+
+These represent:
+
+* Income by payment method.
+* Units sold by payment method.
+
+The application therefore generates:
+
+* 10 charts without optional analysis.
+* 12 charts when either city or payment-method analysis is available.
+* 14 charts when both optional analyses are available.
+
+Generated PNG paths are returned by the controller under:
+
+`reports_path_charts`
+
+---
+
+## Graphical Report and Chart Access
+
+After a successful processing workflow, the graphical interface displays the generated output information.
+
+TXT, JSON, and CSV files are displayed through independent read-only:
+
+`FileViewerWindow`
+
+instances.
+
+The viewer reads text-based report files using UTF-8 encoding without modifying their contents.
+
+CSV summaries can be selected through:
+
+`csv_combobox`
+
+Generated CSV paths are displayed inside a scrollable area.
+
+The XLSX workbook is opened through:
+
+`QDesktopServices`
+
+using the operating system's associated application.
+
+Generated chart names are added to:
+
+`chart_combobox`
+
+Their paths are stored in:
+
+`charts_paths`
+
+The selected PNG chart is also opened through:
+
+`QDesktopServices`
+
+using the operating system's associated application.
+
+The graphical interface additionally provides direct access to the configured output directory.
+
+---
+
+## Analysis Features
+
+The analysis module provides the data structures used by reports, exported files, and generated charts.
+
+Current analysis functionality includes:
+
+* Row-level income calculation.
+* Total income.
+* Total units sold.
+* Product aggregation.
+* Category aggregation.
+* Optional city aggregation.
+* Optional payment-method aggregation.
+* Maximum-value record detection with tie preservation.
+* Generic Top 5 product ranking.
+* Monthly sales aggregation.
+* Absolute monthly income growth.
+* Percentage monthly income growth.
+* Absolute monthly unit-sales growth.
+* Percentage monthly unit-sales growth.
+* Monthly best-selling-product identification.
+* Monthly highest-income-category identification.
+
+The analysis module calculates these values before they are passed to presentation and export modules.
+
+---
+
+## Monthly Analysis
+
+The monthly summary contains:
+
+```text
+mes
+filas_validas
+unidades_vendidas
+ingreso_total
+crecimiento_ingreso
+crecimiento_ingreso_porcentaje
+crecimiento_unidades
+crecimiento_unidades_porcentaje
+```
+
+Monthly records are sorted chronologically.
+
+Growth values compare each month against the immediately preceding month.
+
+The application also generates two additional monthly analysis structures:
+
+`monthly_best_selling_product`
+
+and:
+
+`monthly_highest_income_category`
+
+These structures preserve ties when more than one product or category shares the corresponding monthly maximum.
 
 ---
 
 ## Application Status and Errors
 
-The graphical interface provides status messages during the application workflow.
+The graphical interface provides status messages throughout the application workflow.
 
 The status area informs the user about events such as:
 
 * CSV file selection.
 * Output-folder selection.
-* Start of report generation.
+* Start of processing.
 * Missing source-file selection.
-* Successful report generation.
+* Successful report and chart generation.
 * Processing errors.
 
 Application-specific exceptions inherit from:
 
 `AppError`
 
-Expected application errors use Spanish default messages because they are intended to be displayed directly to the user.
+Expected application errors use Spanish default messages because they are intended to be displayed directly to users.
 
-When an application-specific or unexpected error occurs during report generation, the graphical interface updates the status and displays the error through a critical message box.
+The custom exception hierarchy currently covers:
 
-The graphical application remains open so that the user can correct the problem and try again.
+* File-path validation failures.
+* CSV file-reading failures.
+* CSV structure failures.
+* Data-validation failures.
+* Absence of valid sales rows.
+* Report-generation failures.
+* Report-storage failures.
+* Chart-generation and chart-storage failures.
+
+Chart-specific generation failures use:
+
+`ChartGenerationError`
+
+When an application-specific or unexpected exception occurs during the generation workflow, the graphical interface updates the application status and displays the corresponding error through a critical message box.
+
+The graphical application remains open so the user can correct the problem and try again.
+
+---
+
+## Version 3.0.3
+
+Version **3.0.3** represents the current completed state of the Sales Report application.
+
+This version includes:
+
+* PySide6 graphical desktop interface.
+* Modular backend architecture.
+* CSV source-file validation.
+* Data normalization and record validation.
+* Validation errors and non-critical warnings.
+* General sales metrics.
+* Product and category summaries.
+* Optional city and payment-method analysis.
+* Generic Top 5 ranking logic.
+* Monthly sales analysis.
+* Monthly income and unit-sales growth.
+* Monthly percentage growth.
+* Monthly best-selling products.
+* Monthly highest-income categories.
+* Human-readable TXT reporting.
+* Structured JSON export.
+* Five standard CSV exports.
+* Optional city and payment-method CSV exports.
+* Multi-sheet XLSX workbook generation.
+* Automatic PNG chart generation.
+* Ten standard charts.
+* Four optional charts.
+* Read-only TXT, JSON, and CSV viewing.
+* Operating-system XLSX opening.
+* Operating-system PNG opening.
+* Dynamic source-based filenames.
+* Custom application-specific exception hierarchy.
+* Dedicated `ChartGenerationError`.
+* Output-directory access from the graphical interface.
+* Cross-platform output-folder opening.
+* Execution-time measurement.
+
+The project remains organized so validation, analysis, presentation, storage, chart generation, graphical interaction, and workflow orchestration are handled by independent modules.
 
 ---
 
@@ -393,13 +733,13 @@ This allows generated report files to be accessed directly from the desktop appl
 
 The custom exceptions module defines the application-specific errors used throughout the Sales Report project.
 
-Its purpose is to make expected application failures easier to identify, handle, propagate, and present consistently across the backend and graphical interface.
+Its purpose is to make expected application failures easier to identify, propagate, handle, and present consistently across the backend and graphical interface.
 
 All custom exceptions inherit from `AppError`, which acts as the common base class for application-specific errors.
 
-The default exception messages are written in Spanish because they are intended to be displayed directly to the user through the graphical interface.
+The default exception messages are written in Spanish because they are intended to be displayed directly to users through the graphical interface.
 
-The module currently handles errors related to:
+The module currently covers errors related to:
 
 * Empty, missing, or invalid file paths.
 * Unsupported file extensions.
@@ -408,18 +748,25 @@ The module currently handles errors related to:
 * Missing required columns.
 * Invalid CSV structures.
 * Empty or unusable DataFrames.
-* Data validation failures.
+* Data-validation failures.
 * Absence of valid rows for analysis.
-* Report generation failures.
-* Report saving failures.
+* Report-generation failures.
+* Report-file storage failures.
+* Chart-generation or chart-storage failures.
 
 #### Base Exception
 
 `AppError` is the base class for all application-specific exceptions.
 
-It stores the error message received during initialization and provides that message through its string representation.
+It stores the error message received during initialization in:
 
-This allows the application to handle all expected project-specific errors through a common exception type while preserving specialized subclasses for different failure conditions.
+`message`
+
+and passes that message to Python's built-in `Exception` class.
+
+Its `__str__()` implementation returns the stored message directly.
+
+This allows the application to handle all expected project-specific errors through a common exception type while preserving specialized subclasses for individual failure conditions.
 
 #### User-Facing Error Messages
 
@@ -427,7 +774,7 @@ Each specialized exception provides a default error message in Spanish.
 
 These messages are designed to be presented directly to the user when an expected application error occurs.
 
-For example:
+Examples include:
 
 `La ruta del archivo está vacía.`
 
@@ -441,47 +788,110 @@ For example:
 
 `No se pudo guardar el archivo del reporte.`
 
+`No se pudo generar la gráfica.`
+
 A custom message may also be provided when creating an exception, replacing its default message.
 
 #### Exception Hierarchy
 
+The current application-specific exception hierarchy is:
+
 * `AppError`: Base class for all application-specific exceptions.
-
 * `EmptyPathError`: Raised when the provided file path is empty.
-
 * `FileNotFoundAppError`: Raised when the provided file path does not exist.
-
-* `InvalidFilePathError`: Raised when the path does not point to a valid file.
-
+* `InvalidFilePathError`: Raised when the provided path does not point to a valid file.
 * `InvalidFileExtensionError`: Raised when the file extension is not supported.
-
-* `EmptyFileError`: Raised when the CSV file exists but contains no usable content.
-
+* `EmptyFileError`: Raised when the CSV file exists but contains zero bytes.
 * `FileReadError`: Raised when the CSV file cannot be read correctly.
-
 * `MissingColumnsError`: Raised when the CSV file does not contain all required columns.
-
 * `EmptyHeadersError`: Raised when the CSV file has no valid headers.
-
 * `InvalidCSVStructureError`: Raised when the CSV structure is invalid.
-
 * `EmptyDataFrameError`: Raised when the DataFrame contains no rows or usable data.
-
-* `DataValidationError`: Raised when the DataFrame validation process fails.
-
+* `DataValidationError`: Raised when the DataFrame-validation process fails.
 * `NoValidRowsError`: Raised when no valid rows are available for sales analysis.
-
 * `ReportGenerationError`: Raised when the plain-text report cannot be generated.
-
 * `ReportSaveError`: Raised when a generated report file cannot be saved.
+* `ChartGenerationError`: Raised when a chart image cannot be generated or saved.
+
+#### Exception Categories
+
+The custom exceptions can be grouped according to their primary responsibility.
+
+##### File and Path Validation
+
+The following exceptions are related to source-file validation:
+
+* `EmptyPathError`
+* `FileNotFoundAppError`
+* `InvalidFilePathError`
+* `InvalidFileExtensionError`
+* `EmptyFileError`
+* `FileReadError`
+
+##### CSV Structure and Data Validation
+
+The following exceptions represent CSV-structure or DataFrame-validation failures:
+
+* `MissingColumnsError`
+* `EmptyHeadersError`
+* `InvalidCSVStructureError`
+* `EmptyDataFrameError`
+* `DataValidationError`
+
+##### Sales Analysis
+
+The analysis layer uses:
+
+* `NoValidRowsError`
+
+This exception prevents sales-analysis operations from continuing when no valid records are available.
+
+##### Report Generation and Storage
+
+Report-related failures can be represented by:
+
+* `ReportGenerationError`
+* `ReportSaveError`
+
+`ReportGenerationError` represents failures while producing the human-readable report content.
+
+`ReportSaveError` represents failures while storing generated report files such as TXT, JSON, CSV, or XLSX outputs.
+
+##### Chart Generation and Storage
+
+Chart-related failures are represented by:
+
+* `ChartGenerationError`
+
+This exception is used when a chart image cannot be generated or saved successfully.
+
+Chart errors remain separate from `ReportSaveError`, allowing the application to distinguish report-file failures from chart-generation failures.
 
 #### Error Propagation
 
-Specialized backend modules raise these exceptions when an expected application failure occurs.
+Specialized backend modules raise application-specific exceptions when an expected failure occurs.
 
-The exceptions can propagate through the controller until they reach the graphical interface.
+These exceptions can propagate through the controller until they reach the graphical interface.
 
-Because all custom exceptions inherit from `AppError`, the GUI can handle expected application errors through a common exception block.
+Because all custom exceptions inherit from:
+
+`AppError`
+
+the GUI can handle expected project errors through a common exception block.
+
+The general propagation model is:
+
+`Specialized backend module`
+
+→ `AppError` subclass
+
+→ `Controller`
+
+→ `Graphical interface`
+
+→ User-facing message
+
+The controller does not need to convert every specialized exception into another type because the shared `AppError` hierarchy already provides a consistent application-level contract.
 
 #### Graphical Interface Integration
 
@@ -491,17 +901,92 @@ The main graphical interface catches application-specific exceptions using:
 except AppError as error:
 ```
 
-When an `AppError` occurs during report generation, the GUI can present the Spanish error message directly to the user.
+When an `AppError` occurs during report or chart generation, the GUI can display its Spanish error message directly to the user.
 
-This separates technical exception handling from user-facing feedback while maintaining a consistent error hierarchy across the application.
+This keeps backend exception detection separate from graphical error presentation.
+
+The graphical interface remains responsible for deciding how the error is presented, such as through:
+
+* Status messages.
+* Critical `QMessageBox` dialogs.
+* Warning dialogs when handled directly by graphical operations.
 
 #### Custom Error Messages
 
-Each specialized exception accepts an optional `message` argument.
+Each specialized exception accepts an optional:
 
-When no custom message is provided, the exception uses its predefined Spanish message.
+`message`
 
-A custom message can be supplied when additional context is required without changing the exception type.
+argument.
+
+When no custom message is supplied, the exception uses its predefined Spanish message.
+
+For example:
+
+```python
+raise ChartGenerationError()
+```
+
+uses:
+
+`No se pudo generar la gráfica.`
+
+A custom message can also be provided when additional context is required:
+
+```python
+raise ChartGenerationError("No se pudo guardar la gráfica mensual.")
+```
+
+The exception type remains unchanged while the displayed information becomes more specific.
+
+#### Common Exception Contract
+
+All specialized exceptions follow the same basic structure:
+
+1. Inherit from `AppError`.
+2. Accept an optional `message` argument.
+3. Provide a predefined Spanish message by default.
+4. Pass the selected message to `AppError`.
+5. Can be handled through the common `AppError` type.
+
+This shared structure keeps error handling predictable across the project.
+
+#### Current Exception Structure
+
+The application-specific hierarchy can be represented as:
+
+```text
+AppError
+├── EmptyPathError
+├── FileNotFoundAppError
+├── InvalidFilePathError
+├── InvalidFileExtensionError
+├── EmptyFileError
+├── FileReadError
+├── MissingColumnsError
+├── EmptyHeadersError
+├── InvalidCSVStructureError
+├── EmptyDataFrameError
+├── DataValidationError
+├── NoValidRowsError
+├── ReportGenerationError
+├── ReportSaveError
+└── ChartGenerationError
+```
+
+#### Input and Output
+
+##### `AppError`
+
+* **Input:** Error message as a string.
+* **Output:** Application-specific exception object whose string representation returns the supplied message.
+
+##### Specialized Exceptions
+
+* **Input:** Optional custom error message.
+* **Output:** Specialized `AppError` subclass representing a specific expected application failure.
+
+When no custom message is supplied, the predefined Spanish message is used.
 
 #### Responsibilities
 
@@ -510,17 +995,23 @@ This module is responsible for:
 * Defining the common `AppError` base exception.
 * Defining specialized exceptions for expected application failures.
 * Providing default user-facing messages in Spanish.
-* Supporting consistent exception handling across the project.
+* Maintaining a common exception hierarchy across the project.
+* Supporting consistent exception propagation.
 * Allowing custom messages when additional error context is required.
+* Representing report-generation and report-storage failures.
+* Representing chart-generation and chart-storage failures.
 
 This module is not responsible for:
 
 * Detecting every error condition directly.
 * Displaying graphical error dialogs.
 * Logging errors.
-* Recovering from failed operations.
+* Recovering automatically from failed operations.
+* Validating source files directly.
+* Generating reports.
+* Generating charts.
 
-Those responsibilities belong to the modules that raise, catch, or present the corresponding exceptions.
+Those responsibilities belong to the modules that detect, raise, catch, or present the corresponding exceptions.
 
 ---
 
@@ -786,11 +1277,13 @@ The module is responsible only for reading the validated CSV file and converting
 
 ### Sales Analysis Module
 
-The sales analysis module processes previously validated sales records and calculates the main metrics and aggregated summaries required for report generation and file export.
+The sales analysis module processes previously validated sales records and calculates the main metrics, aggregated summaries, rankings, monthly performance indicators, and optional analyses required by the rest of the application.
 
-Each analysis operation is implemented in an independent helper function. This modular structure keeps the analysis workflow easier to maintain, test, understand, and extend without modifying the complete analysis process.
+Each analysis operation is implemented in an independent helper function. This modular structure keeps the analysis workflow easier to maintain, test, understand, reuse, and extend without modifying the complete analysis process.
 
-The module calculates general sales metrics, product and category summaries, monthly sales summaries, Top 5 product rankings, maximum-value records, and optional city and payment-method analyses.
+The module calculates general sales metrics, product and category summaries, monthly sales summaries, Top 5 product rankings, maximum-value records, monthly growth indicators, monthly best-selling products, monthly highest-income categories, and optional city and payment-method analyses.
+
+The resulting structures are used by report generation, file export, and chart-generation components.
 
 The module currently provides the following functions:
 
@@ -802,9 +1295,12 @@ The module currently provides the following functions:
 * `get_city_summary()`
 * `get_payment_method_summary()`
 * `get_records_with_max_value()`
-* `get_top_5_best_selling_products()`
-* `get_top_5_highest_income_products()`
+* `get_top_5()`
+* `get_income_growth_units()`
+* `get_income_percentage_growth()`
 * `get_monthly_summary()`
+* `get_monthly_best_selling_product()`
+* `get_monthly_highest_income_category()`
 * `analyze_sales()`
 
 #### Income Calculation
@@ -858,6 +1354,10 @@ The resulting DataFrame contains:
 * `unidades_vendidas`
 * `ingreso_total`
 
+The final product summary is sorted from highest to lowest:
+
+`ingreso_total`
+
 #### Category Summary
 
 The `get_category_summary()` function groups valid sales records by:
@@ -875,30 +1375,9 @@ The resulting DataFrame contains:
 * `unidades_vendidas`
 * `ingreso_total`
 
-#### Monthly Summary
+The final category summary is sorted from highest to lowest:
 
-The `get_monthly_summary()` function creates an aggregated sales summary grouped by month.
-
-The `fecha` column is converted into the following format:
-
-`YYYY-MM`
-
-Sales records are then grouped by month.
-
-For each month, the function calculates:
-
-* Number of valid sales rows.
-* Total units sold.
-* Total income generated.
-
-The resulting DataFrame contains:
-
-* `mes`: Month represented in `YYYY-MM` format.
-* `filas_validas`: Number of valid sales records for the month.
-* `unidades_vendidas`: Total units sold during the month.
-* `ingreso_total`: Total income generated during the month.
-
-The monthly summary is sorted chronologically from the earliest month to the latest month.
+`ingreso_total`
 
 #### City Summary
 
@@ -923,7 +1402,7 @@ The resulting DataFrame contains:
 
 The city summary is sorted from highest to lowest total income.
 
-City analysis is optional and is only performed when the `ciudad` column is present.
+City analysis is optional and is performed only when the `ciudad` column is present.
 
 #### Payment Method Summary
 
@@ -948,13 +1427,13 @@ The resulting DataFrame contains:
 
 The payment-method summary is sorted from highest to lowest total income.
 
-Payment-method analysis is optional and is only performed when the `metodo_pago` column is present.
+Payment-method analysis is optional and is performed only when the `metodo_pago` column is present.
 
 #### Maximum-Value Records
 
-The `get_records_with_max_value()` function identifies all records containing the maximum value in a specified numeric column.
+The `get_records_with_max_value()` function identifies every record containing the maximum value in a specified numeric column.
 
-The function determines the maximum value and preserves every record tied for that value.
+The function determines the maximum value and preserves all records tied for that value.
 
 The selected records are returned as a list of dictionaries.
 
@@ -966,30 +1445,217 @@ This reusable function is used to determine:
 * The city or cities with the highest total income when city data is available.
 * The payment method or payment methods with the highest total income when payment-method data is available.
 
-If multiple records share the maximum value, all tied records are included.
+If multiple records share the maximum value, all tied records are preserved.
 
-#### Top Product Rankings
+#### Generic Top 5 Ranking
 
-The module generates two Top 5 product rankings.
+The `get_top_5()` function generates reusable Top 5 product rankings.
 
-##### `get_top_5_best_selling_products()`
+It receives:
 
-Sorts the product summary by:
+* A product-summary DataFrame.
+* A column name or list of column names used for sorting.
+* A Boolean value or list of Boolean values defining the sort direction.
 
-1. `unidades_vendidas` in descending order.
-2. `ingreso_total` in descending order as a secondary criterion.
+The function:
 
-The function returns up to five products as a list of dictionaries.
+1. Sorts the product summary according to the supplied criteria.
+2. Selects the first five rows.
+3. Resets the resulting index.
+4. Converts the selected records into a list of dictionaries.
 
-##### `get_top_5_highest_income_products()`
+This generic implementation is used to generate different product rankings without duplicating sorting logic.
 
-Sorts the product summary by:
+#### Top 5 Best-Selling Products
+
+The best-selling ranking is generated through:
+
+`get_top_5()`
+
+using:
+
+* `unidades_vendidas` in descending order.
+* `ingreso_total` in descending order as a secondary sorting criterion.
+
+The result is stored in:
+
+`top_5_best_selling_products`
+
+and contains up to five product records.
+
+#### Top 5 Highest-Income Products
+
+The highest-income ranking is also generated through:
+
+`get_top_5()`
+
+using:
 
 `ingreso_total`
 
-in descending order and returns up to five products.
+in descending order.
 
-The result is returned as a list of dictionaries.
+The result is stored in:
+
+`top_5_highest_income_products`
+
+and contains up to five product records.
+
+#### Absolute Growth Calculation
+
+The `get_income_growth_units()` function calculates the absolute difference between consecutive values in a numeric column.
+
+The operation follows the general form:
+
+`current_value - previous_value`
+
+The calculated values are stored in a new column whose name is provided to the function.
+
+The first row contains a missing value because no previous record exists for comparison.
+
+Although the function is used for income growth, it is also reused for unit-sales growth.
+
+The current monthly analysis uses it to calculate:
+
+* `crecimiento_ingreso`
+* `crecimiento_unidades`
+
+#### Percentage Growth Calculation
+
+The `get_income_percentage_growth()` function calculates the percentage change between consecutive values.
+
+The calculation is based on:
+
+`pandas.Series.pct_change()`
+
+and the resulting value is multiplied by:
+
+`100`
+
+to represent percentage growth.
+
+The function also:
+
+1. Replaces positive infinity with `NaN`.
+2. Replaces negative infinity with `NaN`.
+3. Rounds percentage values to two decimal places.
+
+The current monthly analysis uses it to calculate:
+
+* `crecimiento_ingreso_porcentaje`
+* `crecimiento_unidades_porcentaje`
+
+#### Monthly Summary
+
+The `get_monthly_summary()` function creates the main aggregated monthly sales analysis.
+
+A copy of the original sales DataFrame is created before monthly transformations are performed.
+
+The `fecha` column is converted into month identifiers using:
+
+`YYYY-MM`
+
+The resulting value is stored in:
+
+`mes`
+
+Sales records are then grouped by month.
+
+For each month, the function calculates:
+
+* Number of valid sales rows.
+* Total units sold.
+* Total income generated.
+
+The resulting records are sorted chronologically from the earliest month to the latest month.
+
+After aggregation, the function calculates growth metrics for both income and units sold.
+
+The resulting DataFrame contains:
+
+* `mes`: Month represented in `YYYY-MM` format.
+* `filas_validas`: Number of valid sales records for the month.
+* `unidades_vendidas`: Total units sold during the month.
+* `ingreso_total`: Total income generated during the month.
+* `crecimiento_ingreso`: Absolute income difference from the previous month.
+* `crecimiento_ingreso_porcentaje`: Percentage income change from the previous month.
+* `crecimiento_unidades`: Absolute units-sold difference from the previous month.
+* `crecimiento_unidades_porcentaje`: Percentage units-sold change from the previous month.
+
+The first month does not have previous-period growth values because no earlier month is available for comparison.
+
+#### Monthly Best-Selling Product
+
+The `get_monthly_best_selling_product()` function identifies the product or products with the highest number of units sold for each month.
+
+A copy of the valid sales DataFrame is created and the `fecha` values are converted into:
+
+`YYYY-MM`
+
+The records are grouped by:
+
+* `mes`
+* `producto_id`
+
+For each monthly product group, the function preserves:
+
+* Product name.
+* Product category.
+
+and calculates:
+
+* Total units sold.
+* Total income.
+
+The resulting structure contains:
+
+* `mes`
+* `producto_id`
+* `producto`
+* `categoria`
+* `unidades_vendidas`
+* `ingreso_total`
+
+The maximum number of units sold is calculated independently for each month.
+
+All products tied for the monthly maximum are preserved.
+
+The result is stored in:
+
+`monthly_best_selling_product`
+
+#### Monthly Highest-Income Category
+
+The `get_monthly_highest_income_category()` function identifies the category or categories that generated the highest total income for each month.
+
+A copy of the valid sales DataFrame is created and the `fecha` values are converted into:
+
+`YYYY-MM`
+
+Records are grouped by:
+
+* `mes`
+* `categoria`
+
+For every monthly category group, the function calculates:
+
+* Total units sold.
+* Total income.
+
+The resulting DataFrame contains:
+
+* `mes`
+* `categoria`
+* `unidades_vendidas`
+* `ingreso_total`
+
+The maximum income is calculated independently for each month.
+
+All categories tied for the monthly maximum are preserved.
+
+The result is stored in:
+
+`monthly_highest_income_category`
 
 #### Sales Analysis Process
 
@@ -999,23 +1665,25 @@ It performs the following operations:
 
 1. Extracts valid sales rows and validation totals.
 2. Creates a copy of the valid sales DataFrame.
-3. Verifies that at least one valid row is available.
+3. Verifies that at least one valid sales row is available.
 4. Creates the `ingreso_fila` column.
 5. Calculates total income.
 6. Calculates total units sold.
 7. Creates the product summary.
 8. Creates the category summary.
 9. Creates the monthly summary.
-10. Identifies the best-selling product or products.
-11. Identifies the product or products with the highest income.
-12. Identifies the category or categories with the highest income.
-13. Creates the Top 5 best-selling products ranking.
-14. Creates the Top 5 highest-income products ranking.
-15. Creates the city summary when the optional `ciudad` column is available.
-16. Identifies the city or cities with the highest income when city analysis is available.
-17. Creates the payment-method summary when the optional `metodo_pago` column is available.
-18. Identifies the payment method or methods with the highest income when payment-method analysis is available.
-19. Returns the complete analysis result.
+10. Identifies the overall best-selling product or products.
+11. Identifies the overall highest-income product or products.
+12. Identifies the overall highest-income category or categories.
+13. Creates the Top 5 best-selling product ranking through `get_top_5()`.
+14. Creates the Top 5 highest-income product ranking through `get_top_5()`.
+15. Calculates the best-selling product or products for each month.
+16. Calculates the highest-income category or categories for each month.
+17. Creates the city summary when the optional `ciudad` column is available.
+18. Identifies the highest-income city or cities when city analysis is available.
+19. Creates the payment-method summary when the optional `metodo_pago` column is available.
+20. Identifies the highest-income payment method or methods when payment-method analysis is available.
+21. Returns the complete analysis result.
 
 #### Analysis Result
 
@@ -1030,12 +1698,14 @@ The following entries are always included:
 * `total_units_sold`: Total number of units sold.
 * `product_summary`: pandas `DataFrame` containing aggregated product results.
 * `category_summary`: pandas `DataFrame` containing aggregated category results.
-* `monthly_summary`: pandas `DataFrame` containing aggregated monthly sales results.
+* `monthly_summary`: pandas `DataFrame` containing monthly totals and growth metrics.
 * `best_selling_product`: List containing the product or products tied for the highest number of units sold.
 * `highest_income_product`: List containing the product or products tied for the highest total income.
 * `highest_income_category`: List containing the category or categories tied for the highest total income.
-* `top_5_best_selling_products`: List containing up to five products with the highest number of units sold.
-* `top_5_highest_income_products`: List containing up to five products with the highest total income.
+* `top_5_best_selling_products`: List containing up to five products ranked by units sold and total income.
+* `top_5_highest_income_products`: List containing up to five products ranked by total income.
+* `monthly_best_selling_product`: pandas `DataFrame` containing the best-selling product or products for each month.
+* `monthly_highest_income_category`: pandas `DataFrame` containing the highest-income category or categories for each month.
 
 When the optional `ciudad` column is present, the result also contains:
 
@@ -1052,38 +1722,71 @@ When the optional `metodo_pago` column is present, the result also contains:
 The `monthly_summary` DataFrame follows this structure:
 
 ```text
-mes | filas_validas | unidades_vendidas | ingreso_total
+mes
+| filas_validas
+| unidades_vendidas
+| ingreso_total
+| crecimiento_ingreso
+| crecimiento_ingreso_porcentaje
+| crecimiento_unidades
+| crecimiento_unidades_porcentaje
 ```
 
-For example:
+For example, conceptually:
 
 ```text
-2026-07 | 25 | 84 | 15420.50
-2026-08 | 31 | 102 | 18750.00
-2026-09 | 18 | 56 | 9320.75
+2026-07 | 25 | 84  | 15420.50 | NaN      | NaN   | NaN | NaN
+2026-08 | 31 | 102 | 18750.00 | 3329.50  | 21.59 | 18  | 21.43
+2026-09 | 18 | 56  | 9320.75  | -9429.25 | -50.29| -46 | -45.10
 ```
 
-This structure allows other application modules to use monthly information for reporting, spreadsheet export, or future visual analysis.
+Growth values compare each month against the immediately preceding month.
+
+The first month contains missing growth values because no previous month is available.
+
+#### Monthly Best-Selling Product Result
+
+The `monthly_best_selling_product` DataFrame follows this structure:
+
+```text
+mes
+| producto_id
+| producto
+| categoria
+| unidades_vendidas
+| ingreso_total
+```
+
+More than one row may exist for the same month when multiple products share the highest number of units sold.
+
+#### Monthly Highest-Income Category Result
+
+The `monthly_highest_income_category` DataFrame follows this structure:
+
+```text
+mes
+| categoria
+| unidades_vendidas
+| ingreso_total
+```
+
+More than one row may exist for the same month when multiple categories share the highest monthly income.
 
 #### Optional Analysis
 
 City and payment-method analyses depend on the presence of their corresponding optional columns.
 
-If `ciudad` exists:
-
-`analyze_sales()` adds:
+If `ciudad` exists, `analyze_sales()` adds:
 
 * `city_summary`
 * `highest_income_city`
 
-If `metodo_pago` exists:
-
-`analyze_sales()` adds:
+If `metodo_pago` exists, `analyze_sales()` adds:
 
 * `payment_method_summary`
 * `highest_income_payment_method`
 
-The remaining core analysis results, including `monthly_summary`, are generated independently of these optional fields.
+The remaining core analyses, including monthly totals, growth metrics, monthly best-selling products, and monthly highest-income categories, are generated independently of these optional fields.
 
 #### Input and Output
 
@@ -1105,17 +1808,12 @@ The remaining core analysis results, including `monthly_summary`, are generated 
 ##### `get_product_summary()`
 
 * **Input:** Valid sales DataFrame containing `ingreso_fila`.
-* **Output:** Product-summary DataFrame.
+* **Output:** Product-summary DataFrame sorted by total income.
 
 ##### `get_category_summary()`
 
 * **Input:** Valid sales DataFrame containing `ingreso_fila`.
-* **Output:** Category-summary DataFrame.
-
-##### `get_monthly_summary()`
-
-* **Input:** Valid sales DataFrame containing a datetime `fecha` column and `ingreso_fila`.
-* **Output:** Monthly-summary DataFrame containing `mes`, `filas_validas`, `unidades_vendidas`, and `ingreso_total`.
+* **Output:** Category-summary DataFrame sorted by total income.
 
 ##### `get_city_summary()`
 
@@ -1132,20 +1830,40 @@ The remaining core analysis results, including `monthly_summary`, are generated 
 * **Input:** DataFrame and numeric column name.
 * **Output:** List of dictionaries containing all records tied for the maximum value.
 
-##### `get_top_5_best_selling_products()`
+##### `get_top_5()`
 
-* **Input:** Product-summary DataFrame.
-* **Output:** List containing up to five best-selling products.
+* **Input:** Product-summary DataFrame, sorting column or columns, and sort direction or directions.
+* **Output:** List containing up to five sorted product records.
 
-##### `get_top_5_highest_income_products()`
+##### `get_income_growth_units()`
 
-* **Input:** Product-summary DataFrame.
-* **Output:** List containing up to five highest-income products.
+* **Input:** DataFrame, destination column name, and numeric source column.
+* **Output:** DataFrame containing a new absolute-growth column.
+
+##### `get_income_percentage_growth()`
+
+* **Input:** DataFrame, destination column name, and numeric source column.
+* **Output:** DataFrame containing a new percentage-growth column.
+
+##### `get_monthly_summary()`
+
+* **Input:** Valid sales DataFrame containing a datetime `fecha` column and `ingreso_fila`.
+* **Output:** Monthly-summary DataFrame containing totals, absolute growth, and percentage growth.
+
+##### `get_monthly_best_selling_product()`
+
+* **Input:** Valid sales DataFrame containing a datetime `fecha` column and `ingreso_fila`.
+* **Output:** DataFrame containing the best-selling product or tied products for each month.
+
+##### `get_monthly_highest_income_category()`
+
+* **Input:** Valid sales DataFrame containing a datetime `fecha` column and `ingreso_fila`.
+* **Output:** DataFrame containing the highest-income category or tied categories for each month.
 
 ##### `analyze_sales()`
 
 * **Input:** Dictionary containing validated sales rows and validation totals.
-* **Output:** Dictionary containing general sales metrics, product, category, and monthly summaries, Top 5 rankings, highest-performing records, and optional city and payment-method analysis.
+* **Output:** Dictionary containing general sales metrics, global summaries, Top 5 rankings, maximum-value records, monthly totals, growth metrics, monthly rankings, and optional city and payment-method analysis.
 
 #### Error Handling
 
@@ -1167,36 +1885,45 @@ This prevents the remaining analysis operations from being performed on an empty
 
 ### Sales Report Generation Module
 
-The sales report generation module converts sales analysis results, validation errors, and warnings into a structured plain-text sales report.
+The sales report generation module converts previously calculated sales-analysis results, validation errors, and validation warnings into a structured human-readable plain-text report.
 
-Each report section is generated by an independent helper function. This modular structure keeps the reporting workflow easier to maintain, test, modify, and extend.
+Each report section is generated by an independent helper function. Several helpers are designed to be reusable across different analysis structures, reducing duplicated formatting logic and keeping the reporting workflow easier to maintain, test, modify, and extend.
 
-The generated report includes general sales metrics, highest-performing records, Top 5 product rankings, product, category, and monthly summaries, validation errors, and validation warnings.
+The generated report includes:
 
-Optional city-based and payment-method-based sections are also included when the corresponding analysis information is available.
+* General sales metrics.
+* Overall best-selling products.
+* Highest-income products.
+* Highest-income categories.
+* Top 5 product rankings.
+* Product and category summaries.
+* Detailed monthly sales information.
+* Monthly income and unit-sales variations.
+* Monthly best-selling products.
+* Monthly highest-income categories.
+* Validation errors.
+* Validation warnings.
+
+Optional city-based and payment-method-based sections are included when their corresponding analysis results are available.
 
 The module currently provides the following functions:
 
 * `get_general_summary()`
 * `get_best_selling_product()`
-* `get_highest_income_product()`
-* `get_highest_income_category()`
-* `get_highest_income_city()`
-* `get_highest_income_payment_method()`
-* `get_top_5_best_selling_products()`
-* `get_top_5_highest_income_products()`
-* `get_product_summary()`
-* `get_category_summary()`
-* `get_city_summary()`
-* `get_payment_method_summary()`
-* `get_monthly_summary()`
+* `get_highest_income()`
+* `get_top_5()`
+* `get_summary()`
 * `get_errors()`
 * `get_warnings()`
+* `get_sign()`
+* `get_monthly_summary()`
+* `get_monthly_best_selling_product()`
+* `get_monthly_highest_income_category()`
 * `generate_report()`
 
 #### General Summary
 
-The `get_general_summary()` function generates the main sales-metrics section.
+The `get_general_summary()` function generates the primary sales-metrics section.
 
 It includes:
 
@@ -1206,7 +1933,11 @@ It includes:
 * Total income.
 * Total units sold.
 
-The total income is formatted with thousands separators and two decimal places.
+The total income is formatted using:
+
+* Thousands separators.
+* Two decimal places.
+* Currency notation.
 
 The generated section begins with:
 
@@ -1216,7 +1947,11 @@ The generated section begins with:
 
 The `get_best_selling_product()` function formats the product or products with the highest number of units sold.
 
-For each product, the section includes:
+It reads the records stored in:
+
+`best_selling_product`
+
+For each record, the section displays:
 
 * `producto_id`
 * `producto`
@@ -1228,86 +1963,140 @@ The generated section begins with:
 
 `PRODUCTO MÁS VENDIDO`
 
-#### Highest-Income Product
+#### Generic Highest-Income Formatter
 
-The `get_highest_income_product()` function formats the product or products that generated the highest total income.
+The `get_highest_income()` function generates highest-income sections from a supplied list of records.
 
-For each product, the section includes:
+Instead of maintaining separate formatting functions for products, categories, cities, and payment methods, this reusable helper receives:
+
+* The list of highest-income records.
+* The section title.
+* A primary dictionary key.
+* An optional secondary dictionary key.
+
+When a secondary key is supplied, both descriptive values are displayed.
+
+For example, product records can use:
 
 * `producto_id`
 * `producto`
+
+When no secondary key is provided, only the primary descriptive field is displayed.
+
+Each formatted record also includes:
+
 * `ingreso_total`
+* `unidades_vendidas`
 
-The income value is formatted as currency.
+The helper is currently reused for:
 
-If multiple products share the highest income, all tied products are included.
+* Highest-income products.
+* Highest-income categories.
+* Highest-income cities.
+* Highest-income payment methods.
 
-The generated section begins with:
+All tied records provided by the analysis layer are preserved.
+
+#### Highest-Income Product
+
+The highest-income product section is created through:
+
+`get_highest_income()`
+
+using:
+
+* `highest_income_product`
+* `producto_id`
+* `producto`
+
+The section begins with:
 
 `PRODUCTO CON MAYOR INGRESO`
 
+Each record includes:
+
+* Product identifier.
+* Product name.
+* Total income.
+* Units sold.
+
 #### Highest-Income Category
 
-The `get_highest_income_category()` function formats the category or categories that generated the highest total income.
+The highest-income category section is created through:
 
-For each category, the section includes:
+`get_highest_income()`
 
+using:
+
+* `highest_income_category`
 * `categoria`
-* `ingreso_total`
 
-The income value is formatted as currency.
-
-If multiple categories share the highest income, all tied categories are included.
-
-The generated section begins with:
+The section begins with:
 
 `CATEGORÍA CON MAYOR INGRESO`
 
+Each record includes:
+
+* Category.
+* Total income.
+* Units sold.
+
 #### Highest-Income City
 
-The `get_highest_income_city()` function formats the city or cities that generated the highest total income.
+When city analysis is available, the report uses:
 
-For each city, the section includes:
+`get_highest_income()`
 
+with:
+
+* `highest_income_city`
 * `ciudad`
-* `ingreso_total`
-* `unidades_vendidas`
 
-If multiple cities share the highest income, all tied cities are included.
-
-This section is generated only when city analysis is available.
-
-The generated section begins with:
+The section begins with:
 
 `CIUDAD CON MAYOR INGRESO`
 
+Each record includes:
+
+* City.
+* Total income.
+* Units sold.
+
+This section is optional.
+
 #### Highest-Income Payment Method
 
-The `get_highest_income_payment_method()` function formats the payment method or payment methods that generated the highest total income.
+When payment-method analysis is available, the report uses:
 
-For each payment method, the section includes:
+`get_highest_income()`
 
+with:
+
+* `highest_income_payment_method`
 * `metodo_pago`
-* `ingreso_total`
-* `unidades_vendidas`
 
-If multiple payment methods share the highest income, all tied payment methods are included.
-
-This section is generated only when payment-method analysis is available.
-
-The generated section begins with:
+The section begins with:
 
 `MÉTODO DE PAGO CON MAYOR INGRESO`
 
-#### Top Product Rankings
+Each record includes:
 
-The module generates two Top 5 product-ranking sections.
+* Payment method.
+* Total income.
+* Units sold.
 
-##### `get_top_5_best_selling_products()`
+This section is optional.
 
-Formats up to five products with the highest number of units sold.
+#### Generic Top 5 Formatter
 
-Each ranking entry includes:
+The `get_top_5()` function formats product-ranking records.
+
+It receives:
+
+* A list containing up to five product records.
+* The title used for the ranking section.
+
+For every product, it displays:
 
 * Ranking position.
 * `producto_id`
@@ -1315,102 +2104,319 @@ Each ranking entry includes:
 * `unidades_vendidas`
 * `ingreso_total`
 
-The generated section begins with:
+The same helper is reused for both supported Top 5 rankings.
+
+#### Top 5 Best-Selling Products
+
+The best-selling ranking uses:
+
+`top_5_best_selling_products`
+
+and the title:
 
 `TOP 5 PRODUCTOS MÁS VENDIDOS`
 
-##### `get_top_5_highest_income_products()`
+The ranking contains up to five products and preserves the order previously calculated by the analysis module.
 
-Formats up to five products with the highest total income.
+#### Top 5 Highest-Income Products
 
-Each ranking entry includes:
+The highest-income ranking uses:
 
-* Ranking position.
-* `producto_id`
-* `producto`
-* `ingreso_total`
-* `unidades_vendidas`
+`top_5_highest_income_products`
 
-The generated section begins with:
+and the title:
 
 `TOP 5 PRODUCTOS CON MAYOR INGRESO`
 
+The ranking contains up to five products and preserves the order previously calculated by the analysis module.
+
+#### Generic Summary Formatter
+
+The `get_summary()` function converts an analysis DataFrame into a human-readable plain-text table.
+
+It receives:
+
+* A pandas `DataFrame`.
+* The section title.
+
+The function first creates a copy of the supplied DataFrame.
+
+This prevents display formatting from modifying the original analysis structure.
+
+The copied:
+
+`ingreso_total`
+
+column is formatted as currency using:
+
+* Thousands separators.
+* Two decimal places.
+* `$` prefix.
+
+The DataFrame is then converted into plain text through:
+
+`DataFrame.to_string(index=False)`
+
+The pandas index is therefore excluded.
+
+This generic helper is currently reused for:
+
+* Product summary.
+* Category summary.
+* City summary.
+* Payment-method summary.
+
 #### Product Summary
 
-The `get_product_summary()` function converts the aggregated `product_summary` DataFrame into a plain-text table.
+The product summary is generated through:
 
-Before conversion, a copy of the DataFrame is created so that display formatting does not modify the original analysis result.
+`get_summary()`
 
-The `ingreso_total` column is formatted as currency.
+using:
 
-The pandas index is excluded from the generated table.
+`product_summary`
 
-The generated section begins with:
+and the title:
 
 `RESUMEN POR PRODUCTO`
 
 #### Category Summary
 
-The `get_category_summary()` function converts the aggregated `category_summary` DataFrame into a plain-text table.
+The category summary is generated through:
 
-A display copy of the DataFrame is created and the `ingreso_total` column is formatted as currency.
+`get_summary()`
 
-The pandas index is excluded.
+using:
 
-The generated section begins with:
+`category_summary`
+
+and the title:
 
 `RESUMEN POR CATEGORÍA`
 
 #### City Summary
 
-The `get_city_summary()` function converts the optional `city_summary` DataFrame into a plain-text table.
+When:
 
-A display copy is created and `ingreso_total` values are formatted as currency.
+`city_summary`
 
-The city summary is included only when `city_summary` is available in the analysis result.
+is available, it is formatted through:
 
-The pandas index is excluded.
+`get_summary()`
 
-The generated section begins with:
+using the title:
 
 `RESUMEN POR CIUDAD`
 
+This section is omitted when city analysis is unavailable.
+
 #### Payment-Method Summary
 
-The `get_payment_method_summary()` function converts the optional `payment_method_summary` DataFrame into a plain-text table.
+When:
 
-A display copy is created and `ingreso_total` values are formatted as currency.
+`payment_method_summary`
 
-The payment-method summary is included only when `payment_method_summary` is available in the analysis result.
+is available, it is formatted through:
 
-The pandas index is excluded.
+`get_summary()`
 
-The generated section begins with:
+using the title:
 
 `RESUMEN POR MÉTODO DE PAGO`
 
+This section is omitted when payment-method analysis is unavailable.
+
+#### Variation Sign Formatting
+
+The `get_sign()` function returns the sign used when displaying numeric monthly variations.
+
+Its behavior is:
+
+* Negative value → `-`
+* Positive value → `+`
+* Zero → empty string
+* `None` → empty string
+
+This helper is used by the monthly-summary formatter for:
+
+* Income variation.
+* Income percentage variation.
+* Unit-sales variation.
+* Unit-sales percentage variation.
+
 #### Monthly Summary
 
-The `get_monthly_summary()` function converts the `monthly_summary` DataFrame into a plain-text table.
+The `get_monthly_summary()` function generates a detailed month-by-month sales section.
 
-A display copy of the DataFrame is created before formatting.
+Unlike earlier versions, the monthly information is not displayed as a direct pandas table.
 
-The `ingreso_total` column is formatted as currency before the DataFrame is converted into plain text.
+The DataFrame is first processed using:
 
-The monthly summary contains the aggregated monthly analysis produced by the sales-analysis module, including:
+`replace({np.nan: None})`
+
+and converted into individual records.
+
+This allows missing growth values to be handled explicitly during text formatting.
+
+For every month, the section displays:
 
 * `mes`
 * `filas_validas`
 * `unidades_vendidas`
 * `ingreso_total`
-
-The pandas index is excluded from the generated table.
+* `crecimiento_ingreso`
+* `crecimiento_ingreso_porcentaje`
+* `crecimiento_unidades`
+* `crecimiento_unidades_porcentaje`
 
 The generated section begins with:
 
 `RESUMEN POR MES`
 
-Unlike city and payment-method summaries, the monthly summary is part of the standard report-generation workflow.
+#### Monthly Income Variation
+
+The absolute income difference from the previous month is displayed as:
+
+`Variación de ingreso`
+
+Positive values use:
+
+`+$`
+
+Negative values use:
+
+`-$`
+
+For example:
+
+`+$2,450.75`
+
+or:
+
+`-$1,200.00`
+
+The absolute numeric value is used during formatting while the sign is provided by `get_sign()`.
+
+#### Monthly Income Percentage Variation
+
+The percentage income difference is displayed as:
+
+`Variación porcentual de ingreso`
+
+For example:
+
+`+12.45%`
+
+or:
+
+`-8.30%`
+
+Percentage values are displayed with two decimal places.
+
+#### Monthly Unit Variation
+
+The absolute difference in units sold is displayed as:
+
+`Variación de unidades`
+
+For example:
+
+`+25`
+
+or:
+
+`-14`
+
+#### Monthly Unit Percentage Variation
+
+The percentage change in units sold is displayed as:
+
+`Variación porcentual de unidades`
+
+For example:
+
+`+10.50%`
+
+or:
+
+`-6.75%`
+
+#### Missing Monthly Growth Values
+
+The first available month has no previous month against which growth can be calculated.
+
+When a monthly growth value is unavailable, the report displays:
+
+`N/D`
+
+This applies independently to:
+
+* Income variation.
+* Income percentage variation.
+* Unit variation.
+* Unit percentage variation.
+
+#### Monthly Best-Selling Product
+
+The `get_monthly_best_selling_product()` function generates the section containing the best-selling product or products for every month.
+
+The supplied DataFrame is processed by replacing pandas `NaN` values with:
+
+`None`
+
+and converting the records into dictionaries.
+
+The generated section begins with:
+
+`PRODUCTO MÁS VENDIDO POR MES`
+
+Records are visually grouped by month.
+
+A month heading is displayed only when the current record belongs to a different month from the previously processed record.
+
+For each monthly product record, the report displays:
+
+* Product identifier.
+* Product name.
+* Category.
+* Units sold.
+* Income generated.
+
+The displayed fields are based on:
+
+* `mes`
+* `producto_id`
+* `producto`
+* `categoria`
+* `unidades_vendidas`
+* `ingreso_total`
+
+Multiple products can be displayed under the same month when the analysis layer identifies a tie for highest units sold.
+
+#### Monthly Highest-Income Category
+
+The `get_monthly_highest_income_category()` function generates the highest-income category or categories for every month.
+
+The generated section begins with:
+
+`CATEGORÍA CON MAYOR INGRESO POR MES`
+
+Records are visually grouped by month.
+
+For each monthly category record, the report displays:
+
+* Category.
+* Units sold.
+* Income generated.
+
+The section uses:
+
+* `mes`
+* `categoria`
+* `unidades_vendidas`
+* `ingreso_total`
+
+Multiple categories can appear under the same month when they are tied for the highest monthly income.
 
 #### Validation Errors
 
@@ -1421,12 +2427,12 @@ It performs the following operations:
 1. Adds the validation-errors section title.
 2. Detects when no validation errors are available.
 3. Sorts errors by CSV line number.
-4. Includes the affected column.
-5. Includes the error type.
-6. Includes the descriptive error message.
-7. Includes the original value when one is available.
+4. Displays the affected column.
+5. Displays the error type.
+6. Displays the descriptive message.
+7. Displays the original value when available.
 
-Each validation error may contain:
+Each validation-error record may contain:
 
 * `line_number`
 * `column`
@@ -1434,63 +2440,67 @@ Each validation error may contain:
 * `message`
 * `original_value`
 
-When no errors are available, the report indicates:
+When:
+
+`original_value`
+
+is empty, the original-value line is omitted.
+
+When no errors are available, the report displays:
 
 `No se encontraron errores de validación.`
 
-The generated section begins with:
+The section begins with:
 
 `ERRORES DE VALIDACIÓN`
 
 #### Validation Warnings
 
-The `get_warnings()` function generates the non-critical warnings section.
+The `get_warnings()` function generates the non-critical warning section.
 
 It performs the following operations:
 
 1. Adds the warning section title.
 2. Detects when no warnings are available.
 3. Sorts warnings by `affected_value`.
-4. Includes the affected value.
-5. Includes the warning type.
-6. Includes the warning message.
-7. Includes the warning details.
+4. Displays the affected product identifier.
+5. Displays the warning type.
+6. Displays the warning message.
+7. Displays warning details.
 
-Each warning may contain:
+Each warning can contain:
 
 * `affected_value`
 * `warning_type`
 * `message`
 * `details`
 
-When `details` contains multiple values, they are joined into comma-separated text for display.
+When `details` contains multiple values, they are joined using comma-separated text.
 
-When no warnings are available, the report indicates:
+When no warnings are available, the report displays:
 
 `No se encontraron advertencias.`
 
-Warnings are included without automatically invalidating the corresponding sales records.
-
-The generated section begins with:
+The section begins with:
 
 `ADVERTENCIAS`
 
 #### Report Header
 
-The `generate_report()` function begins the report with:
+The `generate_report()` function starts the complete report with:
 
 `REPORTE DE VENTAS`
 
 The report header also includes:
 
-* The original source CSV filename.
-* The report generation date.
+* Original source CSV filename.
+* Generation date.
 
 The source filename is obtained from:
 
 `source_filename.name`
 
-The generation date is obtained using:
+The generation date is obtained through:
 
 `date.today()`
 
@@ -1501,42 +2511,60 @@ The `generate_report()` function coordinates the complete plain-text report-gene
 It performs the following operations:
 
 1. Creates the `REPORTE DE VENTAS` title.
-2. Adds the source CSV filename.
-3. Adds the report generation date.
+2. Adds the original source CSV filename.
+3. Adds the report-generation date.
 4. Adds the general sales summary.
-5. Adds the best-selling product section.
-6. Adds the highest-income product section.
-7. Adds the highest-income category section.
-8. Adds the highest-income city section when city analysis is available.
-9. Adds the highest-income payment-method section when payment-method analysis is available.
-10. Adds the Top 5 best-selling products section.
-11. Adds the Top 5 highest-income products section.
-12. Adds the complete product summary.
-13. Adds the complete category summary.
-14. Adds the complete city summary when city analysis is available.
-15. Adds the complete payment-method summary when payment-method analysis is available.
-16. Adds the monthly sales summary.
-17. Adds the validation-errors section.
-18. Adds the validation-warnings section.
-19. Combines all generated sections into a single plain-text report.
+5. Adds the overall best-selling-product section.
+6. Adds the highest-income-product section through `get_highest_income()`.
+7. Adds the highest-income-category section through `get_highest_income()`.
+8. Adds the highest-income-city section when city analysis is available.
+9. Adds the highest-income-payment-method section when payment-method analysis is available.
+10. Adds the Top 5 best-selling-products section through `get_top_5()`.
+11. Adds the Top 5 highest-income-products section through `get_top_5()`.
+12. Adds the product summary through `get_summary()`.
+13. Adds the category summary through `get_summary()`.
+14. Adds the city summary when city analysis is available.
+15. Adds the payment-method summary when payment-method analysis is available.
+16. Adds the detailed monthly summary.
+17. Adds the monthly best-selling-product section.
+18. Adds the monthly highest-income-category section.
+19. Adds validation errors.
+20. Adds validation warnings.
+21. Combines all generated sections into a single plain-text report.
 
 #### Optional Report Sections
 
 City and payment-method sections depend on optional analysis results.
 
-When `highest_income_city` is available, the report includes:
+When:
+
+`highest_income_city`
+
+is available, the report includes:
 
 `CIUDAD CON MAYOR INGRESO`
 
-When `city_summary` is available, the report includes:
+When:
+
+`city_summary`
+
+is available, the report includes:
 
 `RESUMEN POR CIUDAD`
 
-When `highest_income_payment_method` is available, the report includes:
+When:
+
+`highest_income_payment_method`
+
+is available, the report includes:
 
 `MÉTODO DE PAGO CON MAYOR INGRESO`
 
-When `payment_method_summary` is available, the report includes:
+When:
+
+`payment_method_summary`
+
+is available, the report includes:
 
 `RESUMEN POR MÉTODO DE PAGO`
 
@@ -1544,7 +2572,7 @@ These sections are omitted when their corresponding analysis results are unavail
 
 #### Report Structure
 
-The complete report follows this general order:
+The complete report currently follows this order:
 
 1. `REPORTE DE VENTAS`
 2. Source filename and generation date.
@@ -1552,107 +2580,113 @@ The complete report follows this general order:
 4. `PRODUCTO MÁS VENDIDO`
 5. `PRODUCTO CON MAYOR INGRESO`
 6. `CATEGORÍA CON MAYOR INGRESO`
-7. `CIUDAD CON MAYOR INGRESO` when city analysis is available.
-8. `MÉTODO DE PAGO CON MAYOR INGRESO` when payment-method analysis is available.
+7. `CIUDAD CON MAYOR INGRESO` when available.
+8. `MÉTODO DE PAGO CON MAYOR INGRESO` when available.
 9. `TOP 5 PRODUCTOS MÁS VENDIDOS`
 10. `TOP 5 PRODUCTOS CON MAYOR INGRESO`
 11. `RESUMEN POR PRODUCTO`
 12. `RESUMEN POR CATEGORÍA`
-13. `RESUMEN POR CIUDAD` when city analysis is available.
-14. `RESUMEN POR MÉTODO DE PAGO` when payment-method analysis is available.
+13. `RESUMEN POR CIUDAD` when available.
+14. `RESUMEN POR MÉTODO DE PAGO` when available.
 15. `RESUMEN POR MES`
-16. `ERRORES DE VALIDACIÓN`
-17. `ADVERTENCIAS`
+16. `PRODUCTO MÁS VENDIDO POR MES`
+17. `CATEGORÍA CON MAYOR INGRESO POR MES`
+18. `ERRORES DE VALIDACIÓN`
+19. `ADVERTENCIAS`
 
 #### Display Formatting
 
-The reporter does not modify the original analysis DataFrames when preparing summary tables for display.
+The reporter receives already calculated analysis data and applies only presentation formatting.
 
-For product, category, city, payment-method, and monthly summaries, a copy of the corresponding DataFrame is created.
-
-The `ingreso_total` column is then formatted using currency notation.
-
-For example:
+General and highest-income monetary values are displayed using currency formatting such as:
 
 `$12,450.75`
 
-The resulting DataFrame is converted into plain text using:
+Product, category, city, and payment-method DataFrames are copied before their `ingreso_total` values are converted into formatted strings.
 
-`DataFrame.to_string(index=False)`
+This prevents the reporter from modifying the original analysis DataFrames.
 
-This preserves the tabular structure while excluding pandas indexes.
+Monthly information follows a different presentation model.
+
+Instead of using:
+
+`DataFrame.to_string()`
+
+the monthly DataFrames are converted into individual records so that:
+
+* Growth values can be formatted independently.
+* Positive and negative signs can be displayed explicitly.
+* Missing growth values can be represented as `N/D`.
+* Records can be visually grouped by month.
+
+#### Reusable Formatting Helpers
+
+The reporter now centralizes several previously duplicated responsibilities.
+
+`get_highest_income()` replaces separate highest-income formatting functions for:
+
+* Products.
+* Categories.
+* Cities.
+* Payment methods.
+
+`get_top_5()` replaces separate Top 5 formatting functions.
+
+`get_summary()` replaces separate DataFrame-summary formatting functions for:
+
+* Products.
+* Categories.
+* Cities.
+* Payment methods.
+
+This design keeps formatting rules consistent and reduces duplicated code.
 
 #### Input and Output
-
-##### Report Helper Functions
-
-* **Input:** Sales-analysis results, rankings, summary DataFrames, validation errors, or validation warnings.
-* **Output:** A formatted string representing a specific plain-text report section.
 
 ##### `get_general_summary()`
 
 * **Input:** Analysis-result dictionary.
-* **Output:** General sales metrics section.
+* **Output:** Formatted general-sales summary.
 
 ##### `get_best_selling_product()`
 
-* **Input:** Analysis-result dictionary.
-* **Output:** Best-selling product section.
+* **Input:** Analysis-result dictionary containing `best_selling_product`.
+* **Output:** Formatted overall best-selling-product section.
 
-##### `get_highest_income_product()`
+##### `get_highest_income()`
 
-* **Input:** Analysis-result dictionary.
-* **Output:** Highest-income product section.
+* **Input:** List of highest-income records, section title, primary field, and optional secondary field.
+* **Output:** Formatted highest-income section.
 
-##### `get_highest_income_category()`
+##### `get_top_5()`
 
-* **Input:** Analysis-result dictionary.
-* **Output:** Highest-income category section.
+* **Input:** List containing ranked product records and section title.
+* **Output:** Formatted Top 5 product-ranking section.
 
-##### `get_highest_income_city()`
+##### `get_summary()`
 
-* **Input:** Analysis-result dictionary containing city analysis.
-* **Output:** Highest-income city section.
+* **Input:** Analysis-summary DataFrame and section title.
+* **Output:** Formatted plain-text DataFrame summary.
 
-##### `get_highest_income_payment_method()`
+##### `get_sign()`
 
-* **Input:** Analysis-result dictionary containing payment-method analysis.
-* **Output:** Highest-income payment-method section.
-
-##### `get_top_5_best_selling_products()`
-
-* **Input:** Analysis-result dictionary.
-* **Output:** Top 5 best-selling products section.
-
-##### `get_top_5_highest_income_products()`
-
-* **Input:** Analysis-result dictionary.
-* **Output:** Top 5 highest-income products section.
-
-##### `get_product_summary()`
-
-* **Input:** Analysis-result dictionary containing `product_summary`.
-* **Output:** Formatted product-summary table.
-
-##### `get_category_summary()`
-
-* **Input:** Analysis-result dictionary containing `category_summary`.
-* **Output:** Formatted category-summary table.
-
-##### `get_city_summary()`
-
-* **Input:** Analysis-result dictionary containing `city_summary`.
-* **Output:** Formatted city-summary table.
-
-##### `get_payment_method_summary()`
-
-* **Input:** Analysis-result dictionary containing `payment_method_summary`.
-* **Output:** Formatted payment-method-summary table.
+* **Input:** Numeric value or `None`.
+* **Output:** `+`, `-`, or an empty string depending on the supplied value.
 
 ##### `get_monthly_summary()`
 
-* **Input:** Analysis-result dictionary containing `monthly_summary`.
-* **Output:** Formatted monthly-summary table.
+* **Input:** `monthly_summary` DataFrame.
+* **Output:** Detailed formatted monthly totals and growth information.
+
+##### `get_monthly_best_selling_product()`
+
+* **Input:** `monthly_best_selling_product` DataFrame.
+* **Output:** Formatted best-selling-product information grouped by month.
+
+##### `get_monthly_highest_income_category()`
+
+* **Input:** `monthly_highest_income_category` DataFrame.
+* **Output:** Formatted highest-income-category information grouped by month.
 
 ##### `get_errors()`
 
@@ -1667,13 +2701,26 @@ This preserves the tabular structure while excluding pandas indexes.
 ##### `generate_report()`
 
 * **Input:** Analysis-result dictionary, validation-error list, validation-warning list, and source CSV `Path`.
-* **Output:** Complete plain-text sales report ready to be displayed or saved.
+* **Output:** Complete human-readable plain-text sales report ready to be displayed or saved.
 
 #### Module Responsibility
 
-The report-generation module is responsible for presentation formatting only.
+The report-generation module is responsible for presentation formatting.
 
 It receives already calculated analysis results and converts them into human-readable text.
+
+It is responsible for:
+
+* Creating report-section text.
+* Formatting monetary values.
+* Formatting monthly growth values.
+* Formatting Top 5 rankings.
+* Formatting highest-income records.
+* Formatting DataFrame summaries.
+* Organizing monthly records.
+* Formatting validation errors.
+* Formatting validation warnings.
+* Combining report sections in the required order.
 
 It does not:
 
@@ -1681,9 +2728,12 @@ It does not:
 * Read the source CSV file.
 * Validate individual sales records.
 * Calculate sales metrics.
+* Calculate monthly growth.
+* Determine rankings.
 * Save report files directly.
+* Generate charts.
 
-Those responsibilities belong to the validation, reading, analysis, and file-management modules.
+Those responsibilities belong to the validation, reading, analysis, file-management, and chart-management modules.
 
 ---
 
@@ -1691,14 +2741,15 @@ Those responsibilities belong to the validation, reading, analysis, and file-man
 
 The report file management module handles the storage and export of generated sales reports and structured analysis results.
 
-The module creates destination directories when necessary, generates a shared timestamp-based base filename, saves the human-readable report as TXT, exports the complete structured analysis as JSON, generates independent CSV analysis summaries, and creates a multi-sheet Excel workbook containing sales analysis and validation information.
+The module creates destination directories when necessary, generates a shared base filename using the source CSV filename and a timestamp, saves the human-readable report as TXT, exports the structured sales analysis as JSON, generates independent CSV analysis summaries, and creates a multi-sheet Excel workbook containing sales analysis and validation information.
 
-The exported analysis may include product, category, monthly, city, and payment-method summaries, together with general metrics, Top 5 product rankings, validation errors, and validation warnings.
+Exported analysis data may include product, category, monthly, city, and payment-method summaries, monthly growth metrics, monthly best-selling products, monthly highest-income categories, Top 5 product rankings, validation errors, and validation warnings.
 
 The module uses:
 
 * `pathlib.Path` for file-system paths.
-* `datetime` for dynamic report filenames.
+* `datetime` for timestamp-based filenames.
+* `numpy` for missing-value handling before JSON serialization.
 * `json` for JSON serialization.
 * `pandas` for DataFrame-based analysis results.
 * `openpyxl` for XLSX workbook and worksheet generation.
@@ -1711,27 +2762,23 @@ The module currently provides the following functions:
 * `save_analysis_result_csv_files()`
 * `create_save_analysis_result_csv_files_and_path()`
 * `build_sheet_general_summary()`
-* `build_sheet_products()`
-* `build_sheet_categories()`
-* `build_sheet_bestselling()`
-* `build_sheet_top_income()`
-* `build_sheet_city_summary()`
-* `build_sheet_payment_method_summary()`
-* `build_sheet_monthly_summary()`
+* `build_sheet()`
 * `build_sheet_validation_errors()`
 * `build_sheet_warnings()`
 * `save_report_xlsx()`
 
 #### Supported Output Formats
 
-The module currently supports four output formats:
+The module currently supports four report-file formats:
 
 * TXT
 * JSON
 * CSV
 * XLSX
 
-Files generated during the same report-generation process use the same shared base filename.
+Files generated during the same processing workflow use the same shared base filename.
+
+Chart-image generation is handled separately by the chart-management module.
 
 #### Report Saving Process
 
@@ -1740,105 +2787,153 @@ The `save_report()` function saves the human-readable sales report as a TXT file
 It performs the following operations:
 
 1. Receives the generated report text.
-2. Receives the destination folder.
+2. Receives the destination folder as `str` or `Path`.
 3. Receives a previously generated shared base filename.
 4. Adds the `.txt` extension.
-5. Converts the destination directory into a `Path` object.
+5. Converts the destination directory into a `Path`.
 6. Creates the destination directory and missing parent directories when necessary.
 7. Builds the complete output path.
 8. Opens the destination file using UTF-8 encoding.
-9. Writes the report content.
+9. Writes the report contents.
 10. Returns the `Path` pointing to the generated TXT file.
 
 File-system `OSError` exceptions are converted into `ReportSaveError`.
 
 #### Dynamic Base Filename Generation
 
-The `create_report_base_name()` function generates a shared base filename using the current local date and time.
+The `create_report_base_name()` function generates the shared filename prefix used by generated outputs.
 
-The generated filename follows this format:
+Unlike earlier versions, the base filename is derived from the original source CSV filename.
 
-`sales_report_YYYY-MM-DD_HH-MM-SS-fff`
+The function receives:
+
+`input_file_path`
+
+as either:
+
+* `str`
+* `Path`
+
+It extracts the source filename without its extension using:
+
+`Path(input_file_path).stem`
+
+The source filename is then combined with the current local date and time.
+
+The generated base filename follows this format:
+
+`<source_filename>_YYYY-MM-DD_HH-MM-SS-fff`
+
+For example, if the source file is:
+
+`ventas_agosto.csv`
+
+the generated base filename may be:
+
+`ventas_agosto_2026-09-19_07-45-30-125`
+
+The same base filename is reused across the generated report outputs.
 
 For example:
 
-`sales_report_2026-08-23_13-45-30-125`
+`ventas_agosto_2026-09-19_07-45-30-125.txt`
 
-The same base filename is reused across all supported output formats.
+`ventas_agosto_2026-09-19_07-45-30-125.json`
 
-For example:
+`ventas_agosto_2026-09-19_07-45-30-125.xlsx`
 
-`sales_report_2026-08-23_13-45-30-125.txt`
-
-`sales_report_2026-08-23_13-45-30-125.json`
-
-`sales_report_2026-08-23_13-45-30-125.xlsx`
-
-CSV summaries use the same base filename followed by a descriptive suffix:
-
-`sales_report_2026-08-23_13-45-30-125_products.csv`
-
-`sales_report_2026-08-23_13-45-30-125_categories.csv`
-
-`sales_report_2026-08-23_13-45-30-125_months.csv`
-
-Optional CSV files may also be generated:
-
-`sales_report_2026-08-23_13-45-30-125_cities.csv`
-
-`sales_report_2026-08-23_13-45-30-125_payment_methods.csv`
+CSV files use the same base filename followed by a descriptive analysis suffix.
 
 #### JSON Analysis Saving Process
 
-The `save_analysis_json()` function saves the complete structured sales analysis as a JSON file.
+The `save_analysis_json()` function saves the complete structured sales-analysis result as a JSON file.
 
-Before serialization, the function creates a shallow copy of the original `analysis_result` dictionary.
+Before serialization, the function creates a shallow copy of the original:
 
-pandas `DataFrame` summaries are converted into lists of dictionaries so that they can be serialized correctly.
+`analysis_result`
 
-The following summaries are always converted:
+pandas DataFrames cannot be serialized directly to JSON through the standard `json` module, so the required DataFrames are converted into lists of dictionaries.
+
+Before conversion, pandas `NaN` values are replaced with:
+
+`None`
+
+This causes missing analysis values to be represented as:
+
+`null`
+
+inside the generated JSON file.
+
+The following DataFrames are always converted:
 
 * `product_summary`
 * `category_summary`
 * `monthly_summary`
+* `monthly_best_selling_product`
+* `monthly_highest_income_category`
 
-The following summaries are converted when available:
+The following DataFrames are converted when available:
 
 * `city_summary`
 * `payment_method_summary`
 
 The function:
 
-1. Creates a copy of the analysis result.
-2. Converts required DataFrames into JSON-compatible records.
-3. Converts optional DataFrames when available.
-4. Adds the `.json` extension to the shared base filename.
-5. Creates the destination directory when necessary.
-6. Writes the JSON file using UTF-8 encoding.
-7. Uses formatted indentation.
-8. Preserves non-ASCII characters through `ensure_ascii=False`.
-9. Returns the generated file path.
+1. Creates a shallow copy of the analysis result.
+2. Replaces `NaN` values with `None` in DataFrame structures.
+3. Converts required DataFrames into JSON-compatible records.
+4. Converts optional DataFrames when available.
+5. Adds the `.json` extension to the shared base filename.
+6. Creates the destination directory when necessary.
+7. Writes the JSON file using UTF-8 encoding.
+8. Uses indentation for readable formatting.
+9. Preserves non-ASCII characters through `ensure_ascii=False`.
+10. Returns the generated JSON path.
 
 The original `analysis_result` dictionary is not modified directly.
 
+#### Missing Values in JSON
+
+Monthly growth calculations can produce missing values when no previous month is available for comparison.
+
+For example, the first monthly record may contain missing values for:
+
+* `crecimiento_ingreso`
+* `crecimiento_ingreso_porcentaje`
+* `crecimiento_unidades`
+* `crecimiento_unidades_porcentaje`
+
+Before JSON serialization, these pandas `NaN` values are converted into Python `None`.
+
+This produces valid JSON values such as:
+
+```json
+{
+    "crecimiento_ingreso": null,
+    "crecimiento_ingreso_porcentaje": null
+}
+```
+
 #### CSV Analysis Summary Saving Process
 
-The `save_analysis_result_csv_files()` function saves aggregated analysis summaries as independent CSV files.
+The `save_analysis_result_csv_files()` function saves analysis DataFrames as independent CSV files.
 
 The following summaries are always exported:
 
 * `product_summary`
 * `category_summary`
 * `monthly_summary`
+* `monthly_best_selling_product`
+* `monthly_highest_income_category`
 
 The following summaries are exported when available:
 
 * `city_summary`
 * `payment_method_summary`
 
-Each generated CSV file uses the shared report base filename followed by a descriptive suffix.
+Each generated CSV uses the shared base filename followed by a descriptive suffix.
 
-The individual file-creation process is delegated to:
+Individual file creation is delegated to:
 
 `create_save_analysis_result_csv_files_and_path()`
 
@@ -1846,73 +2941,105 @@ The function returns a dictionary containing the generated CSV paths.
 
 #### CSV Result Dictionary
 
-The dictionary returned by `save_analysis_result_csv_files()` uses Spanish keys to identify the generated summaries.
+The dictionary returned by `save_analysis_result_csv_files()` uses Spanish keys to identify generated analysis summaries.
 
-It follows this structure:
+The standard entries are:
 
 ```python
 {
     "resumen_producto": Path(...),
     "resumen_categoria": Path(...),
     "resumen_mensual": Path(...),
+    "resumen_mejores_vendidos_por_mes": Path(...),
+    "resumen_categoria_mayor_ingreso_por_mes": Path(...)
+}
+```
+
+When optional analyses are available, the dictionary may also contain:
+
+```python
+{
     "ciudad_resumen": Path(...),
     "metodo_de_pago_resumen": Path(...)
 }
 ```
 
-The following entries are always included:
+The following entries are always generated:
 
-* `resumen_producto`: Product summary CSV path.
-* `resumen_categoria`: Category summary CSV path.
-* `resumen_mensual`: Monthly summary CSV path.
+* `resumen_producto`: Product-summary CSV.
+* `resumen_categoria`: Category-summary CSV.
+* `resumen_mensual`: Monthly-summary CSV.
+* `resumen_mejores_vendidos_por_mes`: Monthly best-selling-products CSV.
+* `resumen_categoria_mayor_ingreso_por_mes`: Monthly highest-income-categories CSV.
 
 The following entries are optional:
 
-* `ciudad_resumen`: City summary CSV path.
-* `metodo_de_pago_resumen`: Payment-method summary CSV path.
+* `ciudad_resumen`: City-summary CSV.
+* `metodo_de_pago_resumen`: Payment-method-summary CSV.
 
-These dictionary keys identify generated files inside the application and do not modify the physical CSV filenames.
+These dictionary keys identify generated CSV files inside the application.
 
-The internal analysis dictionary continues to use the following keys:
+They are independent from the physical filename suffixes.
 
-* `product_summary`
-* `category_summary`
-* `monthly_summary`
-* `city_summary`
-* `payment_method_summary`
+#### CSV Physical Filenames
+
+The current CSV filename suffixes are written in Spanish.
+
+The standard CSV outputs use:
+
+* `_productos.csv`
+* `_categorias.csv`
+* `_meses.csv`
+* `_producto_top_mensual.csv`
+* `_categoria_top_ingreso_mensual.csv`
+
+Optional analyses use:
+
+* `_ciudades.csv`
+* `_metodos_pago.csv`
+
+For a source file named:
+
+`ventas_agosto.csv`
+
+generated filenames may follow this structure:
+
+`ventas_agosto_2026-09-19_07-45-30-125_productos.csv`
+
+`ventas_agosto_2026-09-19_07-45-30-125_categorias.csv`
+
+`ventas_agosto_2026-09-19_07-45-30-125_meses.csv`
+
+`ventas_agosto_2026-09-19_07-45-30-125_producto_top_mensual.csv`
+
+`ventas_agosto_2026-09-19_07-45-30-125_categoria_top_ingreso_mensual.csv`
+
+Optional examples:
+
+`ventas_agosto_2026-09-19_07-45-30-125_ciudades.csv`
+
+`ventas_agosto_2026-09-19_07-45-30-125_metodos_pago.csv`
 
 #### Individual CSV File Creation
 
-The `create_save_analysis_result_csv_files_and_path()` function creates and saves one analysis summary as a CSV file.
+The `create_save_analysis_result_csv_files_and_path()` function creates and saves one analysis DataFrame as a CSV file.
 
 It receives:
 
 * A pandas `DataFrame`.
-* The destination directory.
+* The destination directory as `str` or `Path`.
 * The shared base filename.
 * A descriptive filename suffix.
 
 The function:
 
-1. Builds the filename using the shared base filename and suffix.
+1. Combines the shared base filename with the descriptive suffix.
 2. Adds the `.csv` extension.
 3. Converts the destination directory into a `Path`.
 4. Creates the destination directory and missing parent directories when necessary.
 5. Builds the complete output path.
 6. Saves the DataFrame without its pandas index.
 7. Returns the generated CSV path.
-
-The descriptive suffixes currently used are:
-
-* `products`
-* `categories`
-* `months`
-* `cities`
-* `payment_methods`
-
-The first three correspond to summaries generated during the standard analysis workflow.
-
-The final two correspond to optional city and payment-method analyses.
 
 File-system `OSError` exceptions are converted into `ReportSaveError`.
 
@@ -1931,50 +3058,42 @@ The function:
 7. Creates the destination directory when necessary.
 8. Creates a new openpyxl `Workbook`.
 9. Removes the default worksheet created by openpyxl.
-10. Builds the general summary worksheet.
-11. Builds the product summary worksheet.
-12. Builds the category summary worksheet.
-13. Builds the monthly summary worksheet.
-14. Builds optional city and payment-method worksheets when available.
-15. Builds the Top 5 best-selling products worksheet.
-16. Builds the Top 5 highest-income products worksheet.
-17. Builds validation error and warning worksheets.
-18. Saves the completed workbook.
-19. Returns the resulting XLSX path.
-
-The Excel file uses the same shared base filename as the TXT, JSON, and CSV outputs.
-
-For example:
-
-`sales_report_2026-08-23_13-45-30-125.xlsx`
+10. Creates the general sales summary.
+11. Creates the product summary.
+12. Creates the category summary.
+13. Creates the monthly summary.
+14. Creates optional city and payment-method summaries when available.
+15. Converts Top 5 product rankings into DataFrames.
+16. Creates the Top 5 best-selling-product worksheet.
+17. Creates the Top 5 highest-income-product worksheet.
+18. Creates the monthly best-selling-product worksheet.
+19. Creates the monthly highest-income-category worksheet.
+20. Creates the validation-errors worksheet.
+21. Creates the validation-warnings worksheet.
+22. Saves the completed workbook.
+23. Returns the resulting XLSX path.
 
 #### Excel Workbook Structure
 
-The XLSX workbook can contain the following worksheets:
+The XLSX workbook always includes:
 
 * `Resumen General`
 * `Productos`
 * `Categorías`
 * `Resumen por mes`
 * `Productos mejor vendidos`
-* `Productos con mejor ingreso`
-* `Resumen por ciudad`
-* `Resumen por método de pago`
+* `Productos con mejor Ingreso`
+* `Producto más vendido por mes`
+* `Categoría mayor ingreso por mes`
 * `Validación de errores`
 * `Advertencias`
 
-The following worksheets are always generated:
+The following worksheets are optional:
 
-* General summary.
-* Product summary.
-* Category summary.
-* Monthly summary.
-* Best-selling product ranking.
-* Highest-income product ranking.
-* Validation errors.
-* Validation warnings.
+* `Resumen por ciudad`
+* `Resumen por método de pago`
 
-The city and payment-method worksheets are generated only when the corresponding analysis results are available.
+Optional worksheets are created only when their corresponding analysis results are available.
 
 #### General Summary Worksheet
 
@@ -1987,7 +3106,7 @@ The worksheet contains two columns:
 * `Métrica`
 * `Valor`
 
-The following general metrics are added:
+The following metrics are written:
 
 * Total rows.
 * Valid rows.
@@ -2005,96 +3124,178 @@ The values are obtained from:
 
 The function returns the generated openpyxl `Worksheet`.
 
+#### Generic DataFrame Worksheet Builder
+
+The `build_sheet()` function creates a worksheet from a pandas DataFrame.
+
+It receives:
+
+* The target `Workbook`.
+* The DataFrame to export.
+* The worksheet title.
+
+The function creates the worksheet using:
+
+`wb.create_sheet(title_str)`
+
+It then converts the DataFrame into Excel-compatible rows using:
+
+`dataframe_to_rows()`
+
+with:
+
+```python
+dataframe_to_rows(
+    df,
+    index=False,
+    header=True
+)
+```
+
+This causes:
+
+* DataFrame column names to become worksheet headers.
+* DataFrame rows to become worksheet rows.
+* pandas indexes to be excluded.
+
+The generic helper replaces multiple specialized worksheet-building functions used in earlier versions.
+
+It is currently reused for:
+
+* Product summary.
+* Category summary.
+* Monthly summary.
+* Optional city summary.
+* Optional payment-method summary.
+* Top 5 best-selling products.
+* Top 5 highest-income products.
+* Monthly best-selling products.
+* Monthly highest-income categories.
+
 #### Product Summary Worksheet
 
-The `build_sheet_products()` function creates:
+The product-summary worksheet is created through:
+
+`build_sheet()`
+
+using:
+
+`product_summary`
+
+and the title:
 
 `Productos`
 
-It receives the `product_summary` pandas `DataFrame` and converts its contents into Excel rows using:
-
-`dataframe_to_rows()`
-
-The DataFrame headers are included and the pandas index is excluded.
-
-The function returns the generated worksheet.
-
 #### Category Summary Worksheet
 
-The `build_sheet_categories()` function creates:
+The category-summary worksheet is created through:
+
+`build_sheet()`
+
+using:
+
+`category_summary`
+
+and the title:
 
 `Categorías`
 
-It receives the `category_summary` pandas `DataFrame` and converts its contents into worksheet rows using:
-
-`dataframe_to_rows()`
-
-The DataFrame headers are included and the pandas index is excluded.
-
-The function returns the generated worksheet.
-
 #### Monthly Summary Worksheet
 
-The `build_sheet_monthly_summary()` function creates:
+The monthly-summary worksheet is created through:
+
+`build_sheet()`
+
+using:
+
+`monthly_summary`
+
+and the title:
 
 `Resumen por mes`
 
-It receives the `monthly_summary` pandas `DataFrame` generated by the analysis module.
-
-The worksheet contains the monthly analysis data, including:
+The monthly DataFrame may contain:
 
 * `mes`
 * `filas_validas`
 * `unidades_vendidas`
 * `ingreso_total`
-
-The DataFrame headers are included and the pandas index is excluded.
-
-The function returns the generated worksheet.
+* `crecimiento_ingreso`
+* `crecimiento_ingreso_porcentaje`
+* `crecimiento_unidades`
+* `crecimiento_unidades_porcentaje`
 
 #### Best-Selling Products Worksheet
 
-The `build_sheet_bestselling()` function creates:
+The `top_5_best_selling_products` list is first converted into a pandas DataFrame.
+
+The resulting DataFrame is passed to:
+
+`build_sheet()`
+
+using the title:
 
 `Productos mejor vendidos`
 
-It receives the Top 5 best-selling product records, converts them into a pandas `DataFrame`, and writes the resulting rows into the worksheet.
-
-The DataFrame headers are included and the pandas index is excluded.
-
 #### Highest-Income Products Worksheet
 
-The `build_sheet_top_income()` function creates:
+The `top_5_highest_income_products` list is first converted into a pandas DataFrame.
 
-`Productos con mejor ingreso`
+The resulting DataFrame is passed to:
 
-It receives the Top 5 products ranked by generated income, converts them into a pandas `DataFrame`, and writes the resulting rows into the worksheet.
+`build_sheet()`
 
-The DataFrame headers are included and the pandas index is excluded.
+using the title:
+
+`Productos con mejor Ingreso`
+
+#### Monthly Best-Selling Product Worksheet
+
+The `monthly_best_selling_product` DataFrame is exported through:
+
+`build_sheet()`
+
+using the title:
+
+`Producto más vendido por mes`
+
+The worksheet may contain multiple records for the same month when products are tied for the highest number of units sold.
+
+#### Monthly Highest-Income Category Worksheet
+
+The `monthly_highest_income_category` DataFrame is exported through:
+
+`build_sheet()`
+
+using the title:
+
+`Categoría mayor ingreso por mes`
+
+The worksheet may contain multiple records for the same month when categories are tied for the highest monthly income.
 
 #### City Summary Worksheet
 
-The `build_sheet_city_summary()` function creates:
+When `city_summary` is available, it is exported through:
+
+`build_sheet()`
+
+using the title:
 
 `Resumen por ciudad`
 
-The worksheet is generated from the `city_summary` DataFrame.
-
-It is included only when city analysis information is available.
-
-The DataFrame headers are included and the pandas index is excluded.
+The worksheet is omitted when city analysis is unavailable.
 
 #### Payment-Method Summary Worksheet
 
-The `build_sheet_payment_method_summary()` function creates:
+When `payment_method_summary` is available, it is exported through:
+
+`build_sheet()`
+
+using the title:
 
 `Resumen por método de pago`
 
-The worksheet is generated from the `payment_method_summary` DataFrame.
-
-It is included only when payment-method analysis information is available.
-
-The DataFrame headers are included and the pandas index is excluded.
+The worksheet is omitted when payment-method analysis is unavailable.
 
 #### Validation Errors Worksheet
 
@@ -2102,7 +3303,7 @@ The `build_sheet_validation_errors()` function creates:
 
 `Validación de errores`
 
-The worksheet contains validation errors detected while processing the source sales records.
+The worksheet contains validation errors detected while processing source sales records.
 
 Internal dictionary keys are mapped to Spanish worksheet headers.
 
@@ -2124,9 +3325,9 @@ The `build_sheet_warnings()` function creates:
 
 `Advertencias`
 
-The worksheet contains warnings detected while validating and normalizing sales records.
+The worksheet contains warnings detected while validating sales records.
 
-Internal dictionary keys are mapped to Spanish worksheet headers.
+Internal warning dictionary keys are mapped to Spanish worksheet headers.
 
 The columns are:
 
@@ -2139,28 +3340,6 @@ The columns are:
 Missing values are represented by empty strings.
 
 When a warning value contains a list, its values are converted into comma-separated text before being written to the worksheet.
-
-#### DataFrame to Excel Conversion
-
-Analysis DataFrames are converted into Excel-compatible rows using:
-
-`openpyxl.utils.dataframe.dataframe_to_rows`
-
-The module uses:
-
-```python
-dataframe_to_rows(
-    df,
-    index=False,
-    header=True
-)
-```
-
-This causes:
-
-* DataFrame column names to become worksheet headers.
-* DataFrame rows to become worksheet rows.
-* pandas indexes to be excluded from the generated workbook.
 
 #### Workbook Creation
 
@@ -2176,29 +3355,29 @@ The module removes this worksheet using:
 wb.remove(wb.active)
 ```
 
-The application then builds the report-specific worksheets before saving the workbook.
+The application then creates its report-specific worksheets before saving the workbook.
 
 #### Input and Output
 
 ##### `save_report()`
 
-* **Input:** Complete report text, destination folder, and shared base filename.
+* **Input:** Complete report text, destination folder as `str | Path`, and shared base filename.
 * **Output:** `Path` pointing to the generated TXT report.
 
 ##### `create_report_base_name()`
 
-* **Input:** None.
-* **Output:** Shared timestamp-based report filename.
+* **Input:** Source CSV path as `str | Path`.
+* **Output:** Shared base filename containing the source filename and timestamp.
 
 ##### `save_analysis_json()`
 
-* **Input:** Analysis-result dictionary, destination folder, and shared base filename.
+* **Input:** Analysis-result dictionary, destination folder as `str | Path`, and shared base filename.
 * **Output:** `Path` pointing to the generated JSON analysis file.
 
 ##### `save_analysis_result_csv_files()`
 
-* **Input:** Analysis-result dictionary, destination folder, and shared base filename.
-* **Output:** Dictionary containing product, category, monthly, and optional city/payment-method CSV paths.
+* **Input:** Analysis-result dictionary, destination folder as `str | Path`, and shared base filename.
+* **Output:** Dictionary containing five standard CSV paths and optional city/payment-method CSV paths.
 
 ##### `create_save_analysis_result_csv_files_and_path()`
 
@@ -2208,56 +3387,26 @@ The application then builds the report-specific worksheets before saving the wor
 ##### `build_sheet_general_summary()`
 
 * **Input:** Workbook and analysis-result dictionary.
-* **Output:** `Worksheet` containing the general sales summary.
+* **Output:** `Worksheet` containing general sales metrics.
 
-##### `build_sheet_products()`
+##### `build_sheet()`
 
-* **Input:** Workbook and product-summary DataFrame.
-* **Output:** `Worksheet` containing the product summary.
-
-##### `build_sheet_categories()`
-
-* **Input:** Workbook and category-summary DataFrame.
-* **Output:** `Worksheet` containing the category summary.
-
-##### `build_sheet_monthly_summary()`
-
-* **Input:** Workbook and monthly-summary DataFrame.
-* **Output:** `Worksheet` containing the monthly sales summary.
-
-##### `build_sheet_bestselling()`
-
-* **Input:** Workbook and Top 5 best-selling product records.
-* **Output:** `Worksheet` containing the best-selling product ranking.
-
-##### `build_sheet_top_income()`
-
-* **Input:** Workbook and Top 5 highest-income product records.
-* **Output:** `Worksheet` containing the highest-income product ranking.
-
-##### `build_sheet_city_summary()`
-
-* **Input:** Workbook and city-summary DataFrame.
-* **Output:** `Worksheet` containing the city analysis.
-
-##### `build_sheet_payment_method_summary()`
-
-* **Input:** Workbook and payment-method-summary DataFrame.
-* **Output:** `Worksheet` containing the payment-method analysis.
+* **Input:** Workbook, pandas DataFrame, and worksheet title.
+* **Output:** `Worksheet` containing the supplied DataFrame.
 
 ##### `build_sheet_validation_errors()`
 
-* **Input:** Workbook and validation error records.
-* **Output:** `Worksheet` containing validation error information.
+* **Input:** Workbook and validation-error records.
+* **Output:** `Worksheet` containing validation-error information.
 
 ##### `build_sheet_warnings()`
 
-* **Input:** Workbook and validation warning records.
-* **Output:** `Worksheet` containing validation warning information.
+* **Input:** Workbook and validation-warning records.
+* **Output:** `Worksheet` containing validation-warning information.
 
 ##### `save_report_xlsx()`
 
-* **Input:** Analysis-result dictionary, validation errors, validation warnings, destination folder, and shared base filename.
+* **Input:** Analysis-result dictionary, validation errors, validation warnings, destination folder as `str | Path`, and shared base filename.
 * **Output:** `Path` pointing to the generated XLSX workbook.
 
 #### Error Handling
@@ -2277,7 +3426,7 @@ The following operations explicitly catch `OSError` and convert it into `ReportS
 
 This provides a consistent application-specific error mechanism for common file-system failures.
 
-Errors that are not represented by `OSError`, including invalid data structures or other library-specific failures, are propagated unless explicitly handled elsewhere in the application.
+Errors that are not represented by `OSError`, including invalid analysis structures and other library-specific exceptions, are propagated unless explicitly handled elsewhere in the application.
 
 #### Related Exception
 
@@ -2391,11 +3540,19 @@ This prevents the complete application workflow from running automatically when 
 
 ### Sales Report Controller Module
 
-The sales report controller module coordinates the complete sales-report generation workflow.
+The sales report controller module coordinates the complete Sales Report processing workflow.
 
-It acts as the orchestration layer between the graphical interface and the specialized modules responsible for file validation, CSV reading, data validation, sales analysis, report generation, and file storage.
+It acts as the orchestration layer between the graphical interface and the specialized modules responsible for file validation, CSV reading, DataFrame validation, sales analysis, plain-text report generation, file export, and chart generation.
 
-The controller receives the source CSV file path and output folder, executes the complete processing workflow, generates all supported output files, measures the total execution time, and returns a structured dictionary containing processing totals, generated file paths, and execution information.
+The controller receives the source CSV file path and output directory, executes the complete processing pipeline, generates all supported report files and chart images, measures the total execution time, and returns a structured dictionary containing processing totals, generated output paths, and execution information.
+
+The generated outputs currently include:
+
+* TXT reports.
+* JSON analysis files.
+* CSV summary files.
+* XLSX workbooks.
+* PNG chart images.
 
 The module currently provides the following function:
 
@@ -2409,17 +3566,19 @@ The `generate_sales_report()` function performs the following operations:
 2. Validates the source CSV file using `validator.validate_csv_file()`.
 3. Reads the validated CSV file using `csv_reader.read_csv_file()`.
 4. Normalizes and validates the sales records using `validator.validate_dataframe()`.
-5. Analyzes the valid sales records using `analyzer.analyze_sales()`.
-6. Generates the complete plain-text sales report using `reporter.generate_report()`.
-7. Stores the total number of processed, valid, and invalid rows in the controller result.
-8. Generates a shared timestamp-based filename using `file_manager.create_report_base_name()`.
-9. Saves the plain-text sales report using `file_manager.save_report()`.
-10. Saves the complete structured analysis as a JSON file using `file_manager.save_analysis_json()`.
-11. Saves the available analysis summaries as independent CSV files using `file_manager.save_analysis_result_csv_files()`.
-12. Generates the complete XLSX workbook using `file_manager.save_report_xlsx()`.
-13. Calculates the total execution time.
-14. Adds the execution time to the controller result.
-15. Returns the complete result dictionary to the caller.
+5. Analyzes valid sales records using `analyzer.analyze_sales()`.
+6. Generates the complete plain-text report using `reporter.generate_report()`.
+7. Stores the processed, valid, and invalid row totals in the controller result.
+8. Generates a shared report base filename using `file_manager.create_report_base_name(file_path)`.
+9. Saves the TXT report using `file_manager.save_report()`.
+10. Saves the structured analysis as JSON using `file_manager.save_analysis_json()`.
+11. Saves available analysis summaries as independent CSV files using `file_manager.save_analysis_result_csv_files()`.
+12. Generates the XLSX workbook using `file_manager.save_report_xlsx()`.
+13. Generates chart images using `chart_manager.save_chart_images()`.
+14. Stops the execution timer.
+15. Calculates the total execution time.
+16. Adds the execution time to the controller result.
+17. Returns the complete result dictionary to the caller.
 
 #### Module Coordination
 
@@ -2427,29 +3586,71 @@ The controller coordinates the following modules:
 
 * `validator`: Validates the source file path, normalizes sales data, validates records, detects warnings, and separates valid and invalid rows.
 * `csv_reader`: Reads the validated CSV file and converts its contents into a pandas `DataFrame`.
-* `analyzer`: Calculates sales metrics, aggregated summaries, rankings, and optional analyses.
+* `analyzer`: Calculates sales metrics, aggregated summaries, rankings, monthly analysis, growth indicators, and optional analyses.
 * `reporter`: Converts analysis results, validation errors, and warnings into a structured plain-text sales report.
-* `file_manager`: Generates the shared base filename and saves TXT, JSON, CSV, and XLSX output files.
+* `file_manager`: Generates the shared report base filename and saves TXT, JSON, CSV, and XLSX output files.
+* `chart_manager`: Generates chart images from the calculated sales-analysis results.
 
-#### Validation Results
+The controller itself does not implement the internal processing logic of these modules. Its responsibility is to call them in the correct order and transfer their results between workflow stages.
 
-The controller receives the validation result produced by:
+#### Input Configuration
 
-`validator.validate_dataframe()`
+The `generate_sales_report()` function receives:
 
-This structure includes:
+* `input_file_path`: Source CSV file path represented as a string.
+* `output_folder`: Destination directory represented as either `str` or `Path`.
 
-* Valid sales records.
-* Invalid sales records.
-* Validation errors.
-* Validation warnings.
-* Total processed rows.
-* Total valid rows.
-* Total invalid rows.
+The source path is first validated before being passed to the CSV-reading module.
 
-The validation result is passed to the analysis workflow.
+The output directory is passed to the file and chart generation functions responsible for storing generated outputs.
 
-Validation errors and warnings are also passed to the report-generation and XLSX-generation workflows.
+#### File Validation
+
+The controller begins the backend workflow using:
+
+`validator.validate_csv_file(input_file_path)`
+
+The validation module verifies the physical source CSV file and returns a validated:
+
+`Path`
+
+This validated path is stored in:
+
+`file_path`
+
+and is reused by later workflow stages.
+
+#### CSV Reading
+
+The validated source path is passed to:
+
+`csv_reader.read_csv_file(file_path)`
+
+The resulting raw pandas DataFrame is stored in:
+
+`df_raw`
+
+This DataFrame is then sent to the DataFrame-validation workflow.
+
+#### DataFrame Validation
+
+The controller sends the raw sales DataFrame to:
+
+`validator.validate_dataframe(df_raw)`
+
+The returned validation structure contains:
+
+* `df_valid_rows`
+* `df_invalid_rows`
+* `errors`
+* `warnings`
+* `total_rows`
+* `total_valid_rows`
+* `total_invalid_rows`
+
+The complete validation result is passed to the analysis module.
+
+Validation errors and warnings are later reused by the plain-text reporter and XLSX export workflow.
 
 #### Sales Analysis
 
@@ -2457,9 +3658,9 @@ The controller sends the validation result to:
 
 `analyzer.analyze_sales()`
 
-The resulting analysis structure contains the metrics and aggregated summaries required by the reporting and file-management modules.
+The resulting `analysis_result` contains the calculated structures required by reporting, file export, and chart generation.
 
-These results may include:
+Core analysis information includes:
 
 * Total processed rows.
 * Total valid rows.
@@ -2468,79 +3669,207 @@ These results may include:
 * Total units sold.
 * Product summary.
 * Category summary.
-* Best-selling product.
-* Highest-income product.
-* Highest-income category.
+* Monthly summary.
+* Best-selling product records.
+* Highest-income product records.
+* Highest-income category records.
 * Top 5 best-selling products.
 * Top 5 highest-income products.
-* City summary and highest-income city when `ciudad` is available.
-* Payment-method summary and highest-income payment method when `metodo_pago` is available.
+* Monthly best-selling products.
+* Monthly highest-income categories.
 
-#### Report Generation
+The monthly summary can also contain:
 
-The controller passes the analysis result, validation errors, validation warnings, and source file path to:
+* Absolute income growth.
+* Percentage income growth.
+* Absolute unit-sales growth.
+* Percentage unit-sales growth.
+
+When the optional `ciudad` column is available, the analysis may also contain:
+
+* `city_summary`
+* `highest_income_city`
+
+When the optional `metodo_pago` column is available, the analysis may also contain:
+
+* `payment_method_summary`
+* `highest_income_payment_method`
+
+#### Plain-Text Report Generation
+
+The controller passes:
+
+* `analysis_result`
+* Validation errors.
+* Validation warnings.
+* Validated source-file path.
+
+to:
 
 `reporter.generate_report()`
 
-The reporter generates the human-readable plain-text sales report.
+The returned plain-text report is stored in:
 
-The resulting report text is later saved as a TXT file through the file-management module.
+`report_text`
+
+This text is later passed to the file-management module for TXT storage.
+
+#### Shared Base Filename
+
+A single base filename is generated during each controller execution using:
+
+`file_manager.create_report_base_name(file_path)`
+
+The validated source `Path` is passed to the filename-generation function.
+
+The returned base filename is reused by the output-generation functions so related files produced during the same workflow share a consistent naming convention.
+
+The exact filename construction rules are defined by the file-management module.
 
 #### Output File Coordination
 
-A single shared dynamic base filename is generated during each controller execution.
+The controller coordinates generation of the following report files:
 
-The same base filename is reused for all files generated during that execution.
+* TXT sales report.
+* JSON structured analysis.
+* CSV analysis summaries.
+* XLSX workbook.
 
-The controller generates:
+The controller also coordinates:
 
-* A TXT sales report.
-* A JSON analysis file.
-* Product and category CSV summary files.
-* An XLSX workbook containing the sales analysis and validation information.
+* PNG chart generation.
 
-When optional analysis information is available, the CSV export may also generate:
+All generated paths are collected inside the final controller result.
 
-* A city summary CSV file.
-* A payment-method summary CSV file.
+#### TXT Report Coordination
 
-For example:
+The human-readable report is saved through:
 
-`sales_report_2026-08-29_09-30-25-125.txt`
+`file_manager.save_report()`
 
-`sales_report_2026-08-29_09-30-25-125.json`
+The function receives:
 
-`sales_report_2026-08-29_09-30-25-125.xlsx`
+* `report_text`
+* `output_folder`
+* Shared base filename.
 
-`sales_report_2026-08-29_09-30-25-125_products.csv`
+The generated path is stored as:
 
-`sales_report_2026-08-29_09-30-25-125_categories.csv`
+`report_path_txt`
 
-Optional CSV files:
+#### JSON Analysis Coordination
 
-`sales_report_2026-08-29_09-30-25-125_cities.csv`
+The complete structured sales analysis is exported through:
 
-`sales_report_2026-08-29_09-30-25-125_payment_methods.csv`
+`file_manager.save_analysis_json()`
+
+The function receives:
+
+* `analysis_result`
+* `output_folder`
+* Shared base filename.
+
+The generated path is stored as:
+
+`report_path_json`
+
+#### CSV Summary Coordination
+
+Independent analysis summaries are exported using:
+
+`file_manager.save_analysis_result_csv_files()`
+
+The function receives:
+
+* `analysis_result`
+* `output_folder`
+* Shared base filename.
+
+The resulting dictionary is stored as:
+
+`reports_path_csv`
+
+The standard CSV export currently includes:
+
+* Product summary.
+* Category summary.
+* Monthly summary.
+
+Optional CSV summaries may also include:
+
+* City summary.
+* Payment-method summary.
+
+#### CSV Report Paths
+
+The `reports_path_csv` dictionary uses internal Spanish identifiers for generated summary files.
+
+The standard entries are:
+
+* `resumen_producto`
+* `resumen_categoria`
+* `resumen_mensual`
+
+Optional entries are:
+
+* `ciudad_resumen`
+* `metodo_de_pago_resumen`
+
+A conceptual structure is:
+
+```python
+{
+    "resumen_producto": Path(...),
+    "resumen_categoria": Path(...),
+    "resumen_mensual": Path(...),
+    "ciudad_resumen": Path(...),
+    "metodo_de_pago_resumen": Path(...)
+}
+```
+
+The city and payment-method entries are included only when their corresponding analysis data is available.
+
+Physical CSV filenames and suffixes are defined by the file-management module.
 
 #### XLSX Report Coordination
 
-The controller generates the Excel report using:
+The controller generates the Excel workbook using:
 
 `file_manager.save_report_xlsx()`
 
 The function receives:
 
-* The complete `analysis_result`.
+* Complete `analysis_result`.
 * Validation errors.
 * Validation warnings.
-* The configured output folder.
-* The shared base filename.
+* Configured output folder.
+* Shared base filename.
 
-The resulting workbook path is stored in the controller result as:
+The resulting workbook path is stored as:
 
 `report_path_xlsx`
 
-The workbook may contain general sales metrics, product and category summaries, Top 5 rankings, optional city and payment-method summaries, validation errors, and validation warnings.
+The workbook can contain general metrics, product and category summaries, monthly analysis, rankings, optional city and payment-method summaries, validation errors, and validation warnings.
+
+#### Chart Generation Coordination
+
+Generated chart images are created using:
+
+`chart_manager.save_chart_images()`
+
+The function receives:
+
+* Complete `analysis_result`.
+* Configured output folder.
+* Shared base filename.
+
+The resulting dictionary of generated chart paths is stored as:
+
+`reports_path_charts`
+
+This dictionary is returned to the graphical interface, which uses it to populate the generated-chart selector and allow individual PNG files to be opened.
+
+Chart-generation logic remains inside the dedicated `chart_manager` module rather than the controller.
 
 #### Controller Result
 
@@ -2551,10 +3880,11 @@ The result contains:
 * `total_rows`: Total number of processed sales records.
 * `total_valid_rows`: Number of records that passed validation.
 * `total_invalid_rows`: Number of records containing validation errors.
-* `report_path_txt`: `Path` pointing to the generated TXT report.
-* `report_path_json`: `Path` pointing to the generated JSON analysis.
-* `reports_path_csv`: Dictionary containing the generated CSV summary paths.
-* `report_path_xlsx`: `Path` pointing to the generated XLSX workbook.
+* `report_path_txt`: Path pointing to the generated TXT report.
+* `report_path_json`: Path pointing to the generated JSON analysis.
+* `reports_path_csv`: Dictionary containing generated CSV summary paths.
+* `report_path_xlsx`: Path pointing to the generated XLSX workbook.
+* `reports_path_charts`: Dictionary containing generated chart-image paths.
 * `execution_time`: Formatted string containing the total workflow execution time.
 
 #### Controller Result Structure
@@ -2566,56 +3896,58 @@ A simplified controller result follows this structure:
     "total_rows": ...,
     "total_valid_rows": ...,
     "total_invalid_rows": ...,
+
     "report_path_txt": Path(...),
     "report_path_json": Path(...),
+
     "reports_path_csv": {
         "resumen_producto": Path(...),
         "resumen_categoria": Path(...),
+        "resumen_mensual": Path(...),
         "ciudad_resumen": Path(...),
         "metodo_de_pago_resumen": Path(...)
     },
+
     "report_path_xlsx": Path(...),
+
+    "reports_path_charts": {
+        "...": Path(...),
+        "...": Path(...)
+    },
+
     "execution_time": "Execution time: 0.0123 seconds"
 }
 ```
 
 The city and payment-method CSV entries are optional.
 
-#### CSV Report Paths
+The exact chart keys are determined by the chart-generation module.
 
-The `reports_path_csv` value contains a nested dictionary identifying each generated CSV summary.
+#### GUI Integration
 
-The following entries are always included:
+The controller acts as the primary backend entry point used by the graphical interface.
 
-* `resumen_producto`
-* `resumen_categoria`
+The GUI calls:
 
-The following entries are included only when the corresponding optional analysis is available:
+`controller.generate_sales_report()`
 
-* `ciudad_resumen`
-* `metodo_de_pago_resumen`
+and provides:
 
-An example structure is:
+* Selected source CSV path.
+* Configured output directory.
 
-```python
-{
-    "resumen_producto": Path(...),
-    "resumen_categoria": Path(...),
-    "ciudad_resumen": Path(...),
-    "metodo_de_pago_resumen": Path(...)
-}
-```
+After processing, the GUI receives the controller-result dictionary.
 
-The final two entries are optional.
+It uses:
 
-These keys identify the generated CSV reports inside the application.
+* `report_path_txt` to display and open the TXT report.
+* `report_path_json` to display and open the JSON analysis.
+* `reports_path_csv` to populate the CSV selector.
+* `report_path_xlsx` to display and open the Excel workbook.
+* `reports_path_charts` to populate the generated-chart selector.
+* Processing totals and execution information when required by other application components.
 
-The physical filenames continue to use the English suffixes:
-
-* `_products.csv`
-* `_categories.csv`
-* `_cities.csv`
-* `_payment_methods.csv`
+This keeps the graphical interface separated from backend processing details.
 
 #### Execution Time
 
@@ -2623,11 +3955,11 @@ The controller uses:
 
 `time.perf_counter()`
 
-to measure the duration of the complete sales-report generation workflow.
+to measure the duration of the complete workflow.
 
-The measurement begins before source-file validation and finishes after all supported output files have been generated.
+Timing begins before source-file validation and ends after report files and chart images have been generated.
 
-The execution time therefore includes:
+The measurement therefore includes:
 
 * Source-file validation.
 * CSV reading.
@@ -2638,29 +3970,44 @@ The execution time therefore includes:
 * JSON file storage.
 * CSV summary storage.
 * XLSX workbook generation and storage.
+* Chart generation and storage.
 
-The result is formatted in seconds with four decimal places.
+The final duration is calculated as:
+
+`end - start`
+
+and formatted in seconds with four decimal places.
 
 For example:
 
 `Execution time: 0.0123 seconds`
 
+#### Error Propagation
+
+The controller does not directly handle application-specific exceptions.
+
+Errors raised by:
+
+* File validation.
+* CSV reading.
+* DataFrame validation.
+* Sales analysis.
+* Report generation.
+* File management.
+* Chart generation.
+
+are propagated to the caller.
+
+Application-specific exceptions can then be handled by the graphical interface.
+
+Unexpected Python exceptions may also propagate to the GUI, where they can be presented through the application's error-handling workflow.
+
 #### Input and Output
 
 ##### `generate_sales_report()`
 
-* **Input:** A string containing the source CSV file path and a string containing the destination output folder.
-* **Output:** A dictionary containing processing totals, TXT, JSON, CSV, and XLSX file paths, and the total execution time.
-
-#### Error Propagation
-
-The controller does not directly handle application exceptions.
-
-Errors raised by the validation, CSV reading, analysis, reporting, or file-management modules are propagated to the caller.
-
-Application-specific exceptions derived from `AppError` are handled by the graphical interface.
-
-Unexpected Python exceptions may also propagate to the graphical layer, where they can be presented to the user through the application's error-handling workflow.
+* **Input:** Source CSV path as `str` and destination output directory as `str | Path`.
+* **Output:** Dictionary containing processing totals, TXT, JSON, CSV, XLSX, and PNG chart paths, together with total execution time.
 
 #### Responsibilities
 
@@ -2669,13 +4016,18 @@ The controller is responsible for:
 * Coordinating the complete backend workflow.
 * Passing information between specialized modules.
 * Maintaining the correct processing order.
-* Generating a shared base filename.
+* Coordinating source-file validation.
+* Coordinating CSV reading and DataFrame validation.
+* Coordinating sales analysis.
+* Coordinating plain-text report generation.
+* Requesting the shared base filename.
 * Coordinating TXT generation.
 * Coordinating JSON generation.
 * Coordinating CSV summary generation.
 * Coordinating XLSX workbook generation.
+* Coordinating chart generation.
 * Measuring the total workflow execution time.
-* Returning generated-file paths and processing information to the caller.
+* Returning generated-output paths and processing information to the caller.
 
 The controller is not responsible for:
 
@@ -2683,11 +4035,12 @@ The controller is not responsible for:
 * Performing individual validation rules.
 * Calculating sales metrics directly.
 * Formatting the plain-text report directly.
-* Creating individual TXT, JSON, CSV, or XLSX files directly.
+* Creating report files directly.
+* Drawing chart images directly.
 * Displaying graphical interface elements.
 * Handling user interaction.
 
-These responsibilities belong to the specialized backend and graphical interface modules.
+Those responsibilities belong to the specialized backend modules and graphical interface.
 
 ---
 
@@ -2695,11 +4048,13 @@ These responsibilities belong to the specialized backend and graphical interface
 
 The graphical user interface module provides the main desktop window for the Sales Report application using PySide6.
 
-It allows the user to select a source CSV file, choose an output directory, generate sales reports through the backend controller, inspect generated TXT, JSON, CSV, and XLSX files, and open the configured output directory directly from the application.
+It allows the user to select a source CSV file, choose an output directory, generate sales reports and charts through the backend controller, inspect generated TXT, JSON, CSV, and XLSX files, open generated PNG charts, and access the configured output directory directly from the application.
 
-TXT, JSON, and CSV files are displayed through dedicated read-only `FileViewerWindow` instances. XLSX files are opened using the operating system's associated application.
+TXT, JSON, and CSV files are displayed through dedicated read-only `FileViewerWindow` instances.
 
-The graphical layer separates widget creation, signal connection, layout construction, event handling, and generated-report state management into independent methods.
+XLSX files and generated PNG charts are opened through the operating system's associated applications using `QDesktopServices`.
+
+The graphical layer separates widget creation, signal connection, layout construction, event handling, output access, and generated-result state management into independent methods.
 
 This structure reduces duplicated interface code and keeps the module modular, maintainable, and easier to extend.
 
@@ -2732,6 +4087,7 @@ During initialization, the class creates the initial application state:
 * `json_path`: `None`
 * `csv_paths`: Empty dictionary.
 * `xlsx_path`: `None`
+* `charts_paths`: Empty dictionary.
 
 The initialization process also:
 
@@ -2742,8 +4098,15 @@ The initialization process also:
 5. Creates interface buttons through `create_buttons()`.
 6. Connects button signals through `connect_buttons()`.
 7. Creates the main vertical layout.
-8. Builds the interface sections.
-9. Assigns the completed layout to the central widget.
+8. Builds the source-file section.
+9. Builds the output-folder section.
+10. Builds the report-generation section.
+11. Builds the application-status section.
+12. Builds the generated-files section.
+13. Builds the generated-charts section.
+14. Adds the output-folder access button.
+15. Disables generated-output controls through `off_buttons()`.
+16. Assigns the completed layout to the central widget.
 
 #### Interface Organization
 
@@ -2758,13 +4121,27 @@ Signal configuration:
 
 * `connect_buttons()`
 
-Layout construction:
+Main layout construction:
 
 * `build_selected_file_layout()`
 * `build_selected_folder_layout()`
 * `build_generate_report_layout()`
 * `build_status_layout()`
 * `build_generated_files_layout()`
+* `build_generated_charts_layout()`
+
+Generated-file sub-layouts:
+
+* `build_txt_layout()`
+* `build_json_layout()`
+* `build_xlsx_layout()`
+* `build_csv_layout()`
+* `build_scroll_area_csv()`
+
+Generated-chart sub-layouts:
+
+* `build_chart_layout()`
+* `build_scroll_area_chart()`
 
 User actions:
 
@@ -2775,6 +4152,7 @@ User actions:
 * `open_report_json()`
 * `open_report_csv()`
 * `open_report_xlsx()`
+* `open_chart_graphic()`
 * `open_output_folder()`
 
 Interface-state management:
@@ -2801,7 +4179,7 @@ It creates labels for:
 
 Generated TXT, JSON, and XLSX path labels are initially empty and are populated after successful report generation.
 
-Centralizing label creation keeps widget initialization separate from layout construction.
+Generated CSV and chart paths are displayed dynamically through labels created during the report-generation process.
 
 #### Button Creation
 
@@ -2811,16 +4189,17 @@ The interface currently provides buttons for:
 
 * Selecting the source CSV file.
 * Selecting the output directory.
-* Generating reports.
+* Generating reports and charts.
 * Opening the TXT report.
 * Opening the JSON analysis.
 * Opening the selected CSV summary.
 * Opening the XLSX analysis.
+* Opening the selected generated chart.
 * Opening the output directory.
 
 The method creates the buttons and applies fixed sizes where required.
 
-Signal connections are handled separately by `connect_buttons()`.
+Signal connections are configured separately through `connect_buttons()`.
 
 #### Button Signal Connections
 
@@ -2836,6 +4215,7 @@ The current connections are:
 * `button_csv_show_report` → `open_report_csv()`
 * `button_open_output_folder` → `open_output_folder()`
 * `button_xlsx_show_report` → `open_report_xlsx()`
+* `button_see_chart` → `open_chart_graphic()`
 
 Separating widget creation from signal connection keeps interface initialization easier to understand and maintain.
 
@@ -2847,9 +4227,11 @@ The main application window contains the following primary sections:
 2. Output folder selection.
 3. Report generation.
 4. Application status.
-5. Generated file information and navigation.
+5. Generated report files.
+6. Generated charts.
+7. Output-folder access.
 
-Each primary section is created inside an independent `QGroupBox`.
+The first six interface areas are organized using dedicated layouts and group boxes.
 
 #### Source CSV File Selection
 
@@ -2874,9 +4256,9 @@ The dialog uses:
 
 When a new source file is selected:
 
-1. Generated-report controls are disabled.
-2. Previously stored TXT, JSON, CSV, and XLSX paths are cleared.
-3. Previously displayed generated-file information is cleared.
+1. Generated-output controls are disabled.
+2. Previously stored TXT, JSON, CSV, XLSX, and chart paths are cleared.
+3. Previously displayed generated-report and chart information is removed.
 4. The selected path is stored in `file_path`.
 5. The selected-file label is updated.
 6. The application status is updated according to the currently configured output directory.
@@ -2908,9 +4290,9 @@ The `selected_folder_path()` method opens a directory-selection dialog using:
 
 When a new output folder is selected:
 
-1. Generated-report controls are disabled.
-2. Previously stored TXT, JSON, CSV, and XLSX paths are cleared.
-3. Previously displayed generated-file information is removed.
+1. Generated-output controls are disabled.
+2. Previously stored TXT, JSON, CSV, XLSX, and chart paths are cleared.
+3. Previously displayed generated-report and chart information is removed.
 4. The selected directory is stored in `output_folder`.
 5. The output-folder label is updated.
 6. The application status is updated according to whether a source CSV file has already been selected.
@@ -2933,7 +4315,7 @@ The button starts the complete backend workflow through the Sales Report control
 
 #### Report Generation Process
 
-The `generate_reports()` method coordinates report generation from the graphical interface.
+The `generate_reports()` method coordinates report and chart generation from the graphical interface.
 
 It performs the following operations:
 
@@ -2941,25 +4323,28 @@ It performs the following operations:
 2. Updates the application status to indicate that processing has started.
 3. Verifies that a source CSV file has been selected.
 4. Stops the process and displays a message when no source file is available.
-5. Disables controls associated with previously generated reports.
-6. Clears stored TXT, JSON, CSV, and XLSX paths.
-7. Clears previously displayed report information.
+5. Disables controls associated with previously generated outputs.
+6. Clears stored TXT, JSON, CSV, XLSX, and chart paths.
+7. Clears previously displayed output information.
 8. Calls `controller.generate_sales_report()`.
-9. Receives the generated report information from the controller.
-10. Stores and displays the TXT report path.
-11. Stores and displays the JSON analysis path.
-12. Stores and displays the XLSX report path.
+9. Receives generated report and chart information from the controller.
+10. Stores and displays the generated TXT report path.
+11. Stores and displays the generated JSON analysis path.
+12. Stores and displays the generated XLSX report path.
 13. Adds generated CSV summary names to the CSV selector.
 14. Creates labels containing generated CSV paths.
 15. Stores CSV summary names and paths in `csv_paths`.
-16. Updates the application status after successful generation.
-17. Enables generated-report controls.
-18. Displays application-specific or unexpected errors when necessary.
-19. Re-enables the report-generation button after processing.
+16. Adds generated chart names to the chart selector.
+17. Creates labels containing generated chart paths.
+18. Stores chart names and paths in `charts_paths`.
+19. Updates the application status after successful generation.
+20. Enables generated-output controls.
+21. Displays application-specific or unexpected errors when necessary.
+22. Re-enables the report-generation button after processing.
 
 #### Backend Controller Integration
 
-The GUI delegates the complete backend processing workflow to:
+The GUI delegates the complete backend workflow to:
 
 `controller.generate_sales_report()`
 
@@ -2976,8 +4361,9 @@ The GUI currently uses:
 * `report_path_json`
 * `reports_path_csv`
 * `report_path_xlsx`
+* `reports_path_charts`
 
-The backend remains responsible for validation, reading, analysis, report generation, and file storage.
+The backend remains responsible for validation, reading, analysis, report generation, chart generation, and file storage.
 
 #### Application Status
 
@@ -2994,39 +4380,97 @@ The status can change when:
 * Both input and output selections are configured.
 * Report generation starts.
 * No CSV file has been selected.
-* Report generation completes successfully.
+* Reports and charts are generated successfully.
 * An application-specific error occurs.
 * An unexpected error occurs.
 
+After successful processing, the interface indicates that files were saved and charts were generated successfully.
+
 #### Generated Files Section
 
-The `build_generated_files_layout()` method creates the section used to display and access generated report files.
+The `build_generated_files_layout()` method creates the group box used to display and access generated report files.
 
-The section provides controls for:
+The section contains independent layouts for:
 
 * TXT reports.
 * JSON analysis.
 * XLSX analysis.
 * CSV summaries.
-* Output-directory access.
+* Scrollable CSV path information.
 
-Generated-report controls are initially disabled through:
+The output-directory button is no longer part of this group box. It is added separately to the main application layout.
 
-`off_buttons()`
+#### TXT Report Layout
 
-They become available after successful report generation through:
+The `build_txt_layout()` method creates the TXT report controls.
 
-`on_buttons()`
+It contains:
+
+* TXT section label.
+* Generated TXT path.
+* `Reporte TXT` button.
+
+The button opens the generated report through `FileViewerWindow`.
+
+#### JSON Report Layout
+
+The `build_json_layout()` method creates the JSON analysis controls.
+
+It contains:
+
+* JSON section label.
+* Generated JSON path.
+* `Análisis JSON` button.
+
+The button opens the generated file through `FileViewerWindow`.
+
+#### XLSX Report Layout
+
+The `build_xlsx_layout()` method creates the Excel report controls.
+
+It contains:
+
+* XLSX section label.
+* Generated XLSX path.
+* `Análisis Excel` button.
+
+The XLSX workbook is opened externally through the operating system.
+
+#### CSV Summary Layout
+
+The `build_csv_layout()` method creates the CSV selection controls.
+
+It contains:
+
+* CSV section label.
+* `csv_combobox`
+* `Ver resumen CSV` button.
+
+The combo box is populated dynamically after successful report generation.
+
+#### Scrollable CSV Results
+
+The `build_scroll_area_csv()` method creates a `QScrollArea` for generated CSV paths.
+
+The internal layout is stored in:
+
+`csv_summaries_layout`
+
+Each generated CSV path is represented by a dynamically created `QLabel`.
+
+The scroll area has a fixed height of:
+
+`80`
+
+pixels.
+
+This allows multiple CSV paths to be displayed without excessively increasing the size of the main application window.
 
 #### TXT Report Access
 
 The generated TXT path is stored in:
 
 `txt_path`
-
-and displayed through:
-
-`txt_file_path_label`
 
 The:
 
@@ -3036,17 +4480,13 @@ button calls:
 
 `open_report_txt()`
 
-This creates a `FileViewerWindow` and displays the generated TXT report in read-only mode.
+The method creates a `FileViewerWindow` and displays the generated TXT report in read-only mode.
 
 #### JSON Analysis Access
 
 The generated JSON path is stored in:
 
 `json_path`
-
-and displayed through:
-
-`json_file_path_label`
 
 The:
 
@@ -3056,15 +4496,15 @@ button calls:
 
 `open_report_json()`
 
-This creates a `FileViewerWindow` and displays the JSON analysis in read-only mode.
+The method creates a `FileViewerWindow` and displays the JSON analysis in read-only mode.
 
-#### CSV Summary Selection and Access
+#### CSV Summary Access
 
 Generated CSV summary paths are stored in:
 
 `csv_paths`
 
-Generated summary names are also added to:
+Generated summary names are added to:
 
 `csv_combobox`
 
@@ -3076,33 +4516,13 @@ button calls:
 
 `open_report_csv()`
 
-The method reads the currently selected summary name, obtains its corresponding path from `csv_paths`, and creates a `FileViewerWindow` to display the CSV contents.
-
-#### Scrollable CSV Results
-
-Generated CSV paths are also displayed inside a `QScrollArea`.
-
-The scrollable area contains:
-
-`csv_summaries_layout`
-
-Each generated CSV path is represented by an independent `QLabel`.
-
-The scroll area is configured with a fixed height of:
-
-`150`
-
-pixels.
-
-This allows multiple CSV summary paths to be displayed without increasing the size of the main window.
+The method retrieves the selected summary path and opens it through `FileViewerWindow`.
 
 #### XLSX Report Access
 
 The generated Excel workbook path is stored in:
 
 `xlsx_path`
-
-and displayed through the XLSX path label.
 
 The:
 
@@ -3112,19 +4532,106 @@ button calls:
 
 `open_report_xlsx()`
 
-Unlike TXT, JSON, and CSV reports, XLSX files are not displayed through `FileViewerWindow`.
+Unlike TXT, JSON, and CSV files, XLSX reports are not displayed through `FileViewerWindow`.
 
-The method first verifies that the generated file exists.
+The method first verifies that the file exists.
 
-If the file cannot be found, the interface displays a warning message:
+If the file does not exist, a warning `QMessageBox` is displayed.
 
-`Archivo no encontrado`
-
-If the file exists, the local path is converted into a `QUrl` and opened through:
+If the file exists, its path is converted into a local `QUrl` and opened through:
 
 `QDesktopServices.openUrl()`
 
-This allows the operating system to open the workbook using the application associated with XLSX files.
+This allows the operating system to launch the application associated with XLSX files.
+
+#### Generated Charts Section
+
+The `build_generated_charts_layout()` method creates the section used to display and access generated charts.
+
+The section is represented by the group box:
+
+`Gráficas Generadas`
+
+It contains:
+
+* A chart-selection combo box.
+* A `Ver Gráfica` button.
+* A scrollable area displaying generated chart paths.
+
+The section combines:
+
+* `build_chart_layout()`
+* `build_scroll_area_chart()`
+
+#### Chart Selection Layout
+
+The `build_chart_layout()` method creates the controls used to select a generated chart.
+
+It creates:
+
+`chart_combobox`
+
+and places it beside:
+
+`button_see_chart`
+
+The combo box is populated dynamically using chart identifiers returned by the backend controller.
+
+#### Scrollable Chart Results
+
+The `build_scroll_area_chart()` method creates a scrollable area containing generated chart paths.
+
+The internal dynamic layout is stored in:
+
+`chart_graphics_layout`
+
+Each generated chart is represented by an independent `QLabel`.
+
+The scroll area has a fixed height of:
+
+`80`
+
+pixels.
+
+#### Generated Chart State
+
+Generated chart paths are stored in:
+
+`charts_paths`
+
+This dictionary maps chart identifiers to their corresponding generated PNG paths.
+
+For each entry returned through `reports_path_charts`:
+
+1. The chart identifier is added to `chart_combobox`.
+2. A label displaying the chart identifier and path is created.
+3. The label is added to `chart_graphics_layout`.
+4. The chart path is stored in `charts_paths`.
+
+#### Generated Chart Access
+
+The `open_chart_graphic()` method opens the chart currently selected in:
+
+`chart_combobox`
+
+The method:
+
+1. Reads the selected chart identifier.
+2. Verifies that a selection is available.
+3. Retrieves the corresponding PNG path from `charts_paths`.
+4. Verifies that the PNG file exists.
+5. Converts the local path into a `QUrl`.
+6. Opens the chart through `QDesktopServices.openUrl()`.
+
+If no chart has been selected, the interface displays an informational message:
+
+`Debes seleccionar un archivo png primero`
+
+If the selected PNG file does not exist, a warning message is displayed:
+
+`El archivo png no existe`
+
+Generated charts are therefore opened through the operating system rather than inside `FileViewerWindow`.
 
 #### Output Folder Access
 
@@ -3144,9 +4651,11 @@ The platform-specific mechanisms are:
 * macOS: `open`
 * Linux and compatible systems: `xdg-open`
 
-#### Generated-Report Control Management
+The button is positioned directly in the main application layout, outside the generated-files group box.
 
-The GUI centralizes enabling and disabling generated-report controls.
+#### Generated-Output Control Management
+
+The GUI centralizes enabling and disabling controls associated with generated reports and charts.
 
 ##### `on_buttons()`
 
@@ -3158,8 +4667,10 @@ Enables:
 * CSV selector.
 * CSV report access.
 * XLSX report access.
+* Chart selector.
+* Chart access button.
 
-This method is called after successful report generation.
+This method is called after successful report and chart generation.
 
 ##### `off_buttons()`
 
@@ -3171,32 +4682,35 @@ Disables:
 * CSV selector.
 * CSV report access.
 * XLSX report access.
+* Chart selector.
+* Chart access button.
 
 This method is used when:
 
-* A new source CSV is selected.
+* A new source CSV file is selected.
 * A new output folder is selected.
 * A new report-generation process begins.
-* Previously generated results should no longer be treated as current.
+* Previously generated results should no longer be considered current.
 
-#### Generated-Report State Cleanup
+#### Generated-Output State Cleanup
 
-The GUI also separates internal path cleanup from visual cleanup.
+The GUI separates internal path cleanup from visual cleanup.
 
 ##### `clean_paths()`
 
-Resets internal generated-file references:
+Resets internal generated-output references:
 
 * `txt_path` → `None`
 * `json_path` → `None`
 * `csv_paths` → `{}`
 * `xlsx_path` → `None`
+* `charts_paths` → `{}`
 
-This prevents previously generated reports from remaining associated with a new source file, output directory, or report-generation process.
+This prevents previously generated reports or charts from remaining associated with a new source file, output directory, or generation process.
 
 ##### `clean_labels()`
 
-Clears generated-file information displayed in the interface.
+Clears generated-output information displayed in the interface.
 
 It:
 
@@ -3204,7 +4718,9 @@ It:
 * Clears the JSON path label.
 * Clears the XLSX path label.
 * Clears the CSV selector.
+* Clears the chart selector.
 * Removes dynamically generated CSV path labels.
+* Removes dynamically generated chart path labels.
 
 ##### `clean_layout()`
 
@@ -3212,7 +4728,10 @@ Removes dynamically generated widgets from a provided Qt layout.
 
 The method iterates through the layout in reverse order and schedules each contained widget for deletion.
 
-It is primarily used to clear CSV summary labels before new results are displayed.
+It is used to clear both:
+
+* CSV summary path labels.
+* Generated chart path labels.
 
 #### Window State
 
@@ -3222,10 +4741,11 @@ The `SalesReportWindow` class maintains the following primary state values:
 * `output_folder`: Destination directory. Defaults to `reports/`.
 * `txt_path`: Generated TXT report path.
 * `json_path`: Generated JSON analysis path.
-* `csv_paths`: Mapping between CSV summary names and their generated paths.
+* `csv_paths`: Mapping between CSV summary names and generated paths.
 * `xlsx_path`: Generated XLSX workbook path.
+* `charts_paths`: Mapping between chart identifiers and generated PNG paths.
 
-The class also maintains interface widgets, layouts, buttons, selectors, and report-viewer window references.
+The class also maintains interface widgets, layouts, buttons, selectors, report-viewer windows, and generated-output controls.
 
 #### PySide6 Components
 
@@ -3235,15 +4755,15 @@ The graphical interface currently uses:
 * `QWidget`: Central window and internal containers.
 * `QPushButton`: Interactive application controls.
 * `QVBoxLayout`: Vertical organization.
-* `QHBoxLayout`: Horizontal CSV selection controls.
+* `QHBoxLayout`: Horizontal organization of report and chart controls.
 * `QLabel`: Paths, titles, and status information.
 * `QGroupBox`: Visual grouping of interface sections.
 * `QFileDialog`: Source-file and output-directory selection.
-* `QScrollArea`: Scrollable CSV path display.
-* `QComboBox`: CSV summary selection.
-* `QMessageBox`: Critical and warning messages.
-* `QDesktopServices`: Opening generated XLSX files through the operating system.
-* `QUrl`: Conversion of local XLSX paths for `QDesktopServices`.
+* `QScrollArea`: Scrollable CSV and chart path displays.
+* `QComboBox`: CSV-summary and generated-chart selection.
+* `QMessageBox`: Critical, warning, and informational messages.
+* `QDesktopServices`: Opening XLSX reports and PNG charts through the operating system.
+* `QUrl`: Conversion of local XLSX and PNG paths for `QDesktopServices`.
 
 #### Current GUI Workflow
 
@@ -3255,21 +4775,24 @@ The current graphical workflow is:
 4. Use `reports/` when no custom directory is selected.
 5. Press `Crear reporte`.
 6. Verify that a source CSV file exists in the interface state.
-7. Disable previous report controls.
-8. Clear previous generated-file state.
+7. Disable previous generated-output controls.
+8. Clear previous report and chart state.
 9. Send the source CSV and output folder to `controller.generate_sales_report()`.
 10. Execute the complete backend workflow.
-11. Receive TXT, JSON, CSV, and XLSX output paths.
+11. Receive TXT, JSON, CSV, XLSX, and chart output paths.
 12. Display the generated TXT path.
 13. Display the generated JSON path.
 14. Display the generated XLSX path.
 15. Populate the CSV selector.
-16. Display CSV paths in the scrollable area.
-17. Enable generated-report controls.
-18. Allow TXT, JSON, and CSV reports to be inspected through `FileViewerWindow`.
-19. Allow the XLSX workbook to be opened with the operating system's associated application.
-20. Allow the output folder to be opened.
-21. Display the final success status or an error message.
+16. Display CSV paths inside the CSV scroll area.
+17. Populate the chart selector.
+18. Display generated chart paths inside the chart scroll area.
+19. Enable generated-output controls.
+20. Allow TXT, JSON, and CSV reports to be inspected through `FileViewerWindow`.
+21. Allow the XLSX workbook to be opened through the operating system.
+22. Allow generated PNG charts to be opened through the operating system.
+23. Allow the configured output directory to be opened.
+24. Display the final success status or an error message.
 
 #### Error Handling
 
@@ -3284,7 +4807,12 @@ During report generation, errors update the status to:
 
 and are displayed through a critical `QMessageBox`.
 
-The `open_report_xlsx()` method also handles a missing generated Excel file by displaying a warning message box.
+The `open_report_xlsx()` method also handles a missing XLSX file by displaying a warning message.
+
+The `open_chart_graphic()` method handles:
+
+* Empty chart selection through an informational message.
+* Missing PNG files through a warning message.
 
 The graphical application remains open after handled errors so the user can correct the configuration or try again.
 
@@ -3293,7 +4821,7 @@ The graphical application remains open after handled errors so the user can corr
 ##### `SalesReportWindow`
 
 * **Input:** User interaction through the graphical interface.
-* **Output:** Main desktop interface for configuring, generating, displaying, and accessing sales-report outputs.
+* **Output:** Main desktop interface for configuring, generating, displaying, and accessing sales reports and charts.
 
 ##### `create_labels()`
 
@@ -3303,27 +4831,72 @@ The graphical application remains open after handled errors so the user can corr
 ##### `create_buttons()`
 
 * **Input:** None.
-* **Output:** Creates the buttons required by the main interface.
+* **Output:** Creates report, chart, file-selection, folder-selection, and output-access buttons.
 
 ##### `connect_buttons()`
 
 * **Input:** None.
 * **Output:** Connects button signals to their corresponding event handlers.
 
+##### `build_generated_files_layout()`
+
+* **Input:** None.
+* **Output:** `QGroupBox` containing generated report-file controls.
+
+##### `build_txt_layout()`
+
+* **Input:** None.
+* **Output:** `QVBoxLayout` containing TXT report controls.
+
+##### `build_json_layout()`
+
+* **Input:** None.
+* **Output:** `QVBoxLayout` containing JSON report controls.
+
+##### `build_xlsx_layout()`
+
+* **Input:** None.
+* **Output:** `QVBoxLayout` containing XLSX report controls.
+
+##### `build_csv_layout()`
+
+* **Input:** None.
+* **Output:** `QVBoxLayout` containing CSV selection controls.
+
+##### `build_scroll_area_csv()`
+
+* **Input:** None.
+* **Output:** `QVBoxLayout` containing the CSV-path scroll area.
+
+##### `build_generated_charts_layout()`
+
+* **Input:** None.
+* **Output:** `QGroupBox` containing generated-chart controls.
+
+##### `build_chart_layout()`
+
+* **Input:** None.
+* **Output:** `QVBoxLayout` containing the chart selector and access button.
+
+##### `build_scroll_area_chart()`
+
+* **Input:** None.
+* **Output:** `QVBoxLayout` containing the generated-chart path scroll area.
+
 ##### `selected_file_path()`
 
 * **Input:** CSV file selected through `QFileDialog`.
-* **Output:** Updates the source-file state and resets previous generated-report state.
+* **Output:** Updates the source-file state and resets previous generated-report and chart state.
 
 ##### `selected_folder_path()`
 
 * **Input:** Directory selected through `QFileDialog`.
-* **Output:** Updates the output-folder state and resets previous generated-report state.
+* **Output:** Updates the output-folder state and resets previous generated-output state.
 
 ##### `generate_reports()`
 
 * **Input:** Selected CSV path and configured output directory.
-* **Output:** Generates reports through the controller and updates the GUI with TXT, JSON, CSV, and XLSX results.
+* **Output:** Generates reports and charts through the controller and updates the GUI with TXT, JSON, CSV, XLSX, and PNG chart information.
 
 ##### `open_report_txt()`
 
@@ -3343,41 +4916,46 @@ The graphical application remains open after handled errors so the user can corr
 ##### `open_report_xlsx()`
 
 * **Input:** Generated XLSX path stored in `xlsx_path`.
-* **Output:** Opens the workbook using the operating system's associated application or displays a warning if the file does not exist.
+* **Output:** Opens the workbook using the operating system's associated application or displays a warning when the file does not exist.
+
+##### `open_chart_graphic()`
+
+* **Input:** Chart selected through `chart_combobox`.
+* **Output:** Opens the corresponding PNG chart through the operating system or displays an informational/warning message when necessary.
 
 ##### `open_output_folder()`
 
 * **Input:** Configured output directory.
-* **Output:** Opens the directory using the operating-system file manager.
+* **Output:** Opens the directory through the operating-system file manager.
 
 ##### `clean_layout()`
 
 * **Input:** Qt layout containing dynamically generated widgets.
-* **Output:** Removes its dynamically generated widgets.
+* **Output:** Removes the dynamically generated widgets.
 
 ##### `clean_labels()`
 
 * **Input:** None.
-* **Output:** Clears TXT, JSON, CSV, and XLSX information displayed in the interface.
+* **Output:** Clears TXT, JSON, CSV, XLSX, and chart information displayed in the interface.
 
 ##### `clean_paths()`
 
 * **Input:** None.
-* **Output:** Resets stored TXT, JSON, CSV, and XLSX paths.
+* **Output:** Resets stored TXT, JSON, CSV, XLSX, and chart paths.
 
 ##### `on_buttons()`
 
 * **Input:** None.
-* **Output:** Enables controls associated with generated reports.
+* **Output:** Enables controls associated with generated reports and charts.
 
 ##### `off_buttons()`
 
 * **Input:** None.
-* **Output:** Disables controls associated with generated reports.
+* **Output:** Disables controls associated with generated reports and charts.
 
 #### Current Development Status
 
-The graphical interface is fully connected to the Sales Report backend workflow.
+The graphical interface is connected to the Sales Report backend workflow and supports both report and chart access.
 
 Currently available:
 
@@ -3390,19 +4968,27 @@ Currently available:
 * TXT report generation and access.
 * JSON analysis generation and access.
 * CSV summary generation and selection.
-* Scrollable CSV results.
+* Scrollable CSV path display.
 * XLSX report generation and access.
+* Generated PNG chart selection.
+* Scrollable chart path display.
+* Generated PNG chart opening.
 * Read-only TXT, JSON, and CSV viewer integration.
 * Operating-system XLSX opening.
+* Operating-system PNG opening.
 * Output-directory access.
 * Centralized label creation.
 * Centralized button creation.
 * Centralized signal connection.
-* Generated-report state cleanup.
-* Generated-report control management.
+* Dedicated file sub-layouts.
+* Dedicated chart sub-layouts.
+* Generated-output state cleanup.
+* Generated-output control management.
 * Application-specific error presentation.
 * Unexpected error presentation.
 * Missing-XLSX warning presentation.
+* Missing-PNG warning presentation.
+* Empty-chart-selection information presentation.
 
 ---
 
@@ -3581,7 +5167,7 @@ The communication with the backend controller is performed by the `SalesReportWi
 
 ### Report File Viewer Module
 
-The report file viewer module provides a dedicated PySide6 window for displaying the contents of generated report files.
+The report file viewer module provides a dedicated PySide6 window for displaying the contents of generated text-based report files.
 
 It is used by the main graphical interface to open TXT, JSON, and CSV reports without modifying their contents.
 
@@ -3593,12 +5179,12 @@ The module currently provides the following class:
 
 #### File Viewer Window
 
-The `FileViewerWindow` class inherits from PySide6 `QMainWindow` and represents an independent report-viewing window.
+The `FileViewerWindow` class inherits from PySide6 `QMainWindow` and represents an independent read-only report-viewing window.
 
 The window is configured with:
 
 * A dynamic title received when the window is created.
-* Width: `700`
+* Width: `900`
 * Height: `900`
 * A read-only report display area.
 * A close button.
@@ -3616,30 +5202,33 @@ During initialization, the class:
 
 1. Stores the window title.
 2. Stores the report file path.
-3. Configures the window title and fixed size.
-4. Creates the central widget.
-5. Creates the main vertical layout.
-6. Builds the report text area.
-7. Builds the close-button area.
-8. Adds both sections to the main window.
+3. Configures the window title.
+4. Configures the fixed window size to `900 x 900`.
+5. Creates the central widget.
+6. Creates the main vertical layout.
+7. Builds the report text area.
+8. Builds the close-button area.
+9. Adds both sections to the main window.
 
 #### Report Display Area
 
 The `build_text_area()` method creates the section responsible for displaying the selected report.
 
-The section contains a read-only `QTextEdit` widget.
+The section contains a read-only `QTextEdit` widget inside a `QGroupBox`.
 
 The report file is read using:
 
 `Path.read_text(encoding="utf-8")`
 
-The complete file contents are then displayed as plain text inside the text area.
+The complete file contents are displayed as plain text inside the text area.
 
 Because the `QTextEdit` widget is configured as read-only, the user can inspect the report without modifying its contents through the application.
 
+The source file itself is not changed by the viewer.
+
 #### Supported Report Files
 
-The file viewer can display text-based files generated by the Sales Report application.
+The file viewer is intended for text-based files generated by the Sales Report application.
 
 The main graphical interface currently uses it for:
 
@@ -3647,7 +5236,11 @@ The main graphical interface currently uses it for:
 * JSON analysis files.
 * CSV analysis summaries.
 
-The viewer itself does not perform format-specific parsing. It reads the selected file as UTF-8 text and displays its contents directly.
+The viewer does not perform format-specific parsing.
+
+It reads the selected file as UTF-8 text and displays its contents directly.
+
+Binary formats such as XLSX are not handled by this window and are opened separately by the main graphical interface through the operating system.
 
 #### Close Button Area
 
@@ -3657,13 +5250,11 @@ The `build_button_area()` method creates a horizontal layout containing the:
 
 button.
 
-The button is connected directly to the window's:
+The button's `clicked` signal is connected directly to:
 
 `close()`
 
-method.
-
-When pressed, the report viewer window is closed without affecting the main Sales Report application window.
+When pressed, the report viewer window closes without affecting the main Sales Report application window.
 
 #### PySide6 Components
 
@@ -3694,6 +5285,7 @@ The viewer does not:
 * Delete files.
 * Rename files.
 * Generate new reports.
+* Parse binary report formats.
 
 #### Input and Output
 
@@ -3716,7 +5308,7 @@ The viewer does not:
 
 The report file viewer is opened from the main `SalesReportWindow`.
 
-The graphical interface currently uses separate methods to display generated reports:
+The graphical interface currently uses separate methods to display text-based generated reports:
 
 * `open_report_txt()`
 * `open_report_json()`
@@ -3724,27 +5316,29 @@ The graphical interface currently uses separate methods to display generated rep
 
 Each method creates a new `FileViewerWindow` instance using the corresponding generated report path.
 
+The XLSX report follows a different workflow and is opened externally through the operating system rather than through `FileViewerWindow`.
+
 The relationship can be represented as:
 
 `SalesReportWindow`
 
-→ User selects generated report
+→ User selects a TXT, JSON, or CSV report
 
 → `FileViewerWindow`
 
-→ Read report file
+→ Read the selected file using UTF-8
 
-→ Display contents in read-only mode
+→ Display its contents in read-only mode
 
 #### Responsibilities
 
 This module is responsible for:
 
 * Creating an independent report-viewing window.
-* Reading a generated report file.
-* Displaying the file contents as plain text.
+* Reading generated text-based report files.
+* Displaying file contents as plain text.
 * Preventing modification through the viewer.
-* Providing a control for closing the report window.
+* Providing a control for closing the viewer window.
 
 This module is not responsible for:
 
@@ -3752,9 +5346,793 @@ This module is not responsible for:
 * Validating CSV files.
 * Analyzing sales data.
 * Saving report files.
+* Opening XLSX workbooks.
 * Selecting the source CSV file.
 * Selecting the output folder.
 
 Those responsibilities belong to the controller, backend modules, and main graphical interface.
+
+---
+
+### Chart Generation Module
+
+The chart generation module converts previously calculated sales-analysis results into PNG chart images.
+
+It uses pandas plotting capabilities together with Matplotlib to generate visual representations of monthly sales performance, percentage growth, product rankings, category performance, and optional city and payment-method analyses.
+
+The module does not calculate sales metrics or rankings directly. Instead, it receives the structured results produced by the sales-analysis module and converts those results into chart images.
+
+Generated charts use the same shared base filename used by the remaining report outputs, allowing PNG images to remain associated with the TXT, JSON, CSV, and XLSX files generated during the same workflow.
+
+The module currently provides the following functions:
+
+* `build_graph_image()`
+* `save_chart_images()`
+
+#### Dependencies
+
+The chart-generation workflow uses:
+
+* `pandas`: DataFrame manipulation and high-level plotting.
+* `matplotlib.pyplot`: Chart configuration and PNG image storage.
+* `pathlib.Path`: Output-directory and file-path management.
+* `ChartGenerationError`: Application-specific chart-generation exception.
+
+#### Chart Generation Architecture
+
+The chart-generation workflow follows this general structure:
+
+```text
+analysis_result
+      |
+      v
+save_chart_images()
+      |
+      +-- Prepare Top 5 DataFrames
+      |
+      +-- Prepare monthly product/category display columns
+      |
+      +-- Select analysis DataFrames
+      |
+      v
+build_graph_image()
+      |
+      +-- Create output directory
+      +-- Build bar chart
+      +-- Configure labels
+      +-- Configure title
+      +-- Rotate x-axis labels
+      +-- Apply tight layout
+      +-- Save PNG at 150 DPI
+      +-- Close Matplotlib figure
+      |
+      v
+Generated PNG Path
+```
+
+The resulting chart paths are collected into a dictionary and returned to the caller.
+
+#### Generic Chart Builder
+
+The `build_graph_image()` function is the reusable chart-generation helper used by all chart types in the module.
+
+It receives:
+
+* A pandas `DataFrame`.
+* The DataFrame column used for the x-axis.
+* The DataFrame column used for the y-axis.
+* The x-axis label.
+* The y-axis label.
+* The chart title.
+* The output directory.
+* The output filename without an extension.
+
+The function automatically adds:
+
+`.png`
+
+to the provided filename.
+
+#### Output Directory Creation
+
+Before saving a chart, `build_graph_image()` converts the provided output directory into a:
+
+`Path`
+
+The destination directory and any missing parent directories are created through:
+
+```python
+folder.mkdir(parents=True, exist_ok=True)
+```
+
+This allows chart generation to work even when the configured destination directory does not already exist.
+
+#### Chart Type
+
+All charts generated by the current implementation use:
+
+`bar`
+
+charts.
+
+The chart is created through the pandas:
+
+`DataFrame.plot()`
+
+interface.
+
+The current configuration uses:
+
+* `kind="bar"`
+* `legend=False`
+* Custom chart title.
+* Custom x-axis and y-axis columns.
+* Color `#4472C4`.
+
+#### Chart Formatting
+
+After creating the chart, the module applies additional Matplotlib formatting.
+
+The x-axis label is configured through:
+
+`plt.xlabel()`
+
+The y-axis label is configured through:
+
+`plt.ylabel()`
+
+X-axis values are rotated:
+
+`90`
+
+degrees.
+
+This helps display long category, product, month, city, and payment-method labels vertically.
+
+The chart layout is adjusted using:
+
+`plt.tight_layout()`
+
+before the image is saved.
+
+#### PNG Image Storage
+
+Generated charts are saved through:
+
+`plt.savefig()`
+
+using:
+
+`150 DPI`
+
+The resulting path is returned as a `Path` object.
+
+The general filename structure is:
+
+`<shared_base_filename>_<chart_description>.png`
+
+#### Matplotlib Figure Cleanup
+
+The `build_graph_image()` function uses a `finally` block to execute:
+
+`plt.close()`
+
+This means the active Matplotlib figure is closed whether chart generation succeeds or raises a supported exception.
+
+Closing the figure prevents previously generated plots from remaining active while multiple charts are generated during the same application workflow.
+
+#### Chart Error Handling
+
+The generic chart builder explicitly handles the following exception types:
+
+* `OSError`
+* `KeyError`
+* `ValueError`
+* `TypeError`
+
+These errors may represent situations such as:
+
+* Problems creating the destination directory.
+* Problems saving the PNG file.
+* Missing DataFrame columns.
+* Invalid plotting values.
+* Incorrect data types provided to the plotting workflow.
+
+When one of these errors occurs, the module raises:
+
+`ChartGenerationError`
+
+using exception chaining.
+
+The original exception therefore remains associated with the application-specific error.
+
+#### Complete Chart Generation Process
+
+The `save_chart_images()` function coordinates generation of all supported sales-analysis charts.
+
+It receives:
+
+* `analysis_result`
+* `output_folder`
+* `file_name_base`
+
+The function uses the analysis structures already calculated by the analyzer and delegates individual PNG creation to:
+
+`build_graph_image()`
+
+#### Top 5 Data Preparation
+
+The sales-analysis module stores Top 5 rankings as lists of dictionaries.
+
+Before chart generation, the chart manager converts:
+
+`top_5_best_selling_products`
+
+into a pandas DataFrame.
+
+It also converts:
+
+`top_5_highest_income_products`
+
+into a pandas DataFrame.
+
+These DataFrames are then used for product-ranking charts.
+
+The chart module does not recalculate or reorder the Top 5 results.
+
+#### Standard Charts
+
+The current implementation always generates ten standard chart images:
+
+1. Monthly income.
+2. Monthly units sold.
+3. Monthly income percentage variation.
+4. Monthly unit-sales percentage variation.
+5. Monthly best-selling product.
+6. Monthly highest-income category.
+7. Top 5 highest-income products.
+8. Top 5 products by units sold.
+9. Income by category.
+10. Units sold by category.
+
+#### Monthly Income Chart
+
+The dictionary key is:
+
+`grafica_de_ingresos_mensuales`
+
+The chart uses:
+
+* X-axis: `mes`
+* Y-axis: `ingreso_total`
+* X-axis label: `Mes`
+* Y-axis label: `Ingreso total`
+* Title: `Ingreso mensual`
+
+The generated filename uses:
+
+`_ingreso_por_mes.png`
+
+#### Monthly Units-Sold Chart
+
+The dictionary key is:
+
+`grafica_de_unidades_vendidas_mensualmente`
+
+The chart uses:
+
+* X-axis: `mes`
+* Y-axis: `unidades_vendidas`
+* X-axis label: `Mes`
+* Y-axis label: `Unidades vendidas`
+* Title: `Unidades vendidas por mes`
+
+The generated filename uses:
+
+`_unidades_vendidas_por_mes.png`
+
+#### Monthly Income Percentage Growth Chart
+
+The dictionary key is:
+
+`grafica_crecimiento_porcentaje_mensual`
+
+The chart uses:
+
+* X-axis: `mes`
+* Y-axis: `crecimiento_ingreso_porcentaje`
+* X-axis label: `Mes`
+* Y-axis label: `Variación de ingreso (%)`
+* Title: `Variación porcentual de ingreso por mes`
+
+The generated filename uses:
+
+`_crecimiento_porcentaje_por_mes.png`
+
+#### Monthly Unit Percentage Growth Chart
+
+The dictionary key is:
+
+`grafica_crecimiento_porcentaje_unidades`
+
+The chart uses:
+
+* X-axis: `mes`
+* Y-axis: `crecimiento_unidades_porcentaje`
+* X-axis label: `Mes`
+* Y-axis label: `Variación de unidades (%)`
+* Title: `Variación porcentual de unidades por mes`
+
+The generated filename uses:
+
+`_crecimiento_porcentaje_unidades.png`
+
+#### Monthly Best-Selling Product Chart
+
+The monthly best-selling-product chart uses:
+
+`monthly_best_selling_product`
+
+Before generating the image, the module creates a copy of the original DataFrame.
+
+This prevents chart-specific display transformations from modifying the original analysis result.
+
+A new display column is created:
+
+`mes_producto`
+
+Its value combines:
+
+`mes`
+
+with:
+
+`producto`
+
+using the following conceptual structure:
+
+```text
+YYYY-MM - Product
+```
+
+This combined value is used as the chart x-axis.
+
+The dictionary key is:
+
+`grafica_producto_top_mensual`
+
+The chart uses:
+
+* X-axis: `mes_producto`
+* Y-axis: `unidades_vendidas`
+* X-axis label: `Mes y Producto`
+* Y-axis label: `Unidades vendidas`
+* Title: `Unidades del producto más Vendido por mes`
+
+The generated filename uses:
+
+`_producto_top_mensual.png`
+
+If multiple products are tied for the highest number of units sold during the same month, each available record can be represented independently.
+
+#### Monthly Highest-Income Category Chart
+
+The monthly highest-income-category chart uses:
+
+`monthly_highest_income_category`
+
+The original DataFrame is copied before chart-specific transformations are performed.
+
+The module creates:
+
+`mes_categoria`
+
+by combining:
+
+* `mes`
+* `categoria`
+
+The resulting value follows the conceptual structure:
+
+```text
+YYYY-MM - Category
+```
+
+The dictionary key is:
+
+`grafica_categoria_top_ingreso`
+
+The chart uses:
+
+* X-axis: `mes_categoria`
+* Y-axis: `ingreso_total`
+* X-axis label: `Mes y Categoría`
+* Y-axis label: `Ingreso total`
+* Title: `Categoría con mejor ingreso por mes`
+
+The generated filename uses:
+
+`_categoria_top_ingreso_mensual.png`
+
+Multiple categories can be represented for the same month when the analysis contains tied highest-income categories.
+
+#### Top 5 Highest-Income Products Chart
+
+The dictionary key is:
+
+`grafica_producto_top_ingreso`
+
+The source data is:
+
+`top_5_highest_income_products`
+
+after conversion into a pandas DataFrame.
+
+The chart uses:
+
+* X-axis: `producto`
+* Y-axis: `ingreso_total`
+* X-axis label: `Producto`
+* Y-axis label: `Ingreso total`
+* Title: `Top 5 productos por ingreso`
+
+The generated filename uses:
+
+`_ingreso_producto_top.png`
+
+#### Top 5 Products by Units Sold Chart
+
+The dictionary key is:
+
+`grafica_unidades_producto_top`
+
+The source data is:
+
+`top_5_best_selling_products`
+
+after conversion into a pandas DataFrame.
+
+The chart uses:
+
+* X-axis: `producto`
+* Y-axis: `unidades_vendidas`
+* X-axis label: `Producto`
+* Y-axis label: `Unidades vendidas`
+* Title: `Top 5 productos por unidades vendidas`
+
+The generated filename uses:
+
+`_unidades_producto_top.png`
+
+#### Category Income Chart
+
+The dictionary key is:
+
+`grafica_ingreso_categoria`
+
+The source data is:
+
+`category_summary`
+
+The chart uses:
+
+* X-axis: `categoria`
+* Y-axis: `ingreso_total`
+* X-axis label: `Categoría`
+* Y-axis label: `Ingreso total`
+* Title: `Ingreso por categoría`
+
+The generated filename uses:
+
+`_ingreso_categoria.png`
+
+#### Category Units-Sold Chart
+
+The dictionary key is:
+
+`grafica_unidades_categoria`
+
+The source data is:
+
+`category_summary`
+
+The chart uses:
+
+* X-axis: `categoria`
+* Y-axis: `unidades_vendidas`
+* X-axis label: `Categoría`
+* Y-axis label: `Unidades vendidas`
+* Title: `Ventas por categoría`
+
+The generated filename uses:
+
+`_unidades_categoria.png`
+
+#### Optional City Charts
+
+City charts are generated only when:
+
+`city_summary`
+
+exists in `analysis_result`, is not `None`, and is not empty.
+
+When city information is available, two additional charts are generated.
+
+##### City Income Chart
+
+The dictionary key is:
+
+`grafica_ingreso_ciudad`
+
+The chart uses:
+
+* X-axis: `ciudad`
+* Y-axis: `ingreso_total`
+* X-axis label: `Ciudad`
+* Y-axis label: `Ingreso total`
+* Title: `Ingreso por ciudad`
+
+The generated filename uses:
+
+`_ingreso_ciudad.png`
+
+##### City Units-Sold Chart
+
+The dictionary key is:
+
+`grafica_unidades_ciudad`
+
+The chart uses:
+
+* X-axis: `ciudad`
+* Y-axis: `unidades_vendidas`
+* X-axis label: `Ciudad`
+* Y-axis label: `Unidades vendidas`
+* Title: `Ventas por ciudad`
+
+The generated filename uses:
+
+`_unidades_ciudad.png`
+
+#### Optional Payment-Method Charts
+
+Payment-method charts are generated only when:
+
+`payment_method_summary`
+
+exists in `analysis_result`, is not `None`, and is not empty.
+
+When payment-method information is available, two additional charts are generated.
+
+##### Payment-Method Income Chart
+
+The dictionary key is:
+
+`grafica_ingreso_metodo_pago`
+
+The chart uses:
+
+* X-axis: `metodo_pago`
+* Y-axis: `ingreso_total`
+* X-axis label: `Método de pago`
+* Y-axis label: `Ingreso total`
+* Title: `Ingreso por método de pago`
+
+The generated filename uses:
+
+`_ingreso_metodo_pago.png`
+
+##### Payment-Method Units-Sold Chart
+
+The dictionary key is:
+
+`grafica_unidades_metodo_pago`
+
+The chart uses:
+
+* X-axis: `metodo_pago`
+* Y-axis: `unidades_vendidas`
+* X-axis label: `Método de pago`
+* Y-axis label: `Unidades vendidas`
+* Title: `Ventas por método de pago`
+
+The generated filename uses:
+
+`_unidades_metodo_pago.png`
+
+#### Number of Generated Charts
+
+The module always generates:
+
+`10`
+
+standard charts.
+
+If city information is available, two additional charts are generated.
+
+If payment-method information is available, two additional charts are generated.
+
+Therefore, depending on available optional data, the workflow can generate:
+
+* 10 charts with no optional analyses.
+* 12 charts when either city or payment-method analysis is available.
+* 14 charts when both optional analyses are available.
+
+#### Generated Chart Dictionary
+
+The `save_chart_images()` function returns a dictionary mapping chart identifiers to their generated PNG paths.
+
+The standard structure is:
+
+```python
+{
+    "grafica_de_ingresos_mensuales": Path(...),
+    "grafica_de_unidades_vendidas_mensualmente": Path(...),
+    "grafica_crecimiento_porcentaje_mensual": Path(...),
+    "grafica_crecimiento_porcentaje_unidades": Path(...),
+    "grafica_producto_top_mensual": Path(...),
+    "grafica_categoria_top_ingreso": Path(...),
+    "grafica_producto_top_ingreso": Path(...),
+    "grafica_unidades_producto_top": Path(...),
+    "grafica_ingreso_categoria": Path(...),
+    "grafica_unidades_categoria": Path(...)
+}
+```
+
+When city analysis is available, the dictionary also contains:
+
+```python
+{
+    "grafica_ingreso_ciudad": Path(...),
+    "grafica_unidades_ciudad": Path(...)
+}
+```
+
+When payment-method analysis is available, the dictionary also contains:
+
+```python
+{
+    "grafica_ingreso_metodo_pago": Path(...),
+    "grafica_unidades_metodo_pago": Path(...)
+}
+```
+
+#### Shared Filename Integration
+
+The chart manager receives:
+
+`file_name_base`
+
+from the controller.
+
+This is the same shared base filename used during the report-generation workflow.
+
+Each chart adds its own descriptive suffix.
+
+For example, if the shared base filename is:
+
+`ventas_agosto_2026-09-19_07-45-30-125`
+
+generated chart files may include:
+
+`ventas_agosto_2026-09-19_07-45-30-125_ingreso_por_mes.png`
+
+`ventas_agosto_2026-09-19_07-45-30-125_unidades_vendidas_por_mes.png`
+
+`ventas_agosto_2026-09-19_07-45-30-125_producto_top_mensual.png`
+
+`ventas_agosto_2026-09-19_07-45-30-125_ingreso_categoria.png`
+
+This keeps chart images associated with the report files produced from the same source CSV.
+
+#### Controller Integration
+
+The controller generates charts through:
+
+`chart_manager.save_chart_images()`
+
+The controller provides:
+
+* `analysis_result`
+* `output_folder`
+* Shared base filename.
+
+The resulting chart dictionary is stored in the controller result as:
+
+`reports_path_charts`
+
+This allows the graphical interface to access generated chart identifiers and their corresponding PNG paths.
+
+#### Graphical Interface Integration
+
+The graphical interface receives:
+
+`reports_path_charts`
+
+from the controller.
+
+Each chart identifier is added to the chart selector.
+
+The corresponding PNG path is stored inside:
+
+`charts_paths`
+
+The graphical interface can then open the selected generated chart through the operating system.
+
+The chart-management module itself does not display the generated images inside the GUI.
+
+#### Analysis Integration
+
+The chart manager depends on analysis structures produced by the sales-analysis module.
+
+The required analysis entries include:
+
+* `monthly_summary`
+* `monthly_best_selling_product`
+* `monthly_highest_income_category`
+* `top_5_best_selling_products`
+* `top_5_highest_income_products`
+* `category_summary`
+
+Optional analysis entries include:
+
+* `city_summary`
+* `payment_method_summary`
+
+The chart manager does not calculate these analysis structures.
+
+#### Input and Output
+
+##### `build_graph_image()`
+
+* **Input:** DataFrame, x-axis column, y-axis column, axis labels, chart title, destination folder, and output filename.
+* **Output:** `Path` pointing to the generated PNG image.
+
+##### `save_chart_images()`
+
+* **Input:** Complete analysis-result dictionary, output directory as `str | Path`, and shared base filename.
+* **Output:** Dictionary mapping chart identifiers to generated PNG image paths.
+
+#### Responsibilities
+
+The chart-generation module is responsible for:
+
+* Receiving previously calculated sales-analysis results.
+* Converting supported analysis structures into charts.
+* Generating bar charts.
+* Applying chart titles and axis labels.
+* Rotating x-axis labels.
+* Applying chart layout adjustments.
+* Generating PNG images.
+* Saving chart images at 150 DPI.
+* Creating output directories when necessary.
+* Maintaining chart-specific filename suffixes.
+* Preparing chart-specific DataFrame copies.
+* Converting Top 5 lists into DataFrames for visualization.
+* Returning generated chart paths.
+* Converting supported generation failures into `ChartGenerationError`.
+* Closing Matplotlib figures after generation attempts.
+
+The chart-generation module is not responsible for:
+
+* Reading source CSV files.
+* Validating sales records.
+* Calculating total income.
+* Calculating total units sold.
+* Calculating monthly growth.
+* Determining Top 5 rankings.
+* Determining monthly best-selling products.
+* Determining monthly highest-income categories.
+* Generating TXT reports.
+* Generating JSON files.
+* Generating CSV files.
+* Generating XLSX workbooks.
+* Displaying charts inside the graphical interface.
+
+Those responsibilities belong to the corresponding validation, analysis, reporting, file-management, controller, and graphical-interface modules.
+
+#### Related Exception
+
+* `ChartGenerationError`
 
 ---
