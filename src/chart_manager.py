@@ -182,7 +182,7 @@ def save_chart_images(analysis_result: Dict[str, Any], output_folder: str | Path
     save_paths["grafica_crecimiento_porcentaje_mensual"] = build_graph_image(
         analysis_result["monthly_summary"],
         "mes",
-        "crecimiento_ingreso_porcentaje",
+        "crec_ingreso_pct",
         "Mes",
         "Variación de ingreso (%)",
         "Variación porcentual de ingreso por mes",
@@ -192,7 +192,7 @@ def save_chart_images(analysis_result: Dict[str, Any], output_folder: str | Path
     save_paths["grafica_crecimiento_porcentaje_unidades"] = build_graph_image(
         analysis_result["monthly_summary"],
         "mes",
-        "crecimiento_unidades_porcentaje",
+        "crec_unidades_pct",
         "Mes",
         "Variación de unidades (%)",
         "Variación porcentual de unidades por mes",

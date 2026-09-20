@@ -330,11 +330,11 @@ def get_monthly_summary(df_analysis: pd.DataFrame) -> pd.DataFrame:
         - `unidades_vendidas`: Total units sold during the month.
         - `ingreso_total`: Total income generated during the month.
         - `crecimiento_ingreso`: Absolute income change from the previous month.
-        - `crecimiento_ingreso_porcentaje`: Percentage income change from the
+        - `crec_ingreso_pct`: Percentage income change from the
         previous month.
         - `crecimiento_unidades`: Absolute unit-sales change from the previous
         month.
-        - `crecimiento_unidades_porcentaje`: Percentage unit-sales change from
+        - `crec_unidades_pct`: Percentage unit-sales change from
         the previous month.
     """
     df_analysis_copy = df_analysis.copy()
@@ -351,9 +351,9 @@ def get_monthly_summary(df_analysis: pd.DataFrame) -> pd.DataFrame:
         })
     df_monthly = df_monthly.sort_values(by="mes", ascending=True).reset_index()
     df_monthly = get_income_growth_units(df_monthly, "crecimiento_ingreso", "ingreso_total")
-    df_monthly = get_income_percentage_growth(df_monthly, "crecimiento_ingreso_porcentaje", "ingreso_total")
+    df_monthly = get_income_percentage_growth(df_monthly, "crec_ingreso_pct", "ingreso_total")
     df_monthly = get_income_growth_units(df_monthly, "crecimiento_unidades", "unidades_vendidas")
-    df_monthly = get_income_percentage_growth(df_monthly, "crecimiento_unidades_porcentaje", "unidades_vendidas")
+    df_monthly = get_income_percentage_growth(df_monthly, "crec_unidades_pct", "unidades_vendidas")
     return df_monthly
 
 def get_monthly_best_selling_product(df_analysis: pd.DataFrame) -> pd.DataFrame:

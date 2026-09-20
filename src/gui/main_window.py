@@ -6,8 +6,8 @@ using PySide6.
 It allows users to select a source CSV file and output directory, generate
 sales reports and charts through the backend controller, display generated
 file paths, open TXT, JSON, and CSV reports in dedicated read-only viewer
-windows, and open XLSX reports and PNG charts using the operating system's
-associated applications.
+windows, and open XLSX reports, PDF reports, and PNG charts using the operating
+system's associated applications.
 
 The interface also provides direct access to the configured output directory
 through the operating system file manager.
@@ -57,8 +57,8 @@ class SalesReportWindow(QMainWindow):
     methods.
 
     Generated TXT, JSON, and CSV files can be inspected through dedicated
-    `FileViewerWindow` instances. XLSX reports and PNG charts are opened using
-    the operating system's associated applications.
+    `FileViewerWindow` instances. XLSX reports, PDF reports, and PNG charts are
+    opened using the operating system's associated applications.
 
     Attributes:
         file_path: Path of the CSV file selected by the user, or `None` when
@@ -70,6 +70,7 @@ class SalesReportWindow(QMainWindow):
         csv_paths: Dictionary mapping CSV summary names to generated file paths.
         xlsx_path: Path of the most recently generated XLSX report, or `None`.
         charts_paths: Dictionary mapping generated chart names to PNG file paths.
+        pdf_path: Path of the most recently generated PDF report, or `None`.
         selected_file_label: Label displaying the selected CSV file path.
         output_folder_label: Label displaying the selected output directory.
         status_label: Label displaying the current application status.
@@ -82,6 +83,8 @@ class SalesReportWindow(QMainWindow):
         csv_summaries_layout: Layout containing generated CSV path labels.
         xlsx_title_label: Label identifying the Excel report section.
         xlsx_file_path_label: Label displaying the generated XLSX path.
+        pdf_title_label: Label identifying the PDF report section.
+        pdf_file_path_label: Label displaying the generated PDF path.
         chart_combobox: Combo box used to select a generated chart.
         chart_graphics_layout: Layout containing generated chart path labels.
         button_selected_file: Button used to select the source CSV file.
@@ -91,6 +94,7 @@ class SalesReportWindow(QMainWindow):
         button_json_show_report: Button used to open the JSON report viewer.
         button_csv_show_report: Button used to open the selected CSV report.
         button_xlsx_show_report: Button used to open the XLSX report.
+        button_pdf_show_report: Button used to open the PDF report.
         button_see_chart: Button used to open the selected generated chart.
         button_open_output_folder: Button used to open the output directory.
     """
@@ -98,7 +102,7 @@ class SalesReportWindow(QMainWindow):
         """Initialize the main Sales Report application window.
 
         Initializes source-file, output-folder, generated-report, and generated-chart
-        state, including TXT, JSON, CSV, XLSX, and PNG chart paths.
+        state, including TXT, JSON, CSV, XLSX, PDF, and PNG chart paths.
 
         Configures the window title and fixed size, creates the central widget,
         initializes labels and buttons, connects button signals, and builds the main
@@ -119,9 +123,10 @@ class SalesReportWindow(QMainWindow):
         self.csv_paths = {}
         self.xlsx_path = None
         self.charts_paths = {}
+        self.pdf_path = None
 
         self.setWindowTitle("Generador de Reportes de Ventas")
-        self.setFixedSize(900,900)
+        self.setFixedSize(900,950)
 
         widget_central = QWidget()
         self.setCentralWidget(widget_central)
@@ -218,21 +223,21 @@ class SalesReportWindow(QMainWindow):
         """Build the generated-report files section.
 
         Creates a group box containing independent layouts for generated TXT, JSON,
-        XLSX, and CSV files.
+        XLSX, PDF, and CSV files.
 
-        TXT, JSON, and XLSX sections display their generated paths and corresponding
-        access buttons. CSV summaries provide a selector, an access button, and a
-        scrollable area containing all generated CSV paths.
+        TXT, JSON, XLSX, and PDF sections display their generated paths and
+        corresponding access buttons. CSV summaries provide a selector, an access
+        button, and a scrollable area containing all generated CSV paths.
 
         Returns:
             A `QGroupBox` containing the generated report-file controls.
         """
         group = QGroupBox("Archivos Generados")
         layout = QVBoxLayout()
-        
         layout.addLayout(self.build_txt_layout())
         layout.addLayout(self.build_json_layout())
         layout.addLayout(self.build_xlsx_layout())
+        layout.addLayout(self.build_pdf_layout())
         layout.addLayout(self.build_csv_layout())
         layout.addLayout(self.build_scroll_area_csv())
         group.setLayout(layout)
@@ -299,6 +304,23 @@ class SalesReportWindow(QMainWindow):
         xlsx_layout.addWidget(self.xlsx_file_path_label)
         layout.addLayout(xlsx_layout)
         layout.addWidget(self.button_xlsx_show_report)
+        return layout
+
+    def build_pdf_layout(self) -> QVBoxLayout:
+        """Build the PDF report display and access controls.
+
+        Creates a layout containing the PDF section label, generated PDF path,
+        and button used to open the PDF report through the operating system.
+
+        Returns:
+            A `QVBoxLayout` containing the PDF report controls.
+        """
+        layout = QVBoxLayout()
+        pdf_layout = QHBoxLayout()
+        pdf_layout.addWidget(self.pdf_title_label)
+        pdf_layout.addWidget(self.pdf_file_path_label)
+        layout.addLayout(pdf_layout)
+        layout.addWidget(self.button_pdf_show_report)
         return layout
 
     def build_json_layout(self) -> QVBoxLayout:
@@ -404,13 +426,14 @@ class SalesReportWindow(QMainWindow):
         Displays a file-selection dialog restricted to files with the `.csv`
         extension.
 
-        When a new file is selected, previously generated TXT, JSON, CSV, XLSX, and
-        chart references and displayed results are cleared. Generated-output controls
-        are disabled until a new report-generation process completes successfully.
+        When a new file is selected, previously generated TXT, JSON, CSV, XLSX,
+        PDF, and chart references and displayed results are cleared.
+        Generated-output controls are disabled until a new report-generation
+        process completes successfully.
 
-        The selected path is stored in `file_path`, displayed in the interface, and
-        the application status is updated according to the currently configured
-        output folder.
+        The selected path is stored in `file_path`, displayed in the interface,
+        and the application status is updated according to the currently
+        configured output folder.
 
         If the dialog is canceled, the current application state remains unchanged.
 
@@ -436,8 +459,9 @@ class SalesReportWindow(QMainWindow):
         generated reports and charts will be stored.
 
         When a new folder is selected, previously generated TXT, JSON, CSV, XLSX,
-        and chart references and displayed results are cleared. Generated-output
-        controls are disabled until a new generation process completes successfully.
+        PDF, and chart references and displayed results are cleared.
+        Generated-output controls are disabled until a new generation process
+        completes successfully.
 
         The selected directory is stored in `output_folder`, displayed in the
         interface, and the application status is updated according to whether a
@@ -467,17 +491,17 @@ class SalesReportWindow(QMainWindow):
         CSV file has been selected.
 
         Before starting a new generation process, previously stored TXT, JSON, CSV,
-        XLSX, and chart paths are reset. Previously displayed file paths, selectors,
-        and dynamically generated path labels are also cleared.
+        XLSX, PDF, and chart paths are reset. Previously displayed file paths,
+        selectors, and dynamically generated path labels are also cleared.
 
         The complete backend workflow is delegated to
         `controller.generate_sales_report()`.
 
-        After successful processing, TXT, JSON, and XLSX paths are stored and
+        After successful processing, TXT, JSON, XLSX, and PDF paths are stored and
         displayed. CSV summaries are added to the CSV selector and path display.
         Generated chart paths are added to the chart selector and chart-path display.
 
-        The generated-output controls and output-folder access are enabled after a
+        Generated-output controls and output-folder access are enabled after a
         successful operation.
 
         If an application-specific or unexpected error occurs, the status label is
@@ -504,6 +528,8 @@ class SalesReportWindow(QMainWindow):
                 self.json_file_path_label.setText(self.json_path)
                 self.xlsx_path = str(data_analysis["report_path_xlsx"])
                 self.xlsx_file_path_label.setText(self.xlsx_path)
+                self.pdf_path = str(data_analysis["report_path_pdf"])
+                self.pdf_file_path_label.setText(self.pdf_path)
                 for path, name_path in data_analysis["reports_path_csv"].items():
                     self.csv_combobox.addItem(path)
                     path_label = QLabel(f"{path}: {str(name_path)}")
@@ -648,11 +674,33 @@ class SalesReportWindow(QMainWindow):
         else:
             QMessageBox.information(self, "Seleccion vacía", "Debes seleccionar un archivo png primero")
 
+    def open_report_pdf(self) -> None:
+        """Open the generated PDF report using the system-associated application.
+
+        Verifies that the file stored in `pdf_path` exists before attempting to
+        open it.
+
+        If the PDF file does not exist, a warning message box is displayed and
+        the operation is canceled.
+
+        When the file exists, its local path is converted into a `QUrl` and opened
+        through `QDesktopServices`, allowing the operating system to launch the
+        application associated with PDF files.
+
+        Returns:
+            None.
+        """
+        if not os.path.isfile(self.pdf_path):
+            QMessageBox.warning(self, "Archivo no encontrado", "El archivo PDF no existe")
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(self.pdf_path))
+
     def create_labels(self) -> None:
         """Create the labels used by the main graphical interface.
 
         Initializes labels for source-file selection, output-folder information,
-        application status, and generated TXT, JSON, CSV, and XLSX report sections.
+        application status, and generated TXT, JSON, CSV, XLSX, and PDF report
+        sections.
 
         Generated-file path labels are initialized with empty text and later updated
         after a successful report-generation process.
@@ -673,23 +721,25 @@ class SalesReportWindow(QMainWindow):
         self.csv_title_label = QLabel("- Resúmenes CSV:")
         self.xlsx_title_label = QLabel("- Excel:")
         self.xlsx_file_path_label = QLabel("")
+        self.pdf_title_label = QLabel("- PDF:")
+        self.pdf_file_path_label = QLabel("")
 
     def create_buttons(self) -> None:
         """Create the buttons used by the main graphical interface.
 
-        Initializes controls for selecting the source CSV file, selecting the output
-        folder, generating reports and charts, opening TXT and JSON reports,
-        selecting and opening CSV summaries, opening the XLSX report, opening
-        generated charts, and accessing the output directory.
+    Initializes controls for selecting the source CSV file, selecting the output
+    folder, generating reports and charts, opening TXT and JSON reports,
+    selecting and opening CSV summaries, opening XLSX and PDF reports, opening
+    generated charts, and accessing the output directory.
 
-        Fixed sizes are applied to interface buttons that require explicit
-        dimensions.
+    Fixed sizes are applied to interface buttons that require explicit
+    dimensions.
 
-        Signal connections are configured separately by `connect_buttons()`.
+    Signal connections are configured separately by `connect_buttons()`.
 
-        Returns:
-            None.
-        """
+    Returns:
+        None.
+    """
         self.button_selected_file = QPushButton("Seleccionar archivo")
         self.button_selected_file.setFixedSize(200,30)
         self.button_output_folder = QPushButton("Seleccionar carpeta")
@@ -705,6 +755,8 @@ class SalesReportWindow(QMainWindow):
         self.button_xlsx_show_report.setFixedSize(200, 30)
         self.button_see_chart = QPushButton("Ver Gráfica")
         self.button_see_chart.setFixedSize(200,30)
+        self.button_pdf_show_report = QPushButton("Ver PDF")
+        self.button_pdf_show_report.setFixedSize(200,30)
         
     def connect_buttons(self) -> None:
         """Connect interface buttons to their corresponding event handlers.
@@ -713,8 +765,8 @@ class SalesReportWindow(QMainWindow):
         handling the corresponding user action.
 
         The configured connections include source-file selection, output-folder
-        selection, report generation, TXT, JSON, CSV, and XLSX access, generated
-        chart access, and output-directory access.
+        selection, report generation, TXT, JSON, CSV, XLSX, and PDF access,
+        generated chart access, and output-directory access.
 
         Separating signal connection from widget creation keeps interface setup
         logic organized and easier to maintain.
@@ -731,13 +783,14 @@ class SalesReportWindow(QMainWindow):
         self.button_open_output_folder.clicked.connect(self.open_output_folder)
         self.button_xlsx_show_report.clicked.connect(self.open_report_xlsx)
         self.button_see_chart.clicked.connect(self.open_chart_graphic)
+        self.button_pdf_show_report.clicked.connect(self.open_report_pdf)
 
     def on_buttons(self) -> None:
         """Enable controls associated with generated output results.
 
         Enables output-folder access, TXT and JSON report viewer buttons, the CSV
-        summary selector and viewer button, XLSX access, the generated-chart selector,
-        and the chart-opening button.
+        summary selector and viewer button, XLSX and PDF access, the generated-chart
+        selector, and the chart-opening button.
 
         This method is called after a successful report-generation process so the
         user can access all newly generated reports and charts.
@@ -753,16 +806,17 @@ class SalesReportWindow(QMainWindow):
         self.button_xlsx_show_report.setEnabled(True)
         self.button_see_chart.setEnabled(True)
         self.chart_combobox.setEnabled(True)
+        self.button_pdf_show_report.setEnabled(True)
 
     def off_buttons(self) -> None:
         """Disable controls associated with generated output results.
 
         Disables output-folder access, TXT and JSON report viewer buttons, the CSV
-        summary selector and viewer button, XLSX access, the generated-chart selector,
-        and the chart-opening button.
+        summary selector and viewer button, XLSX and PDF access, the generated-chart
+        selector, and the chart-opening button.
 
-        This method is used when previously generated results are no longer valid or
-        while a new report-generation process is being prepared.
+        This method is used when previously generated results are no longer valid
+        or while a new report-generation process is being prepared.
 
         Returns:
             None.
@@ -775,12 +829,13 @@ class SalesReportWindow(QMainWindow):
         self.button_xlsx_show_report.setEnabled(False)
         self.button_see_chart.setEnabled(False)
         self.chart_combobox.setEnabled(False)
+        self.button_pdf_show_report.setEnabled(False)
 
     def clean_labels(self) -> None:
         """Clear generated output information displayed in the interface.
 
-        Clears the TXT, JSON, and XLSX path labels, clears the CSV and chart combo
-        boxes, and removes dynamically generated CSV and chart path labels.
+        Clears the TXT, JSON, XLSX, and PDF path labels, clears the CSV and chart
+        combo boxes, and removes dynamically generated CSV and chart path labels.
 
         This method is used before displaying new generation results or after
         changing the selected source file or output directory.
@@ -795,12 +850,13 @@ class SalesReportWindow(QMainWindow):
         self.clean_layout(self.csv_summaries_layout)
         self.clean_layout(self.chart_graphics_layout)
         self.xlsx_file_path_label.setText("")
+        self.pdf_file_path_label.setText("")
 
     def clean_paths(self) -> None:
         """Reset stored paths for previously generated output files.
 
-        Resets the TXT, JSON, and XLSX report paths to `None` and replaces the CSV
-        and chart path mappings with empty dictionaries.
+        Resets the TXT, JSON, XLSX, and PDF report paths to `None` and replaces the
+        CSV and chart path mappings with empty dictionaries.
 
         This prevents files and charts generated during a previous workflow from
         remaining associated with the interface after changing the input
@@ -814,3 +870,4 @@ class SalesReportWindow(QMainWindow):
         self.csv_paths = {}
         self.xlsx_path = None
         self.charts_paths = {}
+        self.pdf_path = None

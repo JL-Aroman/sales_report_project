@@ -11,8 +11,8 @@ Default error messages are written in Spanish because they are intended to
 be displayed directly to users through the graphical interface.
 
 The exceptions cover file validation, CSV structure, data validation,
-sales analysis, report generation, report file storage, and chart generation
-or storage failures.
+sales analysis, report generation, report file storage, chart generation
+or storage, and PDF generation failures.
 """
 
 class AppError(Exception):
@@ -182,6 +182,18 @@ class ChartGenerationError(AppError):
     """Raised when a chart image cannot be generated or saved."""
     def __init__(self, message: str = "No se pudo generar la gráfica.") -> None:
         """Initialize a chart-generation error.
+
+        Args:
+            message: Descriptive error message. If not specified, a default
+                Spanish message is used.
+        """
+        super().__init__(message)
+
+
+class PDFGenerationError(AppError):
+    """Raised when the PDF report cannot be generated."""
+    def __init__(self, message: str = "No se pudo generar el archivo PDF") -> None:
+        """Initialize a PDF-generation error.
 
         Args:
             message: Descriptive error message. If not specified, a default

@@ -753,6 +753,7 @@ The module currently covers errors related to:
 * Report-generation failures.
 * Report-file storage failures.
 * Chart-generation or chart-storage failures.
+* PDF-generation failures.
 
 #### Base Exception
 
@@ -790,6 +791,8 @@ Examples include:
 
 `No se pudo generar la gráfica.`
 
+`No se pudo generar el archivo PDF.`
+
 A custom message may also be provided when creating an exception, replacing its default message.
 
 #### Exception Hierarchy
@@ -812,6 +815,7 @@ The current application-specific exception hierarchy is:
 * `ReportGenerationError`: Raised when the plain-text report cannot be generated.
 * `ReportSaveError`: Raised when a generated report file cannot be saved.
 * `ChartGenerationError`: Raised when a chart image cannot be generated or saved.
+* `PDFGenerationError`: Raised when the PDF report cannot be generated.
 
 #### Exception Categories
 
@@ -867,6 +871,16 @@ This exception is used when a chart image cannot be generated or saved successfu
 
 Chart errors remain separate from `ReportSaveError`, allowing the application to distinguish report-file failures from chart-generation failures.
 
+##### PDF Generation
+
+PDF-generation failures are represented by:
+
+* `PDFGenerationError`
+
+This exception is used when the PDF report cannot be generated successfully.
+
+PDF-generation failures remain separate from `ReportGenerationError`, `ReportSaveError`, and `ChartGenerationError`, allowing the application to distinguish PDF-specific failures from other report-generation, file-storage, and chart-generation operations.
+
 #### Error Propagation
 
 Specialized backend modules raise application-specific exceptions when an expected failure occurs.
@@ -901,7 +915,7 @@ The main graphical interface catches application-specific exceptions using:
 except AppError as error:
 ```
 
-When an `AppError` occurs during report or chart generation, the GUI can display its Spanish error message directly to the user.
+When an `AppError` occurs during report, chart, or PDF generation, the GUI can display its Spanish error message directly to the user.
 
 This keeps backend exception detection separate from graphical error presentation.
 
@@ -939,6 +953,20 @@ raise ChartGenerationError("No se pudo guardar la gráfica mensual.")
 
 The exception type remains unchanged while the displayed information becomes more specific.
 
+The same behavior applies to PDF-generation errors.
+
+For example:
+
+```python
+raise PDFGenerationError()
+```
+
+uses:
+
+`No se pudo generar el archivo PDF.`
+
+A custom PDF-related message can also be supplied when more specific context is required.
+
 #### Common Exception Contract
 
 All specialized exceptions follow the same basic structure:
@@ -971,7 +999,8 @@ AppError
 ├── NoValidRowsError
 ├── ReportGenerationError
 ├── ReportSaveError
-└── ChartGenerationError
+├── ChartGenerationError
+└── PDFGenerationError
 ```
 
 #### Input and Output
@@ -1000,6 +1029,7 @@ This module is responsible for:
 * Allowing custom messages when additional error context is required.
 * Representing report-generation and report-storage failures.
 * Representing chart-generation and chart-storage failures.
+* Representing PDF-generation failures.
 
 This module is not responsible for:
 
@@ -1010,6 +1040,7 @@ This module is not responsible for:
 * Validating source files directly.
 * Generating reports.
 * Generating charts.
+* Generating PDF files.
 
 Those responsibilities belong to the modules that detect, raise, catch, or present the corresponding exceptions.
 
@@ -1017,26 +1048,58 @@ Those responsibilities belong to the modules that detect, raise, catch, or prese
 
 ### File Validation and Data Normalization Module
 
-The file validation and data normalization module prepares the input CSV file and its raw sales data for the processing workflow.
+The file validation and data normalization module prepares the source CSV file and its raw sales data for the processing workflow.
 
-It validates the input file path, normalizes string values inside pandas `DataFrame` objects, applies independent validation rules, separates valid and invalid records and collects errors and warnings.
+It validates the physical input file, normalizes string values inside pandas `DataFrame` objects, applies independent critical validation rules, separates valid and invalid records, and collects validation errors and non-critical warnings.
 
-Each validation rule is implemented in a separate helper function. This modular structure makes the validation process easier to maintain, test, and extend.
+Each validation rule is implemented in a separate helper function. This modular structure keeps the validation process easier to maintain, test, modify, and extend.
 
-The moudle also supports optional fields, such as `ciudad` and `metodo_pago`, wich are preserved and normalized when present without being required for the core validation workflow.
+The module also supports optional fields such as `ciudad` and `metodo_pago`. These columns are preserved and normalized when present without being required for the core validation workflow.
 
-- `validate_csv_file()`
-- `normalize_dataframe()`
-- `validated_empty_values()`
-- `validated_price()`
-- `validated_amount()`
-- `validated_date()`
-- `detect_warnings()`
-- `validate_dataframe()`
+The module currently provides the following functions:
+
+* `validate_csv_file()`
+* `normalize_dataframe()`
+* `validated_empty_values()`
+* `validated_price()`
+* `validated_amount()`
+* `validated_date()`
+* `detect_warnings()`
+* `validate_dataframe()`
+
+#### Required Columns
+
+The validation process requires the following columns:
+
+* `producto_id`
+* `producto`
+* `categoria`
+* `precio`
+* `cantidad`
+* `fecha`
+
+These columns are defined in:
+
+`REQUIRED_COLUMNS`
+
+All required columns must be present before record-level validation begins.
+
+#### Optional Columns
+
+The current validation workflow supports the following optional columns:
+
+* `ciudad`
+* `metodo_pago`
+
+These columns are not required for the validation process.
+
+When present, they are preserved and normalized together with the required sales data.
+
+They are later available to the analysis workflow for optional city and payment-method summaries.
 
 #### File Validation Process
 
-The `validate_csv_file()` function validates the physical source file before the CSV reading stage.
+The `validate_csv_file()` function validates the physical source file before the CSV-reading stage.
 
 It performs the following checks:
 
@@ -1044,147 +1107,579 @@ It performs the following checks:
 2. Converts the string path into a `Path` object.
 3. Confirms that the path exists in the file system.
 4. Ensures that the path points to a regular file rather than a directory.
-5. Validates that the file has a `.csv` extension.
-6. Ensures that the file is not empty by checking its file size.
-7. Verifies that the file can be opened and read.
-8. Returns the validated `Path` object.
+5. Verifies that the file extension is `.csv`.
+6. Ensures that the file contains at least one byte.
+7. Opens the file in binary mode.
+8. Reads one byte to verify physical readability.
+9. Returns the validated `Path` object.
 
-File readability is checked by opening the file in binary mode and reading a single byte.
+File readability is checked using binary mode.
 
-This step only verifies that the file is physically accessible. It does not parse the CSV structure or decode the file contents.
+This step verifies only that the file can be physically accessed and read.
 
-CSV decoding, parsing, and conversion into a pandas `DataFrame` are handled later by the CSV reading module.
+It does not:
 
-If the file cannot be opened or read because of a file-system error, the original `OSError` is converted into `FileReadError`.
+* Decode the CSV contents.
+* Parse CSV rows.
+* Validate CSV syntax.
+* Convert the file into a pandas `DataFrame`.
 
+Those responsibilities belong to the CSV-reading module.
+
+If the file cannot be opened or read because of a file-system error, the original `OSError` is converted into:
+
+`FileReadError`
 
 #### Data Normalization Process
 
-The `normalize_dataframe()` function creates a copy of the raw `DataFrame` and applies the following normalization rules.
+The `normalize_dataframe()` function creates a copy of the raw DataFrame before applying normalization rules.
 
-1. Removes all whitespace form `producto_id`.
-2. Converts `producto_id` values to uppercase.
-3. Remove leading and trailing whitspace form `producto`.
-4. Replaces repeatd whitespace inside `producto` with a single space.
-5. Remove leading and trailing whitespace form `categoria`.
-6. Replaces repeated withespaces inside `categoria` with a single space.
-7. Remove all withespaces form `precio`, `cantidad`, and, `fecha`
-8. If the optional `ciudad` column is present, removes leading and trailing whitespaces and replaces repeated internal whitespaces with a single space.
-9. If the optional `metodo_pago` column is present, removes leading and trailing whitespaces and replaces repeated internal whitespaces with a single space.
-10. Returns a new normalized `DataFrame` without modifying the original one.
+The original DataFrame is therefore preserved.
+
+The required fields are normalized as follows.
+
+##### `producto_id`
+
+The function:
+
+* Removes all whitespace.
+* Converts the value to uppercase.
+
+For example:
+
+```text
+p001  →  P001
+```
+
+Whitespace is removed through a regular expression rather than only trimming the beginning and end.
+
+##### `producto`
+
+The function:
+
+* Replaces repeated whitespace with a single space.
+* Removes leading whitespace.
+* Removes trailing whitespace.
+
+##### `categoria`
+
+The function:
+
+* Replaces repeated whitespace with a single space.
+* Removes leading whitespace.
+* Removes trailing whitespace.
+
+##### `precio`
+
+All whitespace is removed from the value.
+
+##### `cantidad`
+
+All whitespace is removed from the value.
+
+##### `fecha`
+
+All whitespace is removed from the value.
+
+##### `ciudad`
+
+When the optional `ciudad` column exists, the function:
+
+* Replaces repeated whitespace with a single space.
+* Removes leading whitespace.
+* Removes trailing whitespace.
+
+##### `metodo_pago`
+
+When the optional `metodo_pago` column exists, the function:
+
+* Replaces repeated whitespace with a single space.
+* Removes leading whitespace.
+* Removes trailing whitespace.
+
+After normalization, a new DataFrame is returned without modifying the original input.
 
 #### Independent Validation Functions
 
-The validation rules are divided into independent helper functions:
+Critical record validation is divided into four independent helper functions:
 
-- `validated_empty_values()`: Detects empty values in required fields.
-- `validated_price()`: Verifies that prices are numeric and greater than zero.
-- `validated_amount()`: Verifies that quantities are whole numbers greater than zero.
-- `validated_date()`: Verifies the date format and confirms that each date exists in the calendar.
-- `detect_warnings()`: Detects non-critical inconsistencies in valid sales records.
+* `validated_empty_values()`
+* `validated_price()`
+* `validated_amount()`
+* `validated_date()`
 
-Each critical validation function returns:
+Each function returns a dictionary containing:
 
-- `invalid_indexes`: Row indexes containing validation errors.
-- `errors`: Detailed information about the detected errors.
+* `invalid_indexes`
+* `errors`
 
-The `detect_warnings()` function returns:
+`invalid_indexes` identifies DataFrame rows containing critical validation failures.
 
-- `warnings`: Non-critical inconsistencies that do not invalidate sales records.
+`errors` contains detailed information describing each detected failure.
+
+A single row can produce more than one validation error.
+
+#### Empty-Value Validation
+
+The `validated_empty_values()` function checks every column listed in:
+
+`REQUIRED_COLUMNS`
+
+An error is generated whenever a required field contains an empty string.
+
+Each error contains:
+
+* `line_number`
+* `column`
+* `error_type`
+* `message`
+* `original_value`
+
+The error type is:
+
+`empty_value`
+
+The corresponding DataFrame row index is also added to:
+
+`invalid_indexes`
+
+#### CSV Line Numbers
+
+Validation errors use CSV-oriented line numbers rather than zero-based DataFrame indexes.
+
+The reported line number is calculated as:
+
+```text
+DataFrame index + 2
+```
+
+The additional two positions account for:
+
+* Python's zero-based DataFrame index.
+* The CSV header row.
+
+For example, DataFrame index:
+
+`0`
+
+is reported as CSV line:
+
+`2`
+
+#### Price Validation
+
+The `validated_price()` function validates non-empty values from:
+
+`precio`
+
+Empty values are skipped because they have already been handled by:
+
+`validated_empty_values()`
+
+A valid price must:
+
+* Be convertible to a numeric value.
+* Be greater than zero.
+
+The function can generate the following error types.
+
+##### `invalid_number`
+
+Generated when the price cannot be converted into a numeric value.
+
+##### `negative_or_zero_value`
+
+Generated when the numeric price is:
+
+* Zero.
+* Negative.
+
+Rows containing either error are added to:
+
+`invalid_indexes`
+
+#### Quantity Validation
+
+The `validated_amount()` function validates non-empty values from:
+
+`cantidad`
+
+Empty values are handled separately by:
+
+`validated_empty_values()`
+
+A valid quantity must:
+
+* Be convertible to a number.
+* Represent a whole number.
+* Be greater than zero.
+
+Decimal quantities are not accepted.
+
+The function can generate the following error types.
+
+##### `decimal_not_allowed`
+
+Generated when a numeric quantity contains a decimal component.
+
+##### `negative_or_zero_value`
+
+Generated when the quantity is zero or negative.
+
+##### `invalid_integer`
+
+Generated when the value cannot be interpreted as a numeric quantity.
+
+Rows containing these errors are added to:
+
+`invalid_indexes`
+
+#### Date Validation
+
+The `validated_date()` function validates non-empty values from:
+
+`fecha`
+
+Empty values are handled separately by:
+
+`validated_empty_values()`
+
+Date validation occurs in two stages.
+
+##### Format Validation
+
+The value must match:
+
+```text
+YYYY-MM-DD
+```
+
+The format is checked using the regular expression:
+
+```text
+^\d{4}-\d{2}-\d{2}$
+```
+
+Values that do not match the required structure generate:
+
+`invalid_date_format`
+
+##### Calendar Validation
+
+Values with the correct text structure are passed to:
+
+`pd.to_datetime()`
+
+using:
+
+```text
+%Y-%m-%d
+```
+
+This verifies that the supplied date actually exists in the calendar.
+
+For example, a structurally correct but nonexistent date is rejected.
+
+The resulting error type remains:
+
+`invalid_date_format`
+
+#### Warning Detection
+
+The `detect_warnings()` function analyzes records that already passed all critical validation rules.
+
+Warnings represent non-critical inconsistencies and do not cause rows to become invalid.
+
+The current implementation detects:
+
+`inconsistent_product_name`
+
+#### Inconsistent Product Names
+
+Valid rows are grouped by:
+
+`producto_id`
+
+The function verifies whether each product identifier is associated with only one product name.
+
+When the same `producto_id` appears with multiple different product names, the function generates a warning containing:
+
+* `warning_type`
+* `field`
+* `message`
+* `affected_value`
+* `details`
+
+The warning type is:
+
+`inconsistent_product_name`
+
+The affected field is:
+
+`producto`
+
+`affected_value` contains the corresponding:
+
+`producto_id`
+
+`details` contains the different product names associated with that identifier.
+
+Repeated names are removed from the details while preserving their original encounter order.
+
+These warnings do not invalidate the corresponding sales rows.
 
 #### DataFrame Validation Process
 
-The `validate_dataframe()` function coordinates the complete validation workflow.
+The `validate_dataframe()` function coordinates the complete DataFrame-validation workflow.
 
 It performs the following operations:
 
-1. Verifies that the input `DataFrame` is not empty.
-2. Confirms that all required columns are present.
+1. Verifies that the input DataFrame is not empty.
+2. Confirms that all columns listed in `REQUIRED_COLUMNS` are present.
 3. Normalizes the raw sales data.
-4. Preserves supported optional columns when present.
-5. Executes the empty-value validation.
-6. Executes the price validation.
-7. Executes the quantity validation.
-8. Executes the date validation.
-9. Collects all detected errors and invalid row indexes.
-10. Removes duplicate invalid indexes.
-11. Separates valid and invalid rows.
-12. Converts valid prices and quantities into numeric values.
-13. Converts valid dates into pandas datetime values.
-14. Detects warnings in valid sales records.
-15. Returns the complete validation result.
+4. Preserves and normalizes supported optional columns when present.
+5. Executes `validated_empty_values()`.
+6. Collects empty-value errors and invalid indexes.
+7. Executes `validated_price()`.
+8. Collects price errors and invalid indexes.
+9. Executes `validated_amount()`.
+10. Collects quantity errors and invalid indexes.
+11. Executes `validated_date()`.
+12. Collects date errors and invalid indexes.
+13. Removes duplicate invalid indexes.
+14. Sorts the invalid indexes.
+15. Separates valid and invalid records.
+16. Converts valid `precio` values into numeric values.
+17. Converts valid `cantidad` values into numeric values.
+18. Converts valid `fecha` values into pandas datetime values.
+19. Executes `detect_warnings()` using only valid records.
+20. Collects non-critical warnings.
+21. Calculates validation totals.
+22. Returns the complete validation result.
 
-#### Required Columns
+#### Duplicate Invalid Indexes
 
-The validation process expects the following columns:
+A single sales record may violate multiple validation rules.
 
-- `producto_id`
-- `producto`
-- `categoria`
-- `precio`
-- `cantidad`
-- `fecha`
+For example, the same row could contain:
 
-#### Optional Columns
+* An invalid price.
+* An invalid quantity.
+* An invalid date.
 
-The current version supports the following optional columns:
+This can cause the same row index to appear multiple times while the individual validation helpers are running.
 
-- `ciudad`
-- `metodo_pago`
+Before separating valid and invalid rows, the workflow removes duplicate indexes.
+
+This ensures that each invalid sales record appears only once inside:
+
+`df_invalid_rows`
+
+while all individual error records remain available inside:
+
+`errors`
+
+#### Valid and Invalid Records
+
+After all critical validations have been completed, records are separated according to their indexes.
+
+Valid records are stored in:
+
+`df_valid_rows`
+
+Invalid records are stored in:
+
+`df_invalid_rows`
+
+Rows containing at least one critical validation error are excluded from the valid DataFrame.
+
+Warnings do not move rows into the invalid DataFrame.
+
+#### Valid-Record Type Conversion
+
+After invalid records have been removed, the following valid columns are converted into numeric pandas values:
+
+* `precio`
+* `cantidad`
+
+The conversion is performed through:
+
+`pd.to_numeric()`
+
+Valid dates are converted through:
+
+`pd.to_datetime()`
+
+using the expected:
+
+`YYYY-MM-DD`
+
+format.
+
+Type conversion occurs only on:
+
+`df_valid_rows`
 
 #### Validation Result
 
 The `validate_dataframe()` function returns a dictionary containing:
 
-- `df_valid_rows`: A `DataFrame` containing records that passed all critical validation rules.
-- `df_invalid_rows`: A `DataFrame` containing records with one or more validation errors.
-- `errors`: A flat list containing detailed validation errors.
-- `warnings`: A flat list containing non-critical data inconsistencies.
-- `total_rows`: The total number of normalized records.
-- `total_valid_rows`: The number of records that passed validation.
-- `total_invalid_rows`: The number of records containing errors.
+* `df_valid_rows`: DataFrame containing records that passed all critical validation rules.
+* `df_invalid_rows`: DataFrame containing records with one or more critical validation errors.
+* `errors`: Flat list containing all detailed validation errors.
+* `warnings`: Flat list containing non-critical data inconsistencies.
+* `total_rows`: Total number of normalized sales records.
+* `total_valid_rows`: Number of records that passed validation.
+* `total_invalid_rows`: Number of records containing at least one critical validation error.
 
-Optional columns present in the original CSV file are preserved in the resulting valid and invalid `DataFrame` objects.
+Optional columns present in the source CSV are preserved inside the resulting valid and invalid DataFrames.
+
+#### Validation Result Structure
+
+The returned structure follows this general form:
+
+```python
+{
+    "df_valid_rows": DataFrame(...),
+    "df_invalid_rows": DataFrame(...),
+    "errors": [
+        ...
+    ],
+    "warnings": [
+        ...
+    ],
+    "total_rows": ...,
+    "total_valid_rows": ...,
+    "total_invalid_rows": ...
+}
+```
+
+#### Error Structure
+
+A validation error follows this general structure:
+
+```python
+{
+    "line_number": 2,
+    "column": "precio",
+    "error_type": "invalid_number",
+    "message": "...",
+    "original_value": "..."
+}
+```
+
+Depending on the validation rule, supported error types include:
+
+* `empty_value`
+* `invalid_number`
+* `negative_or_zero_value`
+* `decimal_not_allowed`
+* `invalid_integer`
+* `invalid_date_format`
+
+#### Warning Structure
+
+The current warning structure follows this general form:
+
+```python
+{
+    "warning_type": "inconsistent_product_name",
+    "field": "producto",
+    "message": "...",
+    "affected_value": "P001",
+    "details": [
+        "Producto A",
+        "Producto B"
+    ]
+}
+```
 
 #### Input and Output
 
 ##### `validate_csv_file()`
 
-- **Input:** A string containing the path of the CSV file.
-- **Output:** A validated `Path` object ready for the CSV reading process.
+* **Input:** String containing the source CSV file path.
+* **Output:** Validated `Path` ready for the CSV-reading process.
 
 ##### `normalize_dataframe()`
 
-- **Input:** A raw pandas `DataFrame` containing sales data as strings.
-- **Output:** A new `DataFrame` containing normalized string values while preserving supported optional columns.
+* **Input:** Raw pandas DataFrame containing sales data as strings.
+* **Output:** New DataFrame containing normalized values while preserving supported optional columns.
 
-##### Validation Helper Functions
+##### `validated_empty_values()`
 
-- **Input:** A normalized pandas `DataFrame`.
-- **Output:** A dictionary containing validation errors and invalid row indexes.
+* **Input:** Normalized sales DataFrame.
+* **Output:** Dictionary containing empty-value errors and invalid row indexes.
+
+##### `validated_price()`
+
+* **Input:** Normalized sales DataFrame.
+* **Output:** Dictionary containing price-validation errors and invalid row indexes.
+
+##### `validated_amount()`
+
+* **Input:** Normalized sales DataFrame.
+* **Output:** Dictionary containing quantity-validation errors and invalid row indexes.
+
+##### `validated_date()`
+
+* **Input:** Normalized sales DataFrame.
+* **Output:** Dictionary containing date-validation errors and invalid row indexes.
 
 ##### `detect_warnings()`
 
-- **Input:** A pandas `DataFrame` containing valid sales records.
-- **Output:** A dictionary containing non-critical validation warnings.
+* **Input:** DataFrame containing records that passed critical validation.
+* **Output:** Dictionary containing non-critical product-name warnings.
 
 ##### `validate_dataframe()`
 
-- **Input:** A raw pandas `DataFrame` containing sales records as strings.
-- **Output:** A dictionary containing valid rows, invalid rows, errors, warnings, and validation totals.
+* **Input:** Raw pandas DataFrame containing sales records as strings.
+* **Output:** Dictionary containing valid rows, invalid rows, errors, warnings, and validation totals.
 
 #### Related Exceptions
 
-The module may raise the following custom exceptions:
+The module may raise the following application-specific exceptions:
 
-- `EmptyPathError`
-- `FileNotFoundAppError`
-- `InvalidFilePathError`
-- `InvalidFileExtensionError`
-- `EmptyFileError`
-- `FileReadError`
-- `EmptyDataFrameError`
-- `MissingColumnsError`
+* `EmptyPathError`
+* `FileNotFoundAppError`
+* `InvalidFilePathError`
+* `InvalidFileExtensionError`
+* `EmptyFileError`
+* `FileReadError`
+* `EmptyDataFrameError`
+* `MissingColumnsError`
+
+#### Module Responsibilities
+
+The validation module is responsible for:
+
+* Validating the physical source CSV path.
+* Verifying basic file accessibility.
+* Normalizing sales-data strings.
+* Verifying required columns.
+* Detecting empty required fields.
+* Validating prices.
+* Validating quantities.
+* Validating dates.
+* Separating valid and invalid records.
+* Converting valid numeric and date values.
+* Detecting non-critical product-name inconsistencies.
+* Collecting errors and warnings.
+* Calculating validation totals.
+* Preserving supported optional columns.
+
+The validation module is not responsible for:
+
+* Parsing CSV contents into a DataFrame.
+* Calculating sales metrics.
+* Calculating rankings.
+* Calculating monthly summaries.
+* Generating human-readable reports.
+* Saving report files.
+* Generating charts.
+* Displaying graphical interface elements.
+
+Those responsibilities belong to the CSV-reading, analysis, reporting, file-management, chart-management, controller, and graphical-interface modules.
 
 ---
 
@@ -1283,7 +1778,7 @@ Each analysis operation is implemented in an independent helper function. This m
 
 The module calculates general sales metrics, product and category summaries, monthly sales summaries, Top 5 product rankings, maximum-value records, monthly growth indicators, monthly best-selling products, monthly highest-income categories, and optional city and payment-method analyses.
 
-The resulting structures are used by report generation, file export, and chart-generation components.
+The resulting structures are used by report generation, PDF generation, file export, and chart-generation components.
 
 The module currently provides the following functions:
 
@@ -1542,8 +2037,8 @@ The function also:
 
 The current monthly analysis uses it to calculate:
 
-* `crecimiento_ingreso_porcentaje`
-* `crecimiento_unidades_porcentaje`
+* `crec_ingreso_pct`
+* `crec_unidades_pct`
 
 #### Monthly Summary
 
@@ -1578,9 +2073,9 @@ The resulting DataFrame contains:
 * `unidades_vendidas`: Total units sold during the month.
 * `ingreso_total`: Total income generated during the month.
 * `crecimiento_ingreso`: Absolute income difference from the previous month.
-* `crecimiento_ingreso_porcentaje`: Percentage income change from the previous month.
+* `crec_ingreso_pct`: Percentage income change from the previous month.
 * `crecimiento_unidades`: Absolute units-sold difference from the previous month.
-* `crecimiento_unidades_porcentaje`: Percentage units-sold change from the previous month.
+* `crec_unidades_pct`: Percentage units-sold change from the previous month.
 
 The first month does not have previous-period growth values because no earlier month is available for comparison.
 
@@ -1721,23 +2216,23 @@ When the optional `metodo_pago` column is present, the result also contains:
 
 The `monthly_summary` DataFrame follows this structure:
 
-```text
+```text id="7314xl"
 mes
 | filas_validas
 | unidades_vendidas
 | ingreso_total
 | crecimiento_ingreso
-| crecimiento_ingreso_porcentaje
+| crec_ingreso_pct
 | crecimiento_unidades
-| crecimiento_unidades_porcentaje
+| crec_unidades_pct
 ```
 
 For example, conceptually:
 
-```text
-2026-07 | 25 | 84  | 15420.50 | NaN      | NaN   | NaN | NaN
-2026-08 | 31 | 102 | 18750.00 | 3329.50  | 21.59 | 18  | 21.43
-2026-09 | 18 | 56  | 9320.75  | -9429.25 | -50.29| -46 | -45.10
+```text id="qie7ky"
+2026-07 | 25 | 84  | 15420.50 | NaN      | NaN    | NaN | NaN
+2026-08 | 31 | 102 | 18750.00 | 3329.50  | 21.59  | 18  | 21.43
+2026-09 | 18 | 56  | 9320.75  | -9429.25 | -50.29 | -46 | -45.10
 ```
 
 Growth values compare each month against the immediately preceding month.
@@ -1748,7 +2243,7 @@ The first month contains missing growth values because no previous month is avai
 
 The `monthly_best_selling_product` DataFrame follows this structure:
 
-```text
+```text id="rbaecg"
 mes
 | producto_id
 | producto
@@ -1763,7 +2258,7 @@ More than one row may exist for the same month when multiple products share the 
 
 The `monthly_highest_income_category` DataFrame follows this structure:
 
-```text
+```text id="cx2z5m"
 mes
 | categoria
 | unidades_vendidas
@@ -1818,12 +2313,12 @@ The remaining core analyses, including monthly totals, growth metrics, monthly b
 ##### `get_city_summary()`
 
 * **Input:** Valid sales DataFrame containing `ciudad` and `ingreso_fila`.
-* **Output:** City-summary DataFrame.
+* **Output:** City-summary DataFrame sorted by total income.
 
 ##### `get_payment_method_summary()`
 
 * **Input:** Valid sales DataFrame containing `metodo_pago` and `ingreso_fila`.
-* **Output:** Payment-method-summary DataFrame.
+* **Output:** Payment-method-summary DataFrame sorted by total income.
 
 ##### `get_records_with_max_value()`
 
@@ -1969,19 +2464,14 @@ The `get_highest_income()` function generates highest-income sections from a sup
 
 Instead of maintaining separate formatting functions for products, categories, cities, and payment methods, this reusable helper receives:
 
-* The list of highest-income records.
-* The section title.
+* A list of highest-income records.
+* A section title.
 * A primary dictionary key.
 * An optional secondary dictionary key.
 
-When a secondary key is supplied, both descriptive values are displayed.
+When a secondary key is supplied, both descriptive values are displayed separated by a hyphen.
 
-For example, product records can use:
-
-* `producto_id`
-* `producto`
-
-When no secondary key is provided, only the primary descriptive field is displayed.
+When no secondary key is supplied, only the primary descriptive field is displayed.
 
 Each formatted record also includes:
 
@@ -1995,11 +2485,11 @@ The helper is currently reused for:
 * Highest-income cities.
 * Highest-income payment methods.
 
-All tied records provided by the analysis layer are preserved.
+All tied records supplied by the analysis layer are preserved.
 
 #### Highest-Income Product
 
-The highest-income product section is created through:
+The highest-income-product section is generated through:
 
 `get_highest_income()`
 
@@ -2013,7 +2503,7 @@ The section begins with:
 
 `PRODUCTO CON MAYOR INGRESO`
 
-Each record includes:
+Each record displays:
 
 * Product identifier.
 * Product name.
@@ -2022,7 +2512,7 @@ Each record includes:
 
 #### Highest-Income Category
 
-The highest-income category section is created through:
+The highest-income-category section is generated through:
 
 `get_highest_income()`
 
@@ -2035,7 +2525,7 @@ The section begins with:
 
 `CATEGORÍA CON MAYOR INGRESO`
 
-Each record includes:
+Each record displays:
 
 * Category.
 * Total income.
@@ -2056,7 +2546,7 @@ The section begins with:
 
 `CIUDAD CON MAYOR INGRESO`
 
-Each record includes:
+Each record displays:
 
 * City.
 * Total income.
@@ -2079,7 +2569,7 @@ The section begins with:
 
 `MÉTODO DE PAGO CON MAYOR INGRESO`
 
-Each record includes:
+Each record displays:
 
 * Payment method.
 * Total income.
@@ -2159,7 +2649,7 @@ The DataFrame is then converted into plain text through:
 
 The pandas index is therefore excluded.
 
-This generic helper is currently reused for:
+This generic helper is reused for:
 
 * Product summary.
 * Category summary.
@@ -2237,41 +2727,43 @@ Its behavior is:
 * Zero → empty string
 * `None` → empty string
 
-This helper is used by the monthly-summary formatter for:
+The monthly formatter calculates one sign for the absolute income variation and one sign for the absolute unit-sales variation.
 
-* Income variation.
-* Income percentage variation.
-* Unit-sales variation.
-* Unit-sales percentage variation.
+Those signs are also reused when displaying their corresponding percentage variations.
 
 #### Monthly Summary
 
 The `get_monthly_summary()` function generates a detailed month-by-month sales section.
 
-Unlike earlier versions, the monthly information is not displayed as a direct pandas table.
+Unlike the product, category, city, and payment-method summaries, monthly information is not displayed through a direct pandas table.
 
 The DataFrame is first processed using:
 
 `replace({np.nan: None})`
 
-and converted into individual records.
+and then converted into individual dictionary records.
 
 This allows missing growth values to be handled explicitly during text formatting.
 
-For every month, the section displays:
+For every month, the section reads:
 
 * `mes`
 * `filas_validas`
 * `unidades_vendidas`
 * `ingreso_total`
 * `crecimiento_ingreso`
-* `crecimiento_ingreso_porcentaje`
+* `crec_ingreso_pct`
 * `crecimiento_unidades`
-* `crecimiento_unidades_porcentaje`
+* `crec_unidades_pct`
 
 The generated section begins with:
 
 `RESUMEN POR MES`
+
+The current reporter therefore expects the monthly-analysis DataFrame to provide the exact percentage-growth columns:
+
+* `crec_ingreso_pct`
+* `crec_unidades_pct`
 
 #### Monthly Income Variation
 
@@ -2295,11 +2787,17 @@ or:
 
 `-$1,200.00`
 
-The absolute numeric value is used during formatting while the sign is provided by `get_sign()`.
+The absolute numeric value is formatted independently while its sign is obtained through:
+
+`get_sign()`
 
 #### Monthly Income Percentage Variation
 
-The percentage income difference is displayed as:
+The percentage income difference is read from:
+
+`crec_ingreso_pct`
+
+and displayed as:
 
 `Variación porcentual de ingreso`
 
@@ -2313,9 +2811,17 @@ or:
 
 Percentage values are displayed with two decimal places.
 
+The sign used for this value follows the sign calculated from:
+
+`crecimiento_ingreso`
+
 #### Monthly Unit Variation
 
-The absolute difference in units sold is displayed as:
+The absolute difference in units sold is read from:
+
+`crecimiento_unidades`
+
+and displayed as:
 
 `Variación de unidades`
 
@@ -2327,9 +2833,15 @@ or:
 
 `-14`
 
+Unit variations are displayed without decimal places.
+
 #### Monthly Unit Percentage Variation
 
-The percentage change in units sold is displayed as:
+The percentage difference in units sold is read from:
+
+`crec_unidades_pct`
+
+and displayed as:
 
 `Variación porcentual de unidades`
 
@@ -2340,6 +2852,12 @@ For example:
 or:
 
 `-6.75%`
+
+Percentage values are displayed with two decimal places.
+
+The sign used for this value follows the sign calculated from:
+
+`crecimiento_unidades`
 
 #### Missing Monthly Growth Values
 
@@ -2356,6 +2874,12 @@ This applies independently to:
 * Unit variation.
 * Unit percentage variation.
 
+pandas `NaN` values are converted into:
+
+`None`
+
+before this presentation logic is applied.
+
 #### Monthly Best-Selling Product
 
 The `get_monthly_best_selling_product()` function generates the section containing the best-selling product or products for every month.
@@ -2364,7 +2888,7 @@ The supplied DataFrame is processed by replacing pandas `NaN` values with:
 
 `None`
 
-and converting the records into dictionaries.
+and converting its records into dictionaries.
 
 The generated section begins with:
 
@@ -2391,17 +2915,25 @@ The displayed fields are based on:
 * `unidades_vendidas`
 * `ingreso_total`
 
-Multiple products can be displayed under the same month when the analysis layer identifies a tie for highest units sold.
+Multiple products can be displayed under the same month when the analysis layer identifies a tie for the highest number of units sold.
 
 #### Monthly Highest-Income Category
 
 The `get_monthly_highest_income_category()` function generates the highest-income category or categories for every month.
+
+The supplied DataFrame is processed by replacing pandas `NaN` values with:
+
+`None`
+
+and converting its records into dictionaries.
 
 The generated section begins with:
 
 `CATEGORÍA CON MAYOR INGRESO POR MES`
 
 Records are visually grouped by month.
+
+A month heading is displayed only when the current record belongs to a different month from the previously processed record.
 
 For each monthly category record, the report displays:
 
@@ -2432,7 +2964,7 @@ It performs the following operations:
 6. Displays the descriptive message.
 7. Displays the original value when available.
 
-Each validation-error record may contain:
+Each validation-error record can contain:
 
 * `line_number`
 * `column`
@@ -2460,7 +2992,7 @@ The `get_warnings()` function generates the non-critical warning section.
 
 It performs the following operations:
 
-1. Adds the warning section title.
+1. Adds the warning-section title.
 2. Detects when no warnings are available.
 3. Sorts warnings by `affected_value`.
 4. Displays the affected product identifier.
@@ -2468,14 +3000,14 @@ It performs the following operations:
 6. Displays the warning message.
 7. Displays warning details.
 
-Each warning can contain:
+Each warning contains information such as:
 
 * `affected_value`
 * `warning_type`
 * `message`
 * `details`
 
-When `details` contains multiple values, they are joined using comma-separated text.
+When `details` contains multiple values, they are joined into comma-separated text.
 
 When no warnings are available, the report displays:
 
@@ -2596,7 +3128,7 @@ The complete report currently follows this order:
 
 #### Display Formatting
 
-The reporter receives already calculated analysis data and applies only presentation formatting.
+The reporter receives previously calculated analysis data and applies presentation formatting only.
 
 General and highest-income monetary values are displayed using currency formatting such as:
 
@@ -2621,25 +3153,25 @@ the monthly DataFrames are converted into individual records so that:
 
 #### Reusable Formatting Helpers
 
-The reporter now centralizes several previously duplicated responsibilities.
+The reporter centralizes several previously duplicated presentation responsibilities.
 
-`get_highest_income()` replaces separate highest-income formatting functions for:
-
-* Products.
-* Categories.
-* Cities.
-* Payment methods.
-
-`get_top_5()` replaces separate Top 5 formatting functions.
-
-`get_summary()` replaces separate DataFrame-summary formatting functions for:
+`get_highest_income()` handles highest-income formatting for:
 
 * Products.
 * Categories.
 * Cities.
 * Payment methods.
 
-This design keeps formatting rules consistent and reduces duplicated code.
+`get_top_5()` handles both supported Top 5 product rankings.
+
+`get_summary()` handles DataFrame-summary formatting for:
+
+* Products.
+* Categories.
+* Cities.
+* Payment methods.
+
+This design keeps presentation rules consistent while reducing duplicated formatting code.
 
 #### Input and Output
 
@@ -2729,11 +3261,14 @@ It does not:
 * Validate individual sales records.
 * Calculate sales metrics.
 * Calculate monthly growth.
-* Determine rankings.
+* Determine Top 5 rankings.
+* Determine highest-income records.
+* Determine monthly best-selling products.
+* Determine monthly highest-income categories.
 * Save report files directly.
 * Generate charts.
 
-Those responsibilities belong to the validation, reading, analysis, file-management, and chart-management modules.
+Those responsibilities belong to the validation, CSV-reading, analysis, file-management, and chart-management modules.
 
 ---
 
@@ -3542,7 +4077,7 @@ This prevents the complete application workflow from running automatically when 
 
 The sales report controller module coordinates the complete Sales Report processing workflow.
 
-It acts as the orchestration layer between the graphical interface and the specialized modules responsible for file validation, CSV reading, DataFrame validation, sales analysis, plain-text report generation, file export, and chart generation.
+It acts as the orchestration layer between the graphical interface and the specialized modules responsible for file validation, CSV reading, DataFrame validation, sales analysis, plain-text report generation, file export, chart generation, and PDF report generation.
 
 The controller receives the source CSV file path and output directory, executes the complete processing pipeline, generates all supported report files and chart images, measures the total execution time, and returns a structured dictionary containing processing totals, generated output paths, and execution information.
 
@@ -3553,6 +4088,7 @@ The generated outputs currently include:
 * CSV summary files.
 * XLSX workbooks.
 * PNG chart images.
+* PDF reports.
 
 The module currently provides the following function:
 
@@ -3575,10 +4111,11 @@ The `generate_sales_report()` function performs the following operations:
 11. Saves available analysis summaries as independent CSV files using `file_manager.save_analysis_result_csv_files()`.
 12. Generates the XLSX workbook using `file_manager.save_report_xlsx()`.
 13. Generates chart images using `chart_manager.save_chart_images()`.
-14. Stops the execution timer.
-15. Calculates the total execution time.
-16. Adds the execution time to the controller result.
-17. Returns the complete result dictionary to the caller.
+14. Generates the PDF report using `pdf_reporter.save_pdf_reporter()`.
+15. Stops the execution timer.
+16. Calculates the total execution time.
+17. Adds the execution time to the controller result.
+18. Returns the complete result dictionary to the caller.
 
 #### Module Coordination
 
@@ -3589,9 +4126,12 @@ The controller coordinates the following modules:
 * `analyzer`: Calculates sales metrics, aggregated summaries, rankings, monthly analysis, growth indicators, and optional analyses.
 * `reporter`: Converts analysis results, validation errors, and warnings into a structured plain-text sales report.
 * `file_manager`: Generates the shared report base filename and saves TXT, JSON, CSV, and XLSX output files.
-* `chart_manager`: Generates chart images from the calculated sales-analysis results.
+* `chart_manager`: Generates PNG chart images from the calculated sales-analysis results.
+* `pdf_reporter`: Generates the PDF report using sales-analysis information, validation information, source-file information, and previously generated chart paths.
 
-The controller itself does not implement the internal processing logic of these modules. Its responsibility is to call them in the correct order and transfer their results between workflow stages.
+The controller itself does not implement the internal processing logic of these modules.
+
+Its responsibility is to call them in the correct order and transfer their results between workflow stages.
 
 #### Input Configuration
 
@@ -3602,7 +4142,7 @@ The `generate_sales_report()` function receives:
 
 The source path is first validated before being passed to the CSV-reading module.
 
-The output directory is passed to the file and chart generation functions responsible for storing generated outputs.
+The output directory is passed to the file, chart, and PDF generation functions responsible for storing generated outputs.
 
 #### File Validation
 
@@ -3650,7 +4190,7 @@ The returned validation structure contains:
 
 The complete validation result is passed to the analysis module.
 
-Validation errors and warnings are later reused by the plain-text reporter and XLSX export workflow.
+Validation errors and warnings are later reused by the plain-text reporter, XLSX export workflow, and PDF-report workflow.
 
 #### Sales Analysis
 
@@ -3658,7 +4198,7 @@ The controller sends the validation result to:
 
 `analyzer.analyze_sales()`
 
-The resulting `analysis_result` contains the calculated structures required by reporting, file export, and chart generation.
+The resulting `analysis_result` contains the calculated structures required by reporting, file export, chart generation, and PDF generation.
 
 Core analysis information includes:
 
@@ -3724,6 +4264,15 @@ The validated source `Path` is passed to the filename-generation function.
 
 The returned base filename is reused by the output-generation functions so related files produced during the same workflow share a consistent naming convention.
 
+This shared base filename is reused by:
+
+* TXT export.
+* JSON export.
+* CSV exports.
+* XLSX export.
+* PNG chart generation.
+* PDF generation.
+
 The exact filename construction rules are defined by the file-management module.
 
 #### Output File Coordination
@@ -3734,6 +4283,7 @@ The controller coordinates generation of the following report files:
 * JSON structured analysis.
 * CSV analysis summaries.
 * XLSX workbook.
+* PDF report.
 
 The controller also coordinates:
 
@@ -3789,11 +4339,13 @@ The resulting dictionary is stored as:
 
 `reports_path_csv`
 
-The standard CSV export currently includes:
+The standard CSV export includes:
 
 * Product summary.
 * Category summary.
 * Monthly summary.
+* Monthly best-selling products.
+* Monthly highest-income categories.
 
 Optional CSV summaries may also include:
 
@@ -3809,6 +4361,8 @@ The standard entries are:
 * `resumen_producto`
 * `resumen_categoria`
 * `resumen_mensual`
+* `resumen_mejores_vendidos_por_mes`
+* `resumen_categoria_mayor_ingreso_por_mes`
 
 Optional entries are:
 
@@ -3822,6 +4376,8 @@ A conceptual structure is:
     "resumen_producto": Path(...),
     "resumen_categoria": Path(...),
     "resumen_mensual": Path(...),
+    "resumen_mejores_vendidos_por_mes": Path(...),
+    "resumen_categoria_mayor_ingreso_por_mes": Path(...),
     "ciudad_resumen": Path(...),
     "metodo_de_pago_resumen": Path(...)
 }
@@ -3867,9 +4423,49 @@ The resulting dictionary of generated chart paths is stored as:
 
 `reports_path_charts`
 
-This dictionary is returned to the graphical interface, which uses it to populate the generated-chart selector and allow individual PNG files to be opened.
-
 Chart-generation logic remains inside the dedicated `chart_manager` module rather than the controller.
+
+The chart-generation stage occurs before PDF generation because the PDF workflow receives the generated chart-path dictionary.
+
+#### PDF Report Coordination
+
+The PDF report is generated using:
+
+`pdf_reporter.save_pdf_reporter()`
+
+The function receives:
+
+* Complete `analysis_result`.
+* Configured output folder.
+* Shared base filename.
+* Validated source-file `Path`.
+* Complete `validation_result`.
+* Generated chart-path dictionary.
+
+The chart dictionary passed to the PDF reporter is:
+
+`reports["reports_path_charts"]`
+
+The resulting PDF path is stored as:
+
+`report_path_pdf`
+
+Conceptually, the call follows this structure:
+
+```python
+reports["report_path_pdf"] = pdf_reporter.save_pdf_reporter(
+    analysis_result,
+    output_folder,
+    file_name,
+    file_path,
+    validation_result,
+    reports["reports_path_charts"]
+)
+```
+
+Because the PDF reporter receives `reports_path_charts`, chart generation must be completed before the PDF-generation stage.
+
+The internal layout and formatting of the PDF remain the responsibility of the dedicated `pdf_reporter` module.
 
 #### Controller Result
 
@@ -3884,7 +4480,8 @@ The result contains:
 * `report_path_json`: Path pointing to the generated JSON analysis.
 * `reports_path_csv`: Dictionary containing generated CSV summary paths.
 * `report_path_xlsx`: Path pointing to the generated XLSX workbook.
-* `reports_path_charts`: Dictionary containing generated chart-image paths.
+* `reports_path_charts`: Dictionary containing generated PNG chart paths.
+* `report_path_pdf`: Path pointing to the generated PDF report.
 * `execution_time`: Formatted string containing the total workflow execution time.
 
 #### Controller Result Structure
@@ -3904,6 +4501,10 @@ A simplified controller result follows this structure:
         "resumen_producto": Path(...),
         "resumen_categoria": Path(...),
         "resumen_mensual": Path(...),
+        "resumen_mejores_vendidos_por_mes": Path(...),
+        "resumen_categoria_mayor_ingreso_por_mes": Path(...),
+
+        # Optional
         "ciudad_resumen": Path(...),
         "metodo_de_pago_resumen": Path(...)
     },
@@ -3914,6 +4515,8 @@ A simplified controller result follows this structure:
         "...": Path(...),
         "...": Path(...)
     },
+
+    "report_path_pdf": Path(...),
 
     "execution_time": "Execution time: 0.0123 seconds"
 }
@@ -3938,14 +4541,16 @@ and provides:
 
 After processing, the GUI receives the controller-result dictionary.
 
-It uses:
+Available generated-output information includes:
 
-* `report_path_txt` to display and open the TXT report.
-* `report_path_json` to display and open the JSON analysis.
-* `reports_path_csv` to populate the CSV selector.
-* `report_path_xlsx` to display and open the Excel workbook.
-* `reports_path_charts` to populate the generated-chart selector.
-* Processing totals and execution information when required by other application components.
+* `report_path_txt`
+* `report_path_json`
+* `reports_path_csv`
+* `report_path_xlsx`
+* `reports_path_charts`
+* `report_path_pdf`
+
+The controller does not determine how these outputs are displayed or opened by the graphical interface.
 
 This keeps the graphical interface separated from backend processing details.
 
@@ -3957,7 +4562,7 @@ The controller uses:
 
 to measure the duration of the complete workflow.
 
-Timing begins before source-file validation and ends after report files and chart images have been generated.
+Timing begins before source-file validation and ends only after all configured outputs have been generated.
 
 The measurement therefore includes:
 
@@ -3971,6 +4576,7 @@ The measurement therefore includes:
 * CSV summary storage.
 * XLSX workbook generation and storage.
 * Chart generation and storage.
+* PDF generation and storage.
 
 The final duration is calculated as:
 
@@ -3995,6 +4601,7 @@ Errors raised by:
 * Report generation.
 * File management.
 * Chart generation.
+* PDF generation.
 
 are propagated to the caller.
 
@@ -4007,7 +4614,7 @@ Unexpected Python exceptions may also propagate to the GUI, where they can be pr
 ##### `generate_sales_report()`
 
 * **Input:** Source CSV path as `str` and destination output directory as `str | Path`.
-* **Output:** Dictionary containing processing totals, TXT, JSON, CSV, XLSX, and PNG chart paths, together with total execution time.
+* **Output:** Dictionary containing processing totals, TXT, JSON, CSV, XLSX, PNG chart, and PDF paths, together with total execution time.
 
 #### Responsibilities
 
@@ -4026,6 +4633,8 @@ The controller is responsible for:
 * Coordinating CSV summary generation.
 * Coordinating XLSX workbook generation.
 * Coordinating chart generation.
+* Coordinating PDF generation.
+* Ensuring charts are generated before the PDF stage that consumes their paths.
 * Measuring the total workflow execution time.
 * Returning generated-output paths and processing information to the caller.
 
@@ -4037,6 +4646,7 @@ The controller is not responsible for:
 * Formatting the plain-text report directly.
 * Creating report files directly.
 * Drawing chart images directly.
+* Building the PDF report layout directly.
 * Displaying graphical interface elements.
 * Handling user interaction.
 
@@ -4048,11 +4658,11 @@ Those responsibilities belong to the specialized backend modules and graphical i
 
 The graphical user interface module provides the main desktop window for the Sales Report application using PySide6.
 
-It allows the user to select a source CSV file, choose an output directory, generate sales reports and charts through the backend controller, inspect generated TXT, JSON, CSV, and XLSX files, open generated PNG charts, and access the configured output directory directly from the application.
+It allows the user to select a source CSV file, choose an output directory, generate sales reports and charts through the backend controller, inspect generated TXT, JSON, CSV, XLSX, and PDF files, open generated PNG charts, and access the configured output directory directly from the application.
 
 TXT, JSON, and CSV files are displayed through dedicated read-only `FileViewerWindow` instances.
 
-XLSX files and generated PNG charts are opened through the operating system's associated applications using `QDesktopServices`.
+XLSX files, PDF reports, and generated PNG charts are opened through the operating system's associated applications using `QDesktopServices`.
 
 The graphical layer separates widget creation, signal connection, layout construction, event handling, output access, and generated-result state management into independent methods.
 
@@ -4072,7 +4682,7 @@ The window is configured with:
 
 * Title: `Generador de Reportes de Ventas`
 * Width: `900`
-* Height: `900`
+* Height: `950`
 * Default output folder: `reports/`
 
 The main window uses a central `QWidget` and a vertical `QVBoxLayout` to organize the application sections.
@@ -4088,6 +4698,7 @@ During initialization, the class creates the initial application state:
 * `csv_paths`: Empty dictionary.
 * `xlsx_path`: `None`
 * `charts_paths`: Empty dictionary.
+* `pdf_path`: `None`
 
 The initialization process also:
 
@@ -4135,6 +4746,7 @@ Generated-file sub-layouts:
 * `build_txt_layout()`
 * `build_json_layout()`
 * `build_xlsx_layout()`
+* `build_pdf_layout()`
 * `build_csv_layout()`
 * `build_scroll_area_csv()`
 
@@ -4152,6 +4764,7 @@ User actions:
 * `open_report_json()`
 * `open_report_csv()`
 * `open_report_xlsx()`
+* `open_report_pdf()`
 * `open_chart_graphic()`
 * `open_output_folder()`
 
@@ -4176,8 +4789,9 @@ It creates labels for:
 * JSON analysis information.
 * CSV summary information.
 * XLSX report information.
+* PDF report information.
 
-Generated TXT, JSON, and XLSX path labels are initially empty and are populated after successful report generation.
+Generated TXT, JSON, XLSX, and PDF path labels are initially empty and are populated after successful report generation.
 
 Generated CSV and chart paths are displayed dynamically through labels created during the report-generation process.
 
@@ -4194,6 +4808,7 @@ The interface currently provides buttons for:
 * Opening the JSON analysis.
 * Opening the selected CSV summary.
 * Opening the XLSX analysis.
+* Opening the PDF report.
 * Opening the selected generated chart.
 * Opening the output directory.
 
@@ -4216,6 +4831,7 @@ The current connections are:
 * `button_open_output_folder` → `open_output_folder()`
 * `button_xlsx_show_report` → `open_report_xlsx()`
 * `button_see_chart` → `open_chart_graphic()`
+* `button_pdf_show_report` → `open_report_pdf()`
 
 Separating widget creation from signal connection keeps interface initialization easier to understand and maintain.
 
@@ -4257,7 +4873,7 @@ The dialog uses:
 When a new source file is selected:
 
 1. Generated-output controls are disabled.
-2. Previously stored TXT, JSON, CSV, XLSX, and chart paths are cleared.
+2. Previously stored TXT, JSON, CSV, XLSX, PDF, and chart paths are cleared.
 3. Previously displayed generated-report and chart information is removed.
 4. The selected path is stored in `file_path`.
 5. The selected-file label is updated.
@@ -4291,7 +4907,7 @@ The `selected_folder_path()` method opens a directory-selection dialog using:
 When a new output folder is selected:
 
 1. Generated-output controls are disabled.
-2. Previously stored TXT, JSON, CSV, XLSX, and chart paths are cleared.
+2. Previously stored TXT, JSON, CSV, XLSX, PDF, and chart paths are cleared.
 3. Previously displayed generated-report and chart information is removed.
 4. The selected directory is stored in `output_folder`.
 5. The output-folder label is updated.
@@ -4324,23 +4940,24 @@ It performs the following operations:
 3. Verifies that a source CSV file has been selected.
 4. Stops the process and displays a message when no source file is available.
 5. Disables controls associated with previously generated outputs.
-6. Clears stored TXT, JSON, CSV, XLSX, and chart paths.
+6. Clears stored TXT, JSON, CSV, XLSX, PDF, and chart paths.
 7. Clears previously displayed output information.
 8. Calls `controller.generate_sales_report()`.
 9. Receives generated report and chart information from the controller.
 10. Stores and displays the generated TXT report path.
 11. Stores and displays the generated JSON analysis path.
 12. Stores and displays the generated XLSX report path.
-13. Adds generated CSV summary names to the CSV selector.
-14. Creates labels containing generated CSV paths.
-15. Stores CSV summary names and paths in `csv_paths`.
-16. Adds generated chart names to the chart selector.
-17. Creates labels containing generated chart paths.
-18. Stores chart names and paths in `charts_paths`.
-19. Updates the application status after successful generation.
-20. Enables generated-output controls.
-21. Displays application-specific or unexpected errors when necessary.
-22. Re-enables the report-generation button after processing.
+13. Stores and displays the generated PDF report path.
+14. Adds generated CSV summary names to the CSV selector.
+15. Creates labels containing generated CSV paths.
+16. Stores CSV summary names and paths in `csv_paths`.
+17. Adds generated chart names to the chart selector.
+18. Creates labels containing generated chart paths.
+19. Stores chart names and paths in `charts_paths`.
+20. Updates the application status after successful generation.
+21. Enables generated-output controls.
+22. Displays application-specific or unexpected errors when necessary.
+23. Re-enables the report-generation button after processing.
 
 #### Backend Controller Integration
 
@@ -4362,8 +4979,9 @@ The GUI currently uses:
 * `reports_path_csv`
 * `report_path_xlsx`
 * `reports_path_charts`
+* `report_path_pdf`
 
-The backend remains responsible for validation, reading, analysis, report generation, chart generation, and file storage.
+The backend remains responsible for validation, reading, analysis, report generation, chart generation, PDF generation, and file storage.
 
 #### Application Status
 
@@ -4395,10 +5013,11 @@ The section contains independent layouts for:
 * TXT reports.
 * JSON analysis.
 * XLSX analysis.
+* PDF reports.
 * CSV summaries.
 * Scrollable CSV path information.
 
-The output-directory button is no longer part of this group box. It is added separately to the main application layout.
+The output-directory button is not part of this group box. It is added separately to the main application layout.
 
 #### TXT Report Layout
 
@@ -4435,6 +5054,18 @@ It contains:
 * `Análisis Excel` button.
 
 The XLSX workbook is opened externally through the operating system.
+
+#### PDF Report Layout
+
+The `build_pdf_layout()` method creates the PDF report controls.
+
+It contains:
+
+* PDF section label.
+* Generated PDF path.
+* `Ver PDF` button.
+
+The PDF report is opened externally through the operating system.
 
 #### CSV Summary Layout
 
@@ -4543,6 +5174,34 @@ If the file exists, its path is converted into a local `QUrl` and opened through
 `QDesktopServices.openUrl()`
 
 This allows the operating system to launch the application associated with XLSX files.
+
+#### PDF Report Access
+
+The generated PDF report path is stored in:
+
+`pdf_path`
+
+The:
+
+`Ver PDF`
+
+button calls:
+
+`open_report_pdf()`
+
+PDF reports are not displayed through `FileViewerWindow`.
+
+The method first verifies that the PDF file exists.
+
+If the file does not exist, a warning `QMessageBox` is displayed with:
+
+`El archivo PDF no existe`
+
+If the file exists, its path is converted into a local `QUrl` and opened through:
+
+`QDesktopServices.openUrl()`
+
+This allows the operating system to launch the application associated with PDF files.
 
 #### Generated Charts Section
 
@@ -4667,6 +5326,7 @@ Enables:
 * CSV selector.
 * CSV report access.
 * XLSX report access.
+* PDF report access.
 * Chart selector.
 * Chart access button.
 
@@ -4682,6 +5342,7 @@ Disables:
 * CSV selector.
 * CSV report access.
 * XLSX report access.
+* PDF report access.
 * Chart selector.
 * Chart access button.
 
@@ -4705,6 +5366,7 @@ Resets internal generated-output references:
 * `csv_paths` → `{}`
 * `xlsx_path` → `None`
 * `charts_paths` → `{}`
+* `pdf_path` → `None`
 
 This prevents previously generated reports or charts from remaining associated with a new source file, output directory, or generation process.
 
@@ -4717,6 +5379,7 @@ It:
 * Clears the TXT path label.
 * Clears the JSON path label.
 * Clears the XLSX path label.
+* Clears the PDF path label.
 * Clears the CSV selector.
 * Clears the chart selector.
 * Removes dynamically generated CSV path labels.
@@ -4744,6 +5407,7 @@ The `SalesReportWindow` class maintains the following primary state values:
 * `csv_paths`: Mapping between CSV summary names and generated paths.
 * `xlsx_path`: Generated XLSX workbook path.
 * `charts_paths`: Mapping between chart identifiers and generated PNG paths.
+* `pdf_path`: Generated PDF report path.
 
 The class also maintains interface widgets, layouts, buttons, selectors, report-viewer windows, and generated-output controls.
 
@@ -4762,8 +5426,8 @@ The graphical interface currently uses:
 * `QScrollArea`: Scrollable CSV and chart path displays.
 * `QComboBox`: CSV-summary and generated-chart selection.
 * `QMessageBox`: Critical, warning, and informational messages.
-* `QDesktopServices`: Opening XLSX reports and PNG charts through the operating system.
-* `QUrl`: Conversion of local XLSX and PNG paths for `QDesktopServices`.
+* `QDesktopServices`: Opening XLSX reports, PDF reports, and PNG charts through the operating system.
+* `QUrl`: Conversion of local XLSX, PDF, and PNG paths for `QDesktopServices`.
 
 #### Current GUI Workflow
 
@@ -4779,20 +5443,22 @@ The current graphical workflow is:
 8. Clear previous report and chart state.
 9. Send the source CSV and output folder to `controller.generate_sales_report()`.
 10. Execute the complete backend workflow.
-11. Receive TXT, JSON, CSV, XLSX, and chart output paths.
+11. Receive TXT, JSON, CSV, XLSX, PDF, and chart output paths.
 12. Display the generated TXT path.
 13. Display the generated JSON path.
 14. Display the generated XLSX path.
-15. Populate the CSV selector.
-16. Display CSV paths inside the CSV scroll area.
-17. Populate the chart selector.
-18. Display generated chart paths inside the chart scroll area.
-19. Enable generated-output controls.
-20. Allow TXT, JSON, and CSV reports to be inspected through `FileViewerWindow`.
-21. Allow the XLSX workbook to be opened through the operating system.
-22. Allow generated PNG charts to be opened through the operating system.
-23. Allow the configured output directory to be opened.
-24. Display the final success status or an error message.
+15. Display the generated PDF path.
+16. Populate the CSV selector.
+17. Display CSV paths inside the CSV scroll area.
+18. Populate the chart selector.
+19. Display generated chart paths inside the chart scroll area.
+20. Enable generated-output controls.
+21. Allow TXT, JSON, and CSV reports to be inspected through `FileViewerWindow`.
+22. Allow the XLSX workbook to be opened through the operating system.
+23. Allow the PDF report to be opened through the operating system.
+24. Allow generated PNG charts to be opened through the operating system.
+25. Allow the configured output directory to be opened.
+26. Display the final success status or an error message.
 
 #### Error Handling
 
@@ -4808,6 +5474,8 @@ During report generation, errors update the status to:
 and are displayed through a critical `QMessageBox`.
 
 The `open_report_xlsx()` method also handles a missing XLSX file by displaying a warning message.
+
+The `open_report_pdf()` method handles a missing PDF file by displaying a warning message.
 
 The `open_chart_graphic()` method handles:
 
@@ -4858,6 +5526,11 @@ The graphical application remains open after handled errors so the user can corr
 * **Input:** None.
 * **Output:** `QVBoxLayout` containing XLSX report controls.
 
+##### `build_pdf_layout()`
+
+* **Input:** None.
+* **Output:** `QVBoxLayout` containing PDF report controls.
+
 ##### `build_csv_layout()`
 
 * **Input:** None.
@@ -4896,7 +5569,7 @@ The graphical application remains open after handled errors so the user can corr
 ##### `generate_reports()`
 
 * **Input:** Selected CSV path and configured output directory.
-* **Output:** Generates reports and charts through the controller and updates the GUI with TXT, JSON, CSV, XLSX, and PNG chart information.
+* **Output:** Generates reports and charts through the controller and updates the GUI with TXT, JSON, CSV, XLSX, PDF, and PNG chart information.
 
 ##### `open_report_txt()`
 
@@ -4918,6 +5591,11 @@ The graphical application remains open after handled errors so the user can corr
 * **Input:** Generated XLSX path stored in `xlsx_path`.
 * **Output:** Opens the workbook using the operating system's associated application or displays a warning when the file does not exist.
 
+##### `open_report_pdf()`
+
+* **Input:** Generated PDF path stored in `pdf_path`.
+* **Output:** Opens the PDF report using the operating system's associated application or displays a warning when the file does not exist.
+
 ##### `open_chart_graphic()`
 
 * **Input:** Chart selected through `chart_combobox`.
@@ -4936,12 +5614,12 @@ The graphical application remains open after handled errors so the user can corr
 ##### `clean_labels()`
 
 * **Input:** None.
-* **Output:** Clears TXT, JSON, CSV, XLSX, and chart information displayed in the interface.
+* **Output:** Clears TXT, JSON, CSV, XLSX, PDF, and chart information displayed in the interface.
 
 ##### `clean_paths()`
 
 * **Input:** None.
-* **Output:** Resets stored TXT, JSON, CSV, XLSX, and chart paths.
+* **Output:** Resets stored TXT, JSON, CSV, XLSX, PDF, and chart paths.
 
 ##### `on_buttons()`
 
@@ -4955,7 +5633,7 @@ The graphical application remains open after handled errors so the user can corr
 
 #### Current Development Status
 
-The graphical interface is connected to the Sales Report backend workflow and supports both report and chart access.
+The graphical interface is connected to the Sales Report backend workflow and supports report, PDF, and chart access.
 
 Currently available:
 
@@ -4970,23 +5648,27 @@ Currently available:
 * CSV summary generation and selection.
 * Scrollable CSV path display.
 * XLSX report generation and access.
+* PDF report generation and access.
 * Generated PNG chart selection.
 * Scrollable chart path display.
 * Generated PNG chart opening.
 * Read-only TXT, JSON, and CSV viewer integration.
 * Operating-system XLSX opening.
+* Operating-system PDF opening.
 * Operating-system PNG opening.
 * Output-directory access.
 * Centralized label creation.
 * Centralized button creation.
 * Centralized signal connection.
 * Dedicated file sub-layouts.
+* Dedicated PDF sub-layout.
 * Dedicated chart sub-layouts.
 * Generated-output state cleanup.
 * Generated-output control management.
 * Application-specific error presentation.
 * Unexpected error presentation.
 * Missing-XLSX warning presentation.
+* Missing-PDF warning presentation.
 * Missing-PNG warning presentation.
 * Empty-chart-selection information presentation.
 
@@ -5362,7 +6044,7 @@ It uses pandas plotting capabilities together with Matplotlib to generate visual
 
 The module does not calculate sales metrics or rankings directly. Instead, it receives the structured results produced by the sales-analysis module and converts those results into chart images.
 
-Generated charts use the same shared base filename used by the remaining report outputs, allowing PNG images to remain associated with the TXT, JSON, CSV, and XLSX files generated during the same workflow.
+Generated charts use the same shared base filename used by the remaining report outputs, allowing PNG images to remain associated with the TXT, JSON, CSV, XLSX, and PDF files generated during the same workflow.
 
 The module currently provides the following functions:
 
@@ -5640,7 +6322,7 @@ The dictionary key is:
 The chart uses:
 
 * X-axis: `mes`
-* Y-axis: `crecimiento_ingreso_porcentaje`
+* Y-axis: `crec_ingreso_pct`
 * X-axis label: `Mes`
 * Y-axis label: `Variación de ingreso (%)`
 * Title: `Variación porcentual de ingreso por mes`
@@ -5658,7 +6340,7 @@ The dictionary key is:
 The chart uses:
 
 * X-axis: `mes`
-* Y-axis: `crecimiento_unidades_porcentaje`
+* Y-axis: `crec_unidades_pct`
 * X-axis label: `Mes`
 * Y-axis label: `Variación de unidades (%)`
 * Title: `Variación porcentual de unidades por mes`
@@ -6041,7 +6723,43 @@ The resulting chart dictionary is stored in the controller result as:
 
 `reports_path_charts`
 
-This allows the graphical interface to access generated chart identifiers and their corresponding PNG paths.
+The controller uses this dictionary in two later parts of the application workflow:
+
+* It returns the generated chart identifiers and PNG paths for graphical-interface access.
+* It passes the generated chart paths to the PDF-report generation workflow.
+
+This means chart generation occurs before PDF generation in the current processing pipeline.
+
+#### PDF Report Integration
+
+The chart-generation module does not generate PDF files directly.
+
+After `save_chart_images()` returns the generated chart dictionary, the controller passes:
+
+`reports_path_charts`
+
+to the dedicated PDF-report module.
+
+This allows the PDF reporter to reuse the already generated PNG chart images without requiring the chart manager to know how the PDF document is built.
+
+The relationship can be represented as:
+
+```text
+chart_manager.save_chart_images()
+        |
+        v
+reports_path_charts
+        |
+        +--------> Graphical Interface
+        |
+        +--------> PDF Reporter
+```
+
+This preserves separation between:
+
+* Chart generation.
+* PDF document generation.
+* Graphical presentation.
 
 #### Graphical Interface Integration
 
@@ -6051,9 +6769,9 @@ The graphical interface receives:
 
 from the controller.
 
-Each chart identifier is added to the chart selector.
+Each chart identifier can be added to the chart selector.
 
-The corresponding PNG path is stored inside:
+The corresponding PNG path can be stored inside:
 
 `charts_paths`
 
@@ -6073,6 +6791,14 @@ The required analysis entries include:
 * `top_5_best_selling_products`
 * `top_5_highest_income_products`
 * `category_summary`
+
+The monthly-summary charts specifically consume:
+
+* `mes`
+* `ingreso_total`
+* `unidades_vendidas`
+* `crec_ingreso_pct`
+* `crec_unidades_pct`
 
 Optional analysis entries include:
 
@@ -6127,12 +6853,864 @@ The chart-generation module is not responsible for:
 * Generating JSON files.
 * Generating CSV files.
 * Generating XLSX workbooks.
+* Generating PDF reports.
 * Displaying charts inside the graphical interface.
 
-Those responsibilities belong to the corresponding validation, analysis, reporting, file-management, controller, and graphical-interface modules.
+Those responsibilities belong to the corresponding validation, analysis, reporting, file-management, PDF-reporting, controller, and graphical-interface modules.
 
 #### Related Exception
 
 * `ChartGenerationError`
+
+---
+
+### PDF Report Generation Module
+
+The PDF report generation module converts structured sales-analysis results, validation information, and previously generated chart images into a complete PDF sales report.
+
+The module uses ReportLab to create a letter-sized document containing:
+
+* A report title derived from the source CSV filename.
+* General sales metrics.
+* Structured analysis tables.
+* Generated PNG charts.
+* Validation errors.
+* Validation warnings.
+
+The PDF is generated after the sales-analysis and chart-generation stages have completed.
+
+The module receives the same shared base filename used by the remaining report outputs, allowing the PDF file to remain associated with the TXT, JSON, CSV, XLSX, and PNG files generated during the same workflow.
+
+The module currently provides the following functions:
+
+* `get_title_pdf()`
+* `get_title_table_spanish()`
+* `get_widths_columns()`
+* `normalize_headers()`
+* `get_table()`
+* `get_tables()`
+* `get_image()`
+* `get_charts()`
+* `get_general_summary()`
+* `get_errors()`
+* `get_warnings()`
+* `save_pdf_reporter()`
+
+#### Dependencies
+
+The PDF-generation workflow uses:
+
+* `reportlab.lib.pagesizes.letter`: Defines the PDF page size.
+* `SimpleDocTemplate`: Builds the final PDF document.
+* `Paragraph`: Creates text sections and titles.
+* `Table`: Creates structured analysis tables.
+* `TableStyle`: Applies table formatting.
+* `Image`: Embeds generated chart images.
+* `Spacer`: Adds vertical spacing between document elements.
+* `getSampleStyleSheet()`: Provides standard ReportLab text styles.
+* `colors`: Provides table-grid colors.
+* `pathlib.Path`: Handles output paths and directories.
+* `pandas`: Converts structured analysis information into tabular data.
+* `PDFGenerationError`: Application-specific PDF-generation exception.
+
+#### PDF Configuration
+
+The module uses the ReportLab:
+
+`letter`
+
+page size.
+
+The page dimensions are stored in:
+
+```python
+WIDTH_PAGE, HEIGHT_PAGE = letter
+```
+
+A margin of:
+
+`72`
+
+points is used when calculating the available width for tables and chart images.
+
+The configured value is stored in:
+
+`MARGIN`
+
+#### Table Title Translation
+
+The module defines:
+
+`TRANSLATE_TITLES`
+
+to convert internal `analysis_result` keys into Spanish titles suitable for the generated PDF.
+
+The current translations include:
+
+* `product_summary` → `Resumen de Productos`
+* `category_summary` → `Resumen de Categorías`
+* `monthly_summary` → `Resumen Mensual`
+* `best_selling_product` → `Producto Más Vendido`
+* `highest_income_product` → `Producto con Mayor Ingreso`
+* `highest_income_category` → `Categoría con Mayor Ingreso`
+* `top_5_best_selling_products` → `Top 5 Productos Más Vendidos`
+* `top_5_highest_income_products` → `Top 5 Productos con Mayor Ingreso`
+* `monthly_best_selling_product` → `Producto Más Vendido Mensual`
+* `monthly_highest_income_category` → `Categoría con Mayor Ingreso Mensual`
+* `city_summary` → `Resumen por Ciudad`
+* `highest_income_city` → `Ciudad con Mayor Ingreso`
+* `payment_method_summary` → `Resumen por Método de Pago`
+* `highest_income_payment_method` → `Método de Pago con Mayor Ingreso`
+
+These translations affect presentation only and do not modify the original analysis-result keys.
+
+#### PDF Title
+
+The `get_title_pdf()` function creates the main document title from the original source CSV filename.
+
+It receives:
+
+`input_file_name`
+
+as a `Path`.
+
+The function:
+
+1. Extracts the filename without its extension using `Path.stem`.
+2. Splits the filename at underscore characters.
+3. Joins the resulting parts using spaces.
+4. Capitalizes the resulting title.
+5. Creates a ReportLab `Paragraph` using the standard `Title` style.
+
+For example, a source file named conceptually:
+
+`ventas_agosto.csv`
+
+produces the title:
+
+`Ventas agosto`
+
+The function returns a ReportLab:
+
+`Paragraph`
+
+#### Analysis Table Titles
+
+The `get_title_table_spanish()` function creates the heading displayed before each analysis table.
+
+It receives an `analysis_result` key and searches for its Spanish representation inside:
+
+`TRANSLATE_TITLES`
+
+When a predefined translation is available, that translated title is used.
+
+When no translation is available, the function:
+
+1. Replaces underscores with spaces.
+2. Converts the resulting text to uppercase.
+
+The final title is returned as a ReportLab `Paragraph` using:
+
+`Heading2`
+
+#### Column Width Calculation
+
+The `get_widths_columns()` function calculates equal widths for all columns in a PDF table.
+
+The available width is calculated using:
+
+```python
+WIDTH_PAGE - (MARGIN * 2)
+```
+
+The resulting width is divided by the number of table columns.
+
+The function returns:
+
+`List[float]`
+
+containing one width value for each column.
+
+All columns within the same table therefore receive equal widths.
+
+#### Header Normalization
+
+The `normalize_headers()` function converts DataFrame column names into more readable table headers.
+
+For every header, the function:
+
+1. Replaces underscores with spaces.
+2. Applies `capitalize()`.
+
+For example:
+
+`unidades_vendidas`
+
+becomes:
+
+`Unidades vendidas`
+
+The function returns a new list of normalized headers and does not modify the original list.
+
+#### DataFrame Table Generation
+
+The `get_table()` function converts a pandas DataFrame into a ReportLab `Table`.
+
+The process includes:
+
+1. Reading the original DataFrame column names.
+2. Normalizing the column headers.
+3. Converting DataFrame rows into lists.
+4. Combining headers and rows.
+5. Calculating equal column widths.
+6. Creating the ReportLab table.
+7. Applying table formatting.
+8. Configuring the first row as a repeating header.
+
+Every generated table receives a visible black grid.
+
+Tables containing:
+
+`8`
+
+columns use:
+
+`5`
+
+as their font size.
+
+Tables containing:
+
+`6`
+
+columns use:
+
+`7`
+
+as their font size.
+
+Tables with other numbers of columns retain the default ReportLab font size while still receiving the table grid.
+
+The table is configured with:
+
+```python
+table.repeatRows = 1
+```
+
+This causes the header row to repeat when a table continues across multiple PDF pages.
+
+#### Analysis Table Generation
+
+The `get_tables()` function converts supported structures from:
+
+`analysis_result`
+
+into ReportLab table elements.
+
+The function iterates through every analysis-result entry.
+
+When the value is a:
+
+`list`
+
+the list is converted into a pandas DataFrame.
+
+When the value is already a:
+
+`pandas.DataFrame`
+
+it is processed directly.
+
+Empty lists and empty DataFrames are omitted.
+
+Missing values are replaced with:
+
+`N/D`
+
+before table generation.
+
+Other value types are ignored by this function.
+
+This means scalar values such as:
+
+* `total_rows`
+* `total_valid_rows`
+* `total_invalid_rows`
+* `total_income`
+* `total_units_sold`
+
+are not converted into tables because they are displayed separately through the general-summary section.
+
+For each supported analysis structure, the function adds:
+
+1. Spanish table title.
+2. Vertical spacer.
+3. Generated table.
+4. Vertical spacer.
+
+The resulting elements are returned as a list ready to be included in the PDF document.
+
+#### Tables Included in the PDF
+
+Depending on the contents of `analysis_result`, table generation can include:
+
+* Product summary.
+* Category summary.
+* Monthly summary.
+* Best-selling products.
+* Highest-income products.
+* Highest-income categories.
+* Top 5 best-selling products.
+* Top 5 highest-income products.
+* Monthly best-selling products.
+* Monthly highest-income categories.
+
+When optional analysis information is available, the PDF can also include:
+
+* City summary.
+* Highest-income cities.
+* Payment-method summary.
+* Highest-income payment methods.
+
+Optional or empty structures are omitted automatically.
+
+#### Chart Image Generation
+
+The PDF module does not generate charts itself.
+
+Charts are generated previously by the dedicated chart-generation module.
+
+The PDF reporter receives a dictionary containing the generated PNG paths and embeds those existing images into the document.
+
+#### Individual Chart Image
+
+The `get_image()` function converts a generated chart path into a ReportLab `Image`.
+
+The chart is displayed using:
+
+* Width: Available PDF page width.
+* Height: `300` points.
+
+The image width is calculated through:
+
+```python
+WIDTH_PAGE - (MARGIN * 2)
+```
+
+The function returns a ReportLab:
+
+`Image`
+
+#### Chart Collection
+
+The `get_charts()` function converts the complete generated-chart dictionary into PDF elements.
+
+It receives:
+
+`charts`
+
+which maps chart identifiers to PNG paths.
+
+The function iterates through the chart paths and creates one ReportLab image for every generated chart.
+
+A vertical:
+
+`Spacer(1, 12)`
+
+is inserted after each chart.
+
+The chart identifiers themselves are not currently used as visible chart titles inside the PDF.
+
+The charts are embedded according to the order received from the chart dictionary.
+
+#### General Sales Summary
+
+The `get_general_summary()` function creates the general sales-summary section.
+
+The section begins with:
+
+`RESUMEN GENERAL`
+
+and displays:
+
+* Total processed rows.
+* Total valid rows.
+* Total invalid rows.
+* Total income.
+* Total units sold.
+
+The values are obtained from:
+
+* `total_rows`
+* `total_valid_rows`
+* `total_invalid_rows`
+* `total_income`
+* `total_units_sold`
+
+Total income is formatted using:
+
+* Currency notation.
+* Thousands separators.
+* Two decimal places.
+
+For example:
+
+`$12,450.75`
+
+The section is returned as a ReportLab `Paragraph` using the standard:
+
+`Normal`
+
+style.
+
+#### Validation Errors
+
+The `get_errors()` function creates the validation-errors section of the PDF.
+
+The section begins with:
+
+`ERRORES DE VALIDACIÓN`
+
+When no validation errors are available, the PDF displays:
+
+`No se encontraron errores de validación.`
+
+When errors exist, they are sorted by:
+
+`line_number`
+
+For each validation error, the section displays:
+
+* CSV line number.
+* Column.
+* Error type.
+* Error message.
+* Original value when available.
+
+A validation-error structure can contain:
+
+* `line_number`
+* `column`
+* `error_type`
+* `message`
+* `original_value`
+
+When:
+
+`original_value`
+
+is an empty string, the original-value text is omitted.
+
+The final content is returned as a ReportLab `Paragraph`.
+
+#### Validation Warnings
+
+The `get_warnings()` function creates the validation-warnings section.
+
+The section begins with:
+
+`ADVERTENCIAS`
+
+When no warnings are available, the PDF displays:
+
+`No se encontraron advertencias`
+
+When warnings exist, they are sorted by:
+
+`affected_value`
+
+For every warning, the PDF displays:
+
+* Affected `producto_id`.
+* Warning type.
+* Warning message.
+* Warning details.
+
+The current warning structure uses information such as:
+
+* `affected_value`
+* `warning_type`
+* `message`
+* `details`
+
+When multiple detail values are available, they are joined using comma-separated text.
+
+The resulting content is returned as a ReportLab `Paragraph`.
+
+#### PDF Generation Process
+
+The `save_pdf_reporter()` function coordinates the complete PDF-generation workflow.
+
+It receives:
+
+* `analysis_result`
+* `output_folder`
+* `file_base_name`
+* `input_file_name`
+* `validation_result`
+* `charts`
+
+The process performs the following operations:
+
+1. Creates the PDF output filename.
+2. Converts the output directory into a `Path`.
+3. Creates the destination directory and missing parent directories when necessary.
+4. Creates the complete PDF output path.
+5. Converts the path to a string for ReportLab.
+6. Creates a letter-sized `SimpleDocTemplate`.
+7. Creates an empty document-element list.
+8. Adds the main report title.
+9. Adds the general sales summary.
+10. Adds all supported structured analysis tables.
+11. Adds all generated chart images.
+12. Adds the validation-errors section.
+13. Adds the validation-warnings section.
+14. Builds the final PDF document.
+15. Returns the generated PDF path.
+
+#### PDF Document Structure
+
+The current PDF follows this general order:
+
+```text
+Report Title
+
+General Summary
+
+Analysis Tables
+    ├── Product Summary
+    ├── Category Summary
+    ├── Monthly Summary
+    ├── Overall Rankings
+    ├── Top 5 Rankings
+    ├── Monthly Rankings
+    └── Optional City / Payment-Method Analysis
+
+Generated Charts
+
+Validation Errors
+
+Validation Warnings
+```
+
+The exact set of tables and charts depends on the analysis structures and optional data available during the workflow.
+
+#### Shared Filename Integration
+
+The PDF reporter receives:
+
+`file_base_name`
+
+from the controller.
+
+This is the same base filename used by the remaining generated report outputs.
+
+The PDF filename follows:
+
+```text
+<shared_base_filename>.pdf
+```
+
+For example, if the shared base filename is:
+
+`ventas_agosto_2026-09-20_15-30-25-125`
+
+the generated PDF is:
+
+`ventas_agosto_2026-09-20_15-30-25-125.pdf`
+
+This keeps the PDF associated with all other files generated during the same processing workflow.
+
+#### Output Directory
+
+The destination folder is converted into:
+
+`Path`
+
+and created through:
+
+```python
+folder.mkdir(parents=True, exist_ok=True)
+```
+
+This allows PDF generation even when the configured destination directory does not already exist.
+
+#### Controller Integration
+
+The controller generates the PDF after the chart-generation stage.
+
+The controller calls:
+
+`pdf_reporter.save_pdf_reporter()`
+
+and provides:
+
+* Complete `analysis_result`.
+* Configured output folder.
+* Shared base filename.
+* Source CSV `Path`.
+* Complete validation result.
+* Generated chart paths.
+
+Conceptually:
+
+```python
+reports["report_path_pdf"] = pdf_reporter.save_pdf_reporter(
+    analysis_result,
+    output_folder,
+    file_name,
+    file_path,
+    validation_result,
+    reports["reports_path_charts"]
+)
+```
+
+The generated PDF path is stored by the controller as:
+
+`report_path_pdf`
+
+#### Chart Manager Integration
+
+The PDF reporter receives:
+
+`reports_path_charts`
+
+after the chart-generation module has completed.
+
+The dependency can be represented as:
+
+```text
+Sales Analysis
+      |
+      v
+Chart Generation
+      |
+      v
+reports_path_charts
+      |
+      v
+PDF Report Generation
+```
+
+The PDF module therefore embeds existing chart files rather than recalculating sales metrics or recreating charts.
+
+#### Validation Integration
+
+The complete:
+
+`validation_result`
+
+is supplied to the PDF reporter.
+
+The PDF-generation workflow currently uses:
+
+* `validation_result["errors"]`
+* `validation_result["warnings"]`
+
+These structures are passed to:
+
+* `get_errors()`
+* `get_warnings()`
+
+The PDF reporter does not perform validation itself.
+
+#### Analysis Integration
+
+The PDF reporter consumes the complete:
+
+`analysis_result`
+
+produced by the sales-analysis module.
+
+Scalar general metrics are used by:
+
+`get_general_summary()`
+
+Structured lists and DataFrames are processed by:
+
+`get_tables()`
+
+The PDF module does not calculate:
+
+* Total income.
+* Total units sold.
+* Product summaries.
+* Category summaries.
+* Monthly metrics.
+* Rankings.
+* Growth values.
+* Optional city metrics.
+* Optional payment-method metrics.
+
+Those values are received from the analysis layer.
+
+#### PDF Error Handling
+
+The main PDF-generation workflow catches:
+
+* `OSError`
+* `ValueError`
+
+When one of these supported failures occurs, the module raises:
+
+`PDFGenerationError`
+
+using exception chaining.
+
+Conceptually:
+
+```python
+except (OSError, ValueError) as error:
+    raise PDFGenerationError() from error
+```
+
+This converts supported PDF-generation and file-system failures into the common application-specific exception hierarchy while preserving the original Python exception as its cause.
+
+#### Generated PDF Path
+
+The `save_pdf_reporter()` function returns:
+
+`Path`
+
+pointing to the generated PDF document.
+
+The controller stores this path as:
+
+`report_path_pdf`
+
+The graphical interface later receives this value and allows the user to open the generated PDF through the operating system.
+
+#### Graphical Interface Integration
+
+The graphical interface receives:
+
+`report_path_pdf`
+
+from the controller.
+
+The path is stored in:
+
+`pdf_path`
+
+and displayed in the generated-files section.
+
+The:
+
+`Ver PDF`
+
+button calls:
+
+`open_report_pdf()`
+
+The GUI verifies that the generated file exists and opens it using the operating system's associated PDF application through `QDesktopServices`.
+
+The PDF reporter itself does not display or open the generated document.
+
+#### Input and Output
+
+##### `get_title_pdf()`
+
+* **Input:** Source CSV `Path`.
+* **Output:** ReportLab `Paragraph` containing the PDF title.
+
+##### `get_title_table_spanish()`
+
+* **Input:** Analysis-result key as a string.
+* **Output:** ReportLab `Paragraph` containing the Spanish analysis-section title.
+
+##### `get_widths_columns()`
+
+* **Input:** Number of table columns.
+* **Output:** List containing equal width values for all columns.
+
+##### `normalize_headers()`
+
+* **Input:** List of DataFrame column names.
+* **Output:** List containing normalized human-readable headers.
+
+##### `get_table()`
+
+* **Input:** pandas `DataFrame`.
+* **Output:** Formatted ReportLab `Table`.
+
+##### `get_tables()`
+
+* **Input:** Complete analysis-result dictionary.
+* **Output:** List containing table titles, tables, and spacing elements.
+
+##### `get_image()`
+
+* **Input:** PNG path as `str | Path`.
+* **Output:** ReportLab `Image`.
+
+##### `get_charts()`
+
+* **Input:** Dictionary mapping chart identifiers to PNG paths.
+* **Output:** List containing chart images and spacing elements.
+
+##### `get_general_summary()`
+
+* **Input:** Complete analysis-result dictionary.
+* **Output:** ReportLab `Paragraph` containing the general sales summary.
+
+##### `get_errors()`
+
+* **Input:** List of validation-error dictionaries.
+* **Output:** ReportLab `Paragraph` containing the validation-errors section.
+
+##### `get_warnings()`
+
+* **Input:** List of validation-warning dictionaries.
+* **Output:** ReportLab `Paragraph` containing the validation-warnings section.
+
+##### `save_pdf_reporter()`
+
+* **Input:** Analysis result, output directory, shared base filename, source CSV path, validation result, and generated chart paths.
+* **Output:** `Path` pointing to the generated PDF report.
+
+#### Responsibilities
+
+The PDF report generation module is responsible for:
+
+* Creating the PDF document.
+* Creating the PDF title.
+* Formatting general sales metrics.
+* Translating analysis-section titles into Spanish.
+* Normalizing table headers.
+* Calculating table column widths.
+* Converting analysis DataFrames into PDF tables.
+* Converting analysis lists into DataFrames for PDF tables.
+* Replacing missing table values with `N/D`.
+* Applying table grids.
+* Adjusting table font sizes according to column count.
+* Repeating table header rows across pages.
+* Embedding previously generated PNG charts.
+* Formatting validation errors.
+* Formatting validation warnings.
+* Creating the output directory when necessary.
+* Using the shared report base filename.
+* Returning the generated PDF path.
+* Converting supported PDF-generation failures into `PDFGenerationError`.
+
+The PDF report generation module is not responsible for:
+
+* Reading source CSV files.
+* Validating source-file paths.
+* Validating individual sales records.
+* Calculating sales metrics.
+* Calculating rankings.
+* Calculating monthly growth.
+* Generating chart images.
+* Generating TXT reports.
+* Generating JSON files.
+* Generating CSV files.
+* Generating XLSX workbooks.
+* Displaying or opening the PDF through the graphical interface.
+
+Those responsibilities belong to the corresponding validation, reading, analysis, reporting, chart-generation, file-management, controller, and graphical-interface modules.
+
+#### Related Exception
+
+* `PDFGenerationError`
 
 ---
