@@ -6,8 +6,8 @@ using PySide6.
 It allows users to select a source CSV file and output directory, generate
 sales reports and charts through the backend controller, display generated
 file paths, open TXT, JSON, and CSV reports in dedicated read-only viewer
-windows, and open XLSX reports, PDF reports, and PNG charts using the operating
-system's associated applications.
+windows, open XLSX reports, PDF reports, and PNG charts using the operating
+system's associated applications, and access an interactive sales dashboard.
 
 The interface also provides direct access to the configured output directory
 through the operating system file manager.
@@ -20,13 +20,15 @@ to extend.
 Application-specific and unexpected errors produced during report generation
 are presented to the user through status messages and message boxes.
 """
+
+
 import os
 import sys
 import subprocess
 
 from src import controller as control
 from src.errors import AppError
-from src.gui import file_viewer_window as fwindow
+from src.gui import dashboard_window as ds, file_viewer_window as fwindow
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import(
@@ -58,7 +60,8 @@ class SalesReportWindow(QMainWindow):
 
     Generated TXT, JSON, and CSV files can be inspected through dedicated
     `FileViewerWindow` instances. XLSX reports, PDF reports, and PNG charts are
-    opened using the operating system's associated applications.
+    opened using the operating system's associated applications. The generated
+    sales analysis can also be explored through a dedicated `DashboardWindow`..
 
     Attributes:
         file_path: Path of the CSV file selected by the user, or `None` when
@@ -97,23 +100,30 @@ class SalesReportWindow(QMainWindow):
         button_pdf_show_report: Button used to open the PDF report.
         button_see_chart: Button used to open the selected generated chart.
         button_open_output_folder: Button used to open the output directory.
+        analysis_result: Structured sales-analysis result used by the
+            dashboard, or `None` before successful report generation.
+        data_analysis: Controller-result dictionary containing generated
+            output paths and execution information, or `None` before
+            successful report generation.
+        button_open_dashboard: Button used to open the sales dashboard.
     """
     def __init__(self) -> None:
         """Initialize the main Sales Report application window.
 
-        Initializes source-file, output-folder, generated-report, and generated-chart
-        state, including TXT, JSON, CSV, XLSX, PDF, and PNG chart paths.
+        Initializes source-file, output-folder, generated-report, generated-chart,
+        controller-result, and sales-analysis state, including TXT, JSON, CSV,
+        XLSX, PDF, and PNG chart paths.
 
         Configures the window title and fixed size, creates the central widget,
-        initializes labels and buttons, connects button signals, and builds the main
-        application layout.
+        initializes labels and buttons, connects button signals, and builds the
+        main application layout.
 
         The main layout contains source-file selection, output-folder selection,
         report generation, application status, generated-file controls, generated
-        chart controls, and output-folder access.
+        chart controls, output-folder access, and dashboard access.
 
-        Generated-output controls are disabled until a report-generation process
-        completes successfully.
+        Generated-output and dashboard controls are disabled until a
+        report-generation process completes successfully.
         """
         super().__init__()
         self.file_path = None
@@ -124,9 +134,11 @@ class SalesReportWindow(QMainWindow):
         self.xlsx_path = None
         self.charts_paths = {}
         self.pdf_path = None
+        self.analysis_result = None
+        self.data_analysis = None
 
         self.setWindowTitle("Generador de Reportes de Ventas")
-        self.setFixedSize(900,950)
+        self.setFixedSize(900,1000)
 
         widget_central = QWidget()
         self.setCentralWidget(widget_central)
@@ -144,6 +156,7 @@ class SalesReportWindow(QMainWindow):
         main_layout.addWidget(self.build_generated_files_layout())
         main_layout.addWidget(self.build_generated_charts_layout())
         main_layout.addWidget(self.button_open_output_folder)
+        main_layout.addWidget(self.button_open_dashboard)
         self.off_buttons()
 
         widget_central.setLayout(main_layout)
@@ -491,18 +504,22 @@ class SalesReportWindow(QMainWindow):
         CSV file has been selected.
 
         Before starting a new generation process, previously stored TXT, JSON, CSV,
-        XLSX, PDF, and chart paths are reset. Previously displayed file paths,
-        selectors, and dynamically generated path labels are also cleared.
+        XLSX, PDF, chart, controller-result, and sales-analysis state is reset.
+        Previously displayed file paths, selectors, and dynamically generated path
+        labels are also cleared.
 
         The complete backend workflow is delegated to
         `controller.generate_sales_report()`.
+
+        The returned controller result is stored in `data_analysis`, while the
+        structured sales-analysis result is stored in `analysis_result`.
 
         After successful processing, TXT, JSON, XLSX, and PDF paths are stored and
         displayed. CSV summaries are added to the CSV selector and path display.
         Generated chart paths are added to the chart selector and chart-path display.
 
-        Generated-output controls and output-folder access are enabled after a
-        successful operation.
+        Generated-output, output-folder, and dashboard controls are enabled after
+        a successful operation.
 
         If an application-specific or unexpected error occurs, the status label is
         updated and a critical message box displays the corresponding error message.
@@ -521,21 +538,21 @@ class SalesReportWindow(QMainWindow):
                 self.off_buttons()
                 self.clean_paths()
                 self.clean_labels()
-                data_analysis = control.generate_sales_report(self.file_path, self.output_folder)
-                self.txt_path = str(data_analysis['report_path_txt'])
+                self.data_analysis, self.analysis_result = control.generate_sales_report(self.file_path, self.output_folder)
+                self.txt_path = str(self.data_analysis['report_path_txt'])
                 self.txt_file_path_label.setText(self.txt_path)
-                self.json_path = str(data_analysis["report_path_json"])
+                self.json_path = str(self.data_analysis["report_path_json"])
                 self.json_file_path_label.setText(self.json_path)
-                self.xlsx_path = str(data_analysis["report_path_xlsx"])
+                self.xlsx_path = str(self.data_analysis["report_path_xlsx"])
                 self.xlsx_file_path_label.setText(self.xlsx_path)
-                self.pdf_path = str(data_analysis["report_path_pdf"])
+                self.pdf_path = str(self.data_analysis["report_path_pdf"])
                 self.pdf_file_path_label.setText(self.pdf_path)
-                for path, name_path in data_analysis["reports_path_csv"].items():
+                for path, name_path in self.data_analysis["reports_path_csv"].items():
                     self.csv_combobox.addItem(path)
                     path_label = QLabel(f"{path}: {str(name_path)}")
                     self.csv_summaries_layout.addWidget(path_label)
                     self.csv_paths[path] = name_path
-                for chart, name_chart in data_analysis["reports_path_charts"].items():
+                for chart, name_chart in self.data_analysis["reports_path_charts"].items():
                     self.chart_combobox.addItem(chart)
                     path_label = QLabel(f"{chart}: {str(name_chart)}")
                     self.chart_graphics_layout.addWidget(path_label)
@@ -695,6 +712,22 @@ class SalesReportWindow(QMainWindow):
             return
         QDesktopServices.openUrl(QUrl.fromLocalFile(self.pdf_path))
 
+    def open_dashboard(self) -> None:
+        """Open the sales-analysis dashboard.
+
+        Creates a `DashboardWindow` using the structured sales-analysis result and
+        generated chart-path dictionary from the most recent successful report
+        generation.
+
+        A reference to the dashboard window is stored in `ds_window` so the window
+        remains available after it is displayed.
+
+        Returns:
+            None.
+        """
+        self.ds_window = ds.DashboardWindow(self.analysis_result, self.charts_paths)
+        self.ds_window.show()
+
     def create_labels(self) -> None:
         """Create the labels used by the main graphical interface.
 
@@ -727,19 +760,20 @@ class SalesReportWindow(QMainWindow):
     def create_buttons(self) -> None:
         """Create the buttons used by the main graphical interface.
 
-    Initializes controls for selecting the source CSV file, selecting the output
-    folder, generating reports and charts, opening TXT and JSON reports,
-    selecting and opening CSV summaries, opening XLSX and PDF reports, opening
-    generated charts, and accessing the output directory.
+        Initializes controls for selecting the source CSV file, selecting the output
+        folder, generating reports and charts, opening TXT and JSON reports,
+        selecting and opening CSV summaries, opening XLSX and PDF reports, opening
+        generated charts, accessing the output directory, and opening the sales
+        dashboard.
 
-    Fixed sizes are applied to interface buttons that require explicit
-    dimensions.
+        Fixed sizes are applied to interface buttons that require explicit
+        dimensions.
 
-    Signal connections are configured separately by `connect_buttons()`.
+        Signal connections are configured separately by `connect_buttons()`.
 
-    Returns:
-        None.
-    """
+        Returns:
+            None.
+        """
         self.button_selected_file = QPushButton("Seleccionar archivo")
         self.button_selected_file.setFixedSize(200,30)
         self.button_output_folder = QPushButton("Seleccionar carpeta")
@@ -757,6 +791,7 @@ class SalesReportWindow(QMainWindow):
         self.button_see_chart.setFixedSize(200,30)
         self.button_pdf_show_report = QPushButton("Ver PDF")
         self.button_pdf_show_report.setFixedSize(200,30)
+        self.button_open_dashboard = QPushButton("Abrir panel de ventas")
         
     def connect_buttons(self) -> None:
         """Connect interface buttons to their corresponding event handlers.
@@ -766,7 +801,7 @@ class SalesReportWindow(QMainWindow):
 
         The configured connections include source-file selection, output-folder
         selection, report generation, TXT, JSON, CSV, XLSX, and PDF access,
-        generated chart access, and output-directory access.
+        generated-chart access, output-directory access, and sales-dashboard access.
 
         Separating signal connection from widget creation keeps interface setup
         logic organized and easier to maintain.
@@ -784,16 +819,17 @@ class SalesReportWindow(QMainWindow):
         self.button_xlsx_show_report.clicked.connect(self.open_report_xlsx)
         self.button_see_chart.clicked.connect(self.open_chart_graphic)
         self.button_pdf_show_report.clicked.connect(self.open_report_pdf)
+        self.button_open_dashboard.clicked.connect(self.open_dashboard)
 
     def on_buttons(self) -> None:
         """Enable controls associated with generated output results.
 
         Enables output-folder access, TXT and JSON report viewer buttons, the CSV
         summary selector and viewer button, XLSX and PDF access, the generated-chart
-        selector, and the chart-opening button.
+        selector, chart-opening button, and sales-dashboard button.
 
         This method is called after a successful report-generation process so the
-        user can access all newly generated reports and charts.
+        user can access all newly generated reports, charts, and dashboard data.
 
         Returns:
             None.
@@ -807,13 +843,14 @@ class SalesReportWindow(QMainWindow):
         self.button_see_chart.setEnabled(True)
         self.chart_combobox.setEnabled(True)
         self.button_pdf_show_report.setEnabled(True)
+        self.button_open_dashboard.setEnabled(True)
 
     def off_buttons(self) -> None:
         """Disable controls associated with generated output results.
 
         Disables output-folder access, TXT and JSON report viewer buttons, the CSV
         summary selector and viewer button, XLSX and PDF access, the generated-chart
-        selector, and the chart-opening button.
+        selector, chart-opening button, and sales-dashboard button.
 
         This method is used when previously generated results are no longer valid
         or while a new report-generation process is being prepared.
@@ -830,6 +867,7 @@ class SalesReportWindow(QMainWindow):
         self.button_see_chart.setEnabled(False)
         self.chart_combobox.setEnabled(False)
         self.button_pdf_show_report.setEnabled(False)
+        self.button_open_dashboard.setEnabled(False)
 
     def clean_labels(self) -> None:
         """Clear generated output information displayed in the interface.
@@ -853,14 +891,15 @@ class SalesReportWindow(QMainWindow):
         self.pdf_file_path_label.setText("")
 
     def clean_paths(self) -> None:
-        """Reset stored paths for previously generated output files.
+        """Reset stored paths and analysis state from previously generated outputs.
 
-        Resets the TXT, JSON, XLSX, and PDF report paths to `None` and replaces the
-        CSV and chart path mappings with empty dictionaries.
+        Resets the TXT, JSON, XLSX, and PDF report paths to `None`, replaces the CSV
+        and chart path mappings with empty dictionaries, and clears the stored
+        controller result and sales-analysis result.
 
-        This prevents files and charts generated during a previous workflow from
-        remaining associated with the interface after changing the input
-        configuration or starting a new report-generation process.
+        This prevents files, charts, or analysis data generated during a previous
+        workflow from remaining associated with the interface after changing the
+        input configuration or starting a new report-generation process.
 
         Returns:
             None.
@@ -871,3 +910,5 @@ class SalesReportWindow(QMainWindow):
         self.xlsx_path = None
         self.charts_paths = {}
         self.pdf_path = None
+        self.analysis_result = None
+        self.data_analysis = None

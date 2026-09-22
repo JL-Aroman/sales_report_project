@@ -1,73 +1,138 @@
 # Sales Report
 
-> **Project Status:** Version **3.0.3 completed** — Functional desktop application with PySide6, multi-format report export, monthly analysis, and automatic chart generation. This project has been manually tested with sample sales CSV files.
+> **Project Status:** Version **3.0** — Functional modular desktop application with PySide6, multi-format report export, PDF reporting, monthly analysis, automatic chart generation, and an interactive sales dashboard. The project has been manually tested with sample sales CSV files.
 
-Sales Report is a modular Python desktop application for validating sales data, analyzing valid records, generating structured reports, exporting analysis results in multiple formats, and producing automatic sales charts.
+Sales Report is a modular Python application for validating sales data, analyzing valid records, generating structured reports, exporting analysis results in multiple formats, producing automatic sales charts, and presenting calculated metrics through a graphical dashboard.
 
-The application includes a PySide6 graphical interface that allows users to select a source CSV file, choose an output directory, generate reports and charts, inspect generated TXT, JSON, and CSV files, open XLSX reports, open generated PNG charts, and access the output directory directly from the application.
+The application includes a PySide6 graphical interface that allows users to:
+
+* Select a source CSV file.
+* Choose an output directory.
+* Generate reports and charts.
+* Inspect generated TXT, JSON, and CSV files.
+* Open XLSX reports.
+* Open PDF reports.
+* Open generated PNG charts.
+* Access the configured output directory.
+* Open an interactive sales dashboard.
 
 The application interface and user-facing messages are displayed in Spanish, while the project source code and technical documentation are maintained in English.
 
 ---
 
-## Project Architecture (Current State)
+## Project Architecture
 
 The project follows a modular architecture in which each module is responsible for a specific part of the application workflow.
 
-The application separates graphical presentation, workflow orchestration, validation, CSV reading, sales analysis, report formatting, file management, chart generation, and custom error handling.
+The application separates:
+
+* Graphical presentation.
+* Dashboard presentation.
+* Workflow orchestration.
+* Source-file validation.
+* CSV reading.
+* Data normalization and record validation.
+* Sales analysis.
+* Plain-text report formatting.
+* Multi-format file management.
+* Chart generation.
+* PDF generation.
+* Custom exception handling.
 
 The current application relationship can be represented as:
 
 ```text
-Graphical Application Entry Point
-        ↓
-SalesReportWindow
-        ↓
-controller.generate_sales_report()
-        ↓
-validator
-        ↓
-csv_reader
-        ↓
-validator.validate_dataframe()
-        ↓
-analyzer
-        ↓
-reporter
-        ↓
-├── file_manager
-│   ├── TXT
-│   ├── JSON
-│   ├── CSV
-│   └── XLSX
-│
-└── chart_manager
-    └── PNG charts
-        ↓
-Controller Result
-        ↓
-SalesReportWindow
+                         Source CSV
+                             |
+                             v
+                       SalesReportWindow
+                             |
+                             v
+                controller.generate_sales_report()
+                             |
+                             v
+                         validator
+                             |
+                             v
+                        csv_reader
+                             |
+                             v
+                validator.validate_dataframe()
+                             |
+                             v
+                          analyzer
+                             |
+                    analysis_result
+                             |
+           +-----------------+-----------------+
+           |                 |                 |
+           v                 v                 v
+       reporter         chart_manager      file_manager
+           |                 |                 |
+           |                 |          +------+------+
+           |                 |          |      |      |
+           |                 |         TXT   JSON    CSV
+           |                 |                 |
+           |                 |                XLSX
+           |                 |
+           |                 v
+           |            PNG charts
+           |                 |
+           +-----------------+-------------------+
+                             |
+                             v
+                        pdf_reporter
+                             |
+                             v
+                            PDF
+                             |
+                             v
+              reports + analysis_result
+                             |
+                             v
+                       SalesReportWindow
+                     /                  \
+                    v                    v
+          Generated File Access    DashboardWindow
+                                         |
+                              +----------+----------+
+                              |          |          |
+                              v          v          v
+                             KPIs   Best Results   Charts
 ```
 
 Generated TXT, JSON, and CSV files can be inspected through:
 
 `FileViewerWindow`
 
-Generated XLSX reports and PNG charts are opened using the operating system's associated applications.
+Generated XLSX reports, PDF reports, and PNG charts are opened using the operating system's associated applications.
 
-The main modules include:
+The dashboard receives the already calculated:
 
-* `controller`: Coordinates the complete sales-report and chart-generation workflow.
+* `analysis_result`
+* `charts_paths`
+
+and presents the information without recalculating backend metrics.
+
+---
+
+## Main Modules
+
+The main project modules include:
+
+* `controller`: Coordinates the complete sales-report generation workflow and returns both generated-output information and the structured analysis result.
 * `validator`: Validates the source file, normalizes records, validates sales data, detects warnings, and separates valid and invalid rows.
 * `csv_reader`: Reads the validated CSV file into a pandas `DataFrame`.
-* `analyzer`: Calculates general metrics, aggregated summaries, rankings, monthly growth, and monthly performance results.
+* `analyzer`: Calculates general metrics, aggregated summaries, rankings, monthly growth, monthly performance results, and optional analyses.
 * `reporter`: Generates the structured human-readable plain-text sales report.
 * `file_manager`: Saves TXT, JSON, CSV, and XLSX output files.
 * `chart_manager`: Generates PNG chart images from sales-analysis results.
+* `pdf_reporter`: Generates a structured PDF report containing sales information, tables, charts, validation errors, and warnings.
 * `errors`: Defines application-specific exceptions and Spanish user-facing error messages.
 * `gui.main_window`: Provides the main PySide6 graphical interface.
 * `gui.file_viewer_window`: Displays generated TXT, JSON, and CSV files in read-only viewer windows.
-* Graphical application entry point: Initializes `QApplication`, creates the main window, and starts the Qt event loop.
+* `gui.dashboard_window`: Provides the interactive graphical sales dashboard.
+* Console application entry point: Provides a direct backend execution workflow using predefined source and output paths.
 
 ---
 
@@ -78,7 +143,7 @@ The main modules include:
 Before running the project, make sure the following tools are installed:
 
 * Python 3.10 or later.
-* `pip`, the Python package installer.
+* `pip`.
 * Git, if the project will be cloned from GitHub.
 
 The application uses libraries including:
@@ -88,6 +153,7 @@ The application uses libraries including:
 * `numpy`
 * `openpyxl`
 * `matplotlib`
+* `reportlab`
 
 The complete dependency list is maintained in:
 
@@ -101,7 +167,7 @@ pip install -r requirements.txt
 
 ---
 
-### Installation
+## Installation
 
 1. Clone the repository:
 
@@ -145,7 +211,7 @@ pip install -r requirements.txt
 
 ## Input CSV File
 
-The application processes sales information from a CSV file selected by the user.
+The application processes sales information from a CSV file selected by the user or supplied through the console workflow.
 
 The CSV file must contain the following required columns:
 
@@ -159,14 +225,24 @@ The expected date format is:
 YYYY-MM-DD
 ```
 
-The application also supports the following optional columns:
+The application also supports:
 
 * `ciudad`
 * `metodo_pago`
 
+as optional columns.
+
 These columns are not required for the core validation workflow.
 
-When present, they are normalized and used to generate additional analysis summaries, report sections, exported files, and charts.
+When present, they are normalized and used to generate additional:
+
+* Analysis summaries.
+* Rankings.
+* Report sections.
+* CSV files.
+* XLSX worksheets.
+* PDF tables.
+* Charts.
 
 ### Minimum CSV Example
 
@@ -186,24 +262,64 @@ P002,Producto B,Categoria B,89.90,5,2026-07-02,Zapopan,Efectivo
 
 ---
 
-## Running the Application
+## Graphical Application
 
-The application is launched through its PySide6 graphical application entry point.
+The project provides a PySide6 graphical interface through:
 
-When the application starts, the main window allows the user to:
+`SalesReportWindow`
+
+The main window allows the user to:
 
 1. Select a source CSV file.
 2. Optionally select a custom output directory.
-3. Use `reports/` as the default output directory when no custom folder is selected.
+3. Use `reports/` as the default output directory.
 4. Start the complete report-generation process.
 5. View the current application status.
-6. View generated TXT, JSON, XLSX, and CSV paths.
+6. View generated TXT, JSON, XLSX, PDF, and CSV paths.
 7. Select generated CSV summaries from a combo box.
 8. Open TXT, JSON, and CSV files through read-only viewer windows.
-9. Open the generated XLSX workbook through the operating system.
-10. Select generated charts from a combo box.
-11. Open generated PNG charts through the operating system.
-12. Open the configured output directory.
+9. Open the XLSX workbook through the operating system.
+10. Open the generated PDF report through the operating system.
+11. Select generated charts from a combo box.
+12. Open generated PNG charts through the operating system.
+13. Open the configured output directory.
+14. Open the interactive sales dashboard.
+
+The current main window uses:
+
+```text
+Title: Generador de Reportes de Ventas
+Width: 900
+Height: 1000
+```
+
+---
+
+## Console Entry Point
+
+The project also contains a console execution workflow.
+
+The current console configuration uses:
+
+```python
+input_file_path = "data/sales.csv"
+output_folder = "reports"
+```
+
+It calls:
+
+```python
+reports, _ = controller.generate_sales_report(
+    input_file_path,
+    output_folder
+)
+```
+
+The generated-output dictionary is printed in the console.
+
+The structured `analysis_result` is intentionally ignored by this entry point because it is not required for console output.
+
+Nested dictionaries such as CSV and chart path collections are iterated so every generated entry can be printed individually.
 
 ---
 
@@ -211,43 +327,102 @@ When the application starts, the main window allows the user to:
 
 When the user starts report generation, the application performs the following workflow:
 
-1. Verifies that a source CSV file has been selected.
-2. Sends the source file path and output directory to `controller.generate_sales_report()`.
+1. Verifies that a source CSV file is available.
+2. Sends the source path and output directory to `controller.generate_sales_report()`.
 3. Starts the execution timer.
 4. Validates the source CSV file.
 5. Reads the validated file into a pandas `DataFrame`.
 6. Normalizes and validates the sales records.
 7. Separates valid and invalid rows.
 8. Detects validation warnings.
-9. Verifies that valid records are available for analysis.
+9. Verifies that valid records are available.
 10. Calculates row-level income.
-11. Calculates total income and total units sold.
-12. Generates the product summary.
-13. Generates the category summary.
-14. Generates the monthly summary.
-15. Calculates monthly income growth.
-16. Calculates monthly income percentage growth.
-17. Calculates monthly unit-sales growth.
-18. Calculates monthly unit-sales percentage growth.
-19. Determines overall highest-performing records.
-20. Generates Top 5 product rankings.
-21. Determines the best-selling product or tied products for each month.
-22. Determines the highest-income category or tied categories for each month.
-23. Generates city analysis when `ciudad` is available.
-24. Generates payment-method analysis when `metodo_pago` is available.
-25. Generates the structured plain-text report.
-26. Creates a shared base filename using the source CSV filename and current timestamp.
-27. Saves the plain-text report as TXT.
-28. Saves the complete structured analysis as JSON.
-29. Saves five standard CSV analysis summaries.
-30. Saves optional city and payment-method CSV summaries when available.
-31. Generates the XLSX workbook.
-32. Generates ten standard PNG charts.
-33. Generates optional city and payment-method charts when available.
-34. Calculates total execution time.
-35. Returns processing results and generated output paths to the graphical interface.
-36. Displays generated file and chart paths.
-37. Enables controls used to inspect generated outputs.
+11. Calculates total income.
+12. Calculates total units sold.
+13. Generates the product summary.
+14. Generates the category summary.
+15. Generates the monthly summary.
+16. Calculates monthly income growth.
+17. Calculates monthly income percentage growth.
+18. Calculates monthly unit-sales growth.
+19. Calculates monthly unit-sales percentage growth.
+20. Determines overall highest-performing records.
+21. Generates Top 5 product rankings.
+22. Determines the best-selling product or tied products for each month.
+23. Determines the highest-income category or tied categories for each month.
+24. Generates city analysis when `ciudad` is available.
+25. Generates payment-method analysis when `metodo_pago` is available.
+26. Generates the structured plain-text report.
+27. Creates a shared base filename.
+28. Saves the TXT report.
+29. Saves the complete structured analysis as JSON.
+30. Saves five standard CSV analysis summaries.
+31. Saves optional city and payment-method CSV summaries when available.
+32. Generates the XLSX workbook.
+33. Generates ten standard PNG charts.
+34. Generates optional city and payment-method charts when available.
+35. Generates the PDF report using the calculated analysis, validation information, and generated chart paths.
+36. Calculates total execution time.
+37. Returns `reports`.
+38. Returns the complete `analysis_result`.
+39. Displays generated output information in the graphical interface.
+40. Stores the structured analysis for dashboard access.
+41. Enables generated-output controls.
+42. Enables dashboard access.
+
+---
+
+## Controller Return Contract
+
+The controller returns:
+
+```python
+return reports, analysis_result
+```
+
+The first structure:
+
+`reports`
+
+contains generated-output and workflow information.
+
+The second:
+
+`analysis_result`
+
+contains the complete structured sales analysis.
+
+Conceptually:
+
+```text
+controller.generate_sales_report()
+            |
+            +---- reports
+            |       |
+            |       +-- row totals
+            |       +-- TXT path
+            |       +-- JSON path
+            |       +-- CSV paths
+            |       +-- XLSX path
+            |       +-- PNG paths
+            |       +-- PDF path
+            |       +-- execution time
+            |
+            +---- analysis_result
+                    |
+                    +-- general metrics
+                    +-- summaries
+                    +-- rankings
+                    +-- monthly analysis
+                    +-- optional analysis
+```
+
+The GUI stores these structures separately as:
+
+* `data_analysis`
+* `analysis_result`
+
+This allows the generated files and analytical structures to be consumed independently.
 
 ---
 
@@ -265,32 +440,35 @@ If the destination directory does not exist, the application creates it when nec
 
 All files generated during the same execution share a base filename containing:
 
-* The original source CSV filename without its extension.
-* The current local date.
-* The current local time.
+* Original source CSV filename without its extension.
+* Current local date.
+* Current local time.
 * Milliseconds.
 
-The base filename follows this format:
+The base filename follows:
 
 ```text
 <source_filename>_YYYY-MM-DD_HH-MM-SS-fff
 ```
 
-For example, when the source file is:
-
-```text
-ventas_agosto.csv
-```
-
-a generated base filename may be:
+For example:
 
 ```text
 ventas_agosto_2026-09-19_07-45-30-125
 ```
 
-A normal execution generates TXT, JSON, XLSX, CSV, and PNG files that reuse this base filename.
+A normal execution can generate:
 
-Each execution generates a new timestamp, allowing outputs from different processing runs to coexist independently.
+* TXT
+* JSON
+* CSV
+* XLSX
+* PNG
+* PDF
+
+files associated with the same processing run.
+
+Each execution generates a new timestamp, allowing results from separate executions to coexist.
 
 ---
 
@@ -298,7 +476,7 @@ Each execution generates a new timestamp, allowing outputs from different proces
 
 The TXT file contains the human-readable sales report.
 
-Depending on the available data, it includes:
+Depending on available data, it includes:
 
 * General sales summary.
 * Total processed rows.
@@ -326,11 +504,11 @@ Depending on the available data, it includes:
 * Validation errors.
 * Validation warnings.
 
-Monthly growth values that cannot be calculated, such as those for the first available month, are displayed as:
+Monthly growth values that cannot be calculated are displayed as:
 
 `N/D`
 
-The report is saved using UTF-8 encoding.
+The TXT report is saved using UTF-8 encoding.
 
 ---
 
@@ -338,9 +516,9 @@ The report is saved using UTF-8 encoding.
 
 The JSON file contains the complete structured sales-analysis result.
 
-Before serialization, pandas DataFrames are converted into lists of dictionaries.
+Before serialization, pandas DataFrames are converted into JSON-compatible structures.
 
-The following analysis DataFrames are always converted:
+Standard structured analyses include:
 
 * `product_summary`
 * `category_summary`
@@ -348,16 +526,12 @@ The following analysis DataFrames are always converted:
 * `monthly_best_selling_product`
 * `monthly_highest_income_category`
 
-The following are included when available:
+Optional analyses include:
 
 * `city_summary`
 * `payment_method_summary`
 
-pandas `NaN` values are replaced with Python `None` before serialization so missing values are represented as:
-
-`null`
-
-inside JSON.
+Missing pandas values are converted into JSON-compatible null values.
 
 The file is written using:
 
@@ -379,7 +553,7 @@ The standard summaries are:
 * Monthly best-selling products.
 * Monthly highest-income categories.
 
-The CSV-path dictionary uses the following keys:
+The CSV-path dictionary uses:
 
 ```text
 resumen_producto
@@ -389,14 +563,14 @@ resumen_mejores_vendidos_por_mes
 resumen_categoria_mayor_ingreso_por_mes
 ```
 
-When optional data is available, the application may also generate:
+Optional entries are:
 
 ```text
 ciudad_resumen
 metodo_de_pago_resumen
 ```
 
-The physical filename suffixes are:
+The physical filename suffixes include:
 
 ```text
 _productos.csv
@@ -408,7 +582,7 @@ _ciudades.csv
 _metodos_pago.csv
 ```
 
-The city and payment-method CSV files are optional.
+City and payment-method CSV files are generated only when their corresponding analyses are available.
 
 ---
 
@@ -416,7 +590,9 @@ The city and payment-method CSV files are optional.
 
 The application generates a structured Excel workbook using `openpyxl`.
 
-The workbook always contains:
+The workbook contains structured sales, ranking, monthly, and validation information.
+
+Standard worksheets include:
 
 * `Resumen General`
 * `Productos`
@@ -429,26 +605,22 @@ The workbook always contains:
 * `Validación de errores`
 * `Advertencias`
 
-When optional analyses are available, the workbook can also contain:
+Optional worksheets can include:
 
 * `Resumen por ciudad`
 * `Resumen por método de pago`
 
-The default worksheet created by openpyxl is removed before the report worksheets are created.
-
-Most DataFrame-based worksheets are generated through a reusable worksheet-building helper.
-
-The XLSX file is opened from the graphical interface through the operating system's associated application.
+The generated XLSX file can be opened from the graphical interface through the operating system's associated application.
 
 ---
 
 ## Generated PNG Charts
 
-Version 3.0.3 includes automatic chart generation through:
+Automatic chart generation is handled by:
 
 `chart_manager`
 
-All charts are generated as bar charts using pandas and Matplotlib.
+Charts are generated as bar charts using pandas and Matplotlib.
 
 Generated images use:
 
@@ -463,8 +635,6 @@ The standard workflow generates ten charts.
 
 ### Standard Charts
 
-The standard chart identifiers are:
-
 ```text
 grafica_de_ingresos_mensuales
 grafica_de_unidades_vendidas_mensualmente
@@ -478,7 +648,7 @@ grafica_ingreso_categoria
 grafica_unidades_categoria
 ```
 
-These charts represent:
+They represent:
 
 * Monthly income.
 * Monthly units sold.
@@ -493,28 +663,28 @@ These charts represent:
 
 ### Optional City Charts
 
-When `city_summary` is available and contains data, the application also generates:
+When `city_summary` is available:
 
 ```text
 grafica_ingreso_ciudad
 grafica_unidades_ciudad
 ```
 
-These represent:
+represent:
 
 * Income by city.
 * Units sold by city.
 
 ### Optional Payment-Method Charts
 
-When `payment_method_summary` is available and contains data, the application also generates:
+When `payment_method_summary` is available:
 
 ```text
 grafica_ingreso_metodo_pago
 grafica_unidades_metodo_pago
 ```
 
-These represent:
+represent:
 
 * Income by payment method.
 * Units sold by payment method.
@@ -522,26 +692,118 @@ These represent:
 The application therefore generates:
 
 * 10 charts without optional analysis.
-* 12 charts when either city or payment-method analysis is available.
+* 12 charts when one optional analysis is available.
 * 14 charts when both optional analyses are available.
 
-Generated PNG paths are returned by the controller under:
+Generated chart paths are returned through:
 
 `reports_path_charts`
 
 ---
 
-## Graphical Report and Chart Access
+## Generated PDF Report
 
-After a successful processing workflow, the graphical interface displays the generated output information.
+PDF generation is handled by:
+
+`pdf_reporter`
+
+using ReportLab.
+
+The PDF receives:
+
+* Complete `analysis_result`.
+* Output directory.
+* Shared report base filename.
+* Original source CSV path.
+* Complete validation result.
+* Generated chart paths.
+
+The generated PDF uses:
+
+`letter`
+
+page size.
+
+The report includes:
+
+* A title derived from the source CSV filename.
+* General sales summary.
+* Structured analysis tables.
+* Generated PNG charts.
+* Validation errors.
+* Validation warnings.
+
+### PDF General Summary
+
+The PDF general summary displays:
+
+* Total rows.
+* Valid rows.
+* Invalid rows.
+* Total income.
+* Units sold.
+
+### PDF Analysis Tables
+
+Supported lists and pandas DataFrames from `analysis_result` are converted into ReportLab tables.
+
+Empty structures are skipped.
+
+Missing table values are represented as:
+
+`N/D`
+
+Table headers are normalized into human-readable text.
+
+The PDF uses translated Spanish section names for known analysis structures.
+
+### PDF Charts
+
+Previously generated chart PNG files are embedded directly in the PDF.
+
+The PDF reporter does not recreate charts.
+
+The workflow therefore requires:
+
+```text
+Chart Generation
+      |
+      v
+PNG paths
+      |
+      v
+PDF Generation
+```
+
+### PDF Validation Information
+
+Validation errors are ordered by line number.
+
+Validation warnings are also included in the final document.
+
+### PDF Filename
+
+The PDF uses the same shared base filename as the remaining report outputs:
+
+```text
+<shared_base_filename>.pdf
+```
+
+The generated path is returned through:
+
+`report_path_pdf`
+
+---
+
+## Graphical Report Access
+
+After successful processing, the graphical interface displays generated output information.
 
 TXT, JSON, and CSV files are displayed through independent read-only:
 
 `FileViewerWindow`
 
 instances.
-
-The viewer reads text-based report files using UTF-8 encoding without modifying their contents.
 
 CSV summaries can be selected through:
 
@@ -555,6 +817,12 @@ The XLSX workbook is opened through:
 
 using the operating system's associated application.
 
+The generated PDF report is also opened through:
+
+`QDesktopServices`
+
+The main interface verifies the PDF file exists before attempting to open it.
+
 Generated chart names are added to:
 
 `chart_combobox`
@@ -563,19 +831,133 @@ Their paths are stored in:
 
 `charts_paths`
 
-The selected PNG chart is also opened through:
-
-`QDesktopServices`
-
-using the operating system's associated application.
+The selected chart can be opened through the operating system.
 
 The graphical interface additionally provides direct access to the configured output directory.
 
 ---
 
+## Sales Dashboard
+
+The application includes a dedicated:
+
+`DashboardWindow`
+
+for displaying sales-analysis information visually.
+
+The dashboard receives:
+
+```python
+DashboardWindow(
+    analysis_result,
+    chart_paths
+)
+```
+
+It does not read or analyze the source CSV again.
+
+It reuses the analysis already calculated during report generation.
+
+The window is configured as:
+
+```text
+Title: Panel de ventas
+Width: 1500
+Height: 900
+```
+
+### General KPI Cards
+
+The dashboard currently displays:
+
+* `INGRESO TOTAL`
+* `UNIDADES VENDIDAS`
+* `FILAS VÁLIDAS`
+* `FILAS INVÁLIDAS`
+
+These values originate from:
+
+```text
+total_income
+total_units_sold
+total_valid_rows
+total_invalid_rows
+```
+
+### Best-Result Cards
+
+The dashboard also displays:
+
+* Best-selling product.
+* Highest-income product.
+* Highest-income category.
+
+The underlying analysis structures preserve tied records, allowing multiple products or categories to be displayed when they share the same maximum value.
+
+### Interactive Charts
+
+The dashboard contains a `QComboBox` populated from:
+
+`chart_paths`
+
+The selected chart is loaded using:
+
+`QPixmap`
+
+and displayed directly inside the dashboard.
+
+Images are scaled to fit within approximately:
+
+```text
+500 × 400
+```
+
+while maintaining their original aspect ratio.
+
+Smooth image transformation is used when scaling.
+
+The first available chart is displayed when the chart card is initialized.
+
+Changing the combo-box selection updates the displayed chart immediately.
+
+---
+
+## Dashboard Data Flow
+
+The dashboard relationship can be represented as:
+
+```text
+Analyzer
+   |
+   v
+analysis_result
+   |
+   +-------------------+
+   |                   |
+   |              Chart Manager
+   |                   |
+   |                   v
+   |               chart_paths
+   |                   |
+   +---------+---------+
+             |
+             v
+       SalesReportWindow
+             |
+             v
+       DashboardWindow
+        /     |      \
+       v      v       v
+     KPIs  Results  Charts
+```
+
+No sales metrics are recalculated when the dashboard is opened.
+
+---
+
 ## Analysis Features
 
-The analysis module provides the data structures used by reports, exported files, and generated charts.
+The analysis module provides the structures used by reports, exported files, charts, PDF generation, and the dashboard.
 
 Current analysis functionality includes:
 
@@ -596,13 +978,13 @@ Current analysis functionality includes:
 * Monthly best-selling-product identification.
 * Monthly highest-income-category identification.
 
-The analysis module calculates these values before they are passed to presentation and export modules.
+The analysis module calculates these values once before they are passed to presentation and export modules.
 
 ---
 
 ## Monthly Analysis
 
-The monthly summary contains:
+The current monthly summary contains:
 
 ```text
 mes
@@ -610,16 +992,16 @@ filas_validas
 unidades_vendidas
 ingreso_total
 crecimiento_ingreso
-crecimiento_ingreso_porcentaje
+crec_ingreso_pct
 crecimiento_unidades
-crecimiento_unidades_porcentaje
+crec_unidades_pct
 ```
 
 Monthly records are sorted chronologically.
 
 Growth values compare each month against the immediately preceding month.
 
-The application also generates two additional monthly analysis structures:
+The application also generates:
 
 `monthly_best_selling_product`
 
@@ -627,7 +1009,54 @@ and:
 
 `monthly_highest_income_category`
 
-These structures preserve ties when more than one product or category shares the corresponding monthly maximum.
+These structures preserve ties when multiple records share the corresponding monthly maximum.
+
+---
+
+## Validation
+
+The application validates required sales information before analysis.
+
+Required columns are:
+
+```text
+producto_id
+producto
+categoria
+precio
+cantidad
+fecha
+```
+
+The validation workflow includes:
+
+* Empty-value validation.
+* Numeric price validation.
+* Positive price validation.
+* Integer quantity validation.
+* Positive quantity validation.
+* Exact `YYYY-MM-DD` date-format validation.
+* Calendar-date validation.
+
+Valid and invalid records are separated before analysis.
+
+Only valid records are used for sales calculations.
+
+---
+
+## Validation Warnings
+
+Warnings represent non-critical conditions that do not invalidate the corresponding sales row.
+
+The current warning system includes:
+
+`inconsistent_product_name`
+
+Warnings are preserved separately from validation errors and can appear in:
+
+* TXT reports.
+* XLSX reports.
+* PDF reports.
 
 ---
 
@@ -641,7 +1070,8 @@ The status area informs the user about events such as:
 * Output-folder selection.
 * Start of processing.
 * Missing source-file selection.
-* Successful report and chart generation.
+* Successful report generation.
+* Successful chart generation.
 * Processing errors.
 
 Application-specific exceptions inherit from:
@@ -659,73 +1089,106 @@ The custom exception hierarchy currently covers:
 * Absence of valid sales rows.
 * Report-generation failures.
 * Report-storage failures.
-* Chart-generation and chart-storage failures.
+* Chart-generation failures.
+* PDF-generation failures.
 
-Chart-specific generation failures use:
+Chart-generation failures use:
 
 `ChartGenerationError`
 
-When an application-specific or unexpected exception occurs during the generation workflow, the graphical interface updates the application status and displays the corresponding error through a critical message box.
+PDF-generation failures use:
+
+`PDFGenerationError`
+
+When an application-specific or unexpected exception occurs during the graphical generation workflow, the interface updates the application status and displays the corresponding error through a critical message box.
 
 The graphical application remains open so the user can correct the problem and try again.
 
 ---
 
-## Version 3.0.3
-
-Version **3.0.3** represents the current completed state of the Sales Report application.
-
-This version includes:
-
-* PySide6 graphical desktop interface.
-* Modular backend architecture.
-* CSV source-file validation.
-* Data normalization and record validation.
-* Validation errors and non-critical warnings.
-* General sales metrics.
-* Product and category summaries.
-* Optional city and payment-method analysis.
-* Generic Top 5 ranking logic.
-* Monthly sales analysis.
-* Monthly income and unit-sales growth.
-* Monthly percentage growth.
-* Monthly best-selling products.
-* Monthly highest-income categories.
-* Human-readable TXT reporting.
-* Structured JSON export.
-* Five standard CSV exports.
-* Optional city and payment-method CSV exports.
-* Multi-sheet XLSX workbook generation.
-* Automatic PNG chart generation.
-* Ten standard charts.
-* Four optional charts.
-* Read-only TXT, JSON, and CSV viewing.
-* Operating-system XLSX opening.
-* Operating-system PNG opening.
-* Dynamic source-based filenames.
-* Custom application-specific exception hierarchy.
-* Dedicated `ChartGenerationError`.
-* Output-directory access from the graphical interface.
-* Cross-platform output-folder opening.
-* Execution-time measurement.
-
-The project remains organized so validation, analysis, presentation, storage, chart generation, graphical interaction, and workflow orchestration are handled by independent modules.
-
----
-
 ## Output Directory Access
 
-After successful report generation, the graphical interface enables the option:
+After successful report generation, the graphical interface enables:
 
 `Abrir carpeta de salida`
 
-The application opens the configured output directory using the platform-specific operating-system mechanism:
+The configured directory is opened through the platform-specific mechanism:
 
 * Windows: `os.startfile()`
 * macOS: `open`
 * Linux and compatible systems: `xdg-open`
 
 This allows generated report files to be accessed directly from the desktop application.
+
+---
+
+## Current Development State — Version 3.0
+
+Version **3.0** is the currently documented project version.
+
+The current application includes:
+
+* Modular Python architecture.
+* PySide6 graphical desktop interface.
+* Source CSV selection.
+* Custom output-directory selection.
+* Default `reports/` directory.
+* CSV source-file validation.
+* Data normalization.
+* Record validation.
+* Validation errors.
+* Non-critical warnings.
+* General sales metrics.
+* Product summaries.
+* Category summaries.
+* Optional city analysis.
+* Optional payment-method analysis.
+* Tie-preserving maximum-value detection.
+* Generic Top 5 ranking logic.
+* Monthly sales analysis.
+* Monthly income growth.
+* Monthly unit-sales growth.
+* Monthly percentage growth.
+* Monthly best-selling products.
+* Monthly highest-income categories.
+* Human-readable TXT reporting.
+* Structured JSON export.
+* Five standard CSV exports.
+* Optional city CSV export.
+* Optional payment-method CSV export.
+* Multi-sheet XLSX workbook generation.
+* Automatic PNG chart generation.
+* Ten standard charts.
+* Up to four optional charts.
+* PDF report generation.
+* PDF analysis tables.
+* PDF embedded charts.
+* PDF validation errors.
+* PDF validation warnings.
+* Read-only TXT viewing.
+* Read-only JSON viewing.
+* Read-only CSV viewing.
+* Operating-system XLSX opening.
+* Operating-system PDF opening.
+* Operating-system PNG opening.
+* Interactive sales dashboard.
+* General KPI dashboard cards.
+* Best-result dashboard cards.
+* Tie-preserving dashboard presentation.
+* Interactive dashboard chart selector.
+* In-window PNG chart rendering through `QPixmap`.
+* Reuse of `analysis_result` without recalculation.
+* Controller dual return: `reports, analysis_result`.
+* Dynamic source-based filenames.
+* Custom application-specific exception hierarchy.
+* Dedicated `ChartGenerationError`.
+* Dedicated `PDFGenerationError`.
+* Output-directory access.
+* Cross-platform output-folder opening.
+* Execution-time measurement.
+* Console execution workflow.
+
+The project remains organized so validation, analysis, presentation, storage, chart generation, PDF generation, dashboard visualization, graphical interaction, and workflow orchestration are handled by independent modules.
 
 ---
 
@@ -4079,7 +4542,7 @@ The sales report controller module coordinates the complete Sales Report process
 
 It acts as the orchestration layer between the graphical interface and the specialized modules responsible for file validation, CSV reading, DataFrame validation, sales analysis, plain-text report generation, file export, chart generation, and PDF report generation.
 
-The controller receives the source CSV file path and output directory, executes the complete processing pipeline, generates all supported report files and chart images, measures the total execution time, and returns a structured dictionary containing processing totals, generated output paths, and execution information.
+The controller receives the source CSV file path and output directory, executes the complete processing pipeline, generates all supported report files and chart images, measures the total execution time, and returns both generated-output information and the complete structured sales-analysis result.
 
 The generated outputs currently include:
 
@@ -4089,6 +4552,8 @@ The generated outputs currently include:
 * XLSX workbooks.
 * PNG chart images.
 * PDF reports.
+
+The returned `analysis_result` can also be reused by presentation components such as the graphical sales dashboard without recalculating the sales metrics.
 
 The module currently provides the following function:
 
@@ -4114,8 +4579,8 @@ The `generate_sales_report()` function performs the following operations:
 14. Generates the PDF report using `pdf_reporter.save_pdf_reporter()`.
 15. Stops the execution timer.
 16. Calculates the total execution time.
-17. Adds the execution time to the controller result.
-18. Returns the complete result dictionary to the caller.
+17. Adds the execution time to the generated-output dictionary.
+18. Returns both `reports` and `analysis_result` to the caller.
 
 #### Module Coordination
 
@@ -4131,7 +4596,7 @@ The controller coordinates the following modules:
 
 The controller itself does not implement the internal processing logic of these modules.
 
-Its responsibility is to call them in the correct order and transfer their results between workflow stages.
+Its responsibility is to call them in the correct order, transfer their results between workflow stages, and expose the final generated-output and analysis structures to the caller.
 
 #### Input Configuration
 
@@ -4143,6 +4608,24 @@ The `generate_sales_report()` function receives:
 The source path is first validated before being passed to the CSV-reading module.
 
 The output directory is passed to the file, chart, and PDF generation functions responsible for storing generated outputs.
+
+#### Function Return Type
+
+The function is declared as:
+
+```python
+def generate_sales_report(
+    input_file_path: str,
+    output_folder: str | Path
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+```
+
+The returned tuple contains:
+
+1. `reports`: Dictionary containing generated-output paths, processing totals, and execution information.
+2. `analysis_result`: Dictionary containing the complete structured sales analysis produced by the analysis module.
+
+This allows generated-file information and analytical information to remain logically separated while both remain available to the graphical layer.
 
 #### File Validation
 
@@ -4198,7 +4681,11 @@ The controller sends the validation result to:
 
 `analyzer.analyze_sales()`
 
-The resulting `analysis_result` contains the calculated structures required by reporting, file export, chart generation, and PDF generation.
+The resulting:
+
+`analysis_result`
+
+contains the calculated structures required by reporting, file export, chart generation, PDF generation, and dashboard presentation.
 
 Core analysis information includes:
 
@@ -4234,6 +4721,28 @@ When the optional `metodo_pago` column is available, the analysis may also conta
 
 * `payment_method_summary`
 * `highest_income_payment_method`
+
+The same `analysis_result` is reused throughout the remaining workflow and is returned to the caller after all output generation is complete.
+
+#### Analysis Result Reuse
+
+The controller calculates the structured sales analysis only once.
+
+After:
+
+`analyzer.analyze_sales(validation_result)`
+
+returns the result, the same `analysis_result` is reused by:
+
+* Plain-text report generation.
+* JSON export.
+* CSV export.
+* XLSX generation.
+* Chart generation.
+* PDF generation.
+* Graphical dashboard integration.
+
+This avoids re-reading the source CSV or recalculating sales metrics when the graphical dashboard is opened.
 
 #### Plain-Text Report Generation
 
@@ -4289,7 +4798,15 @@ The controller also coordinates:
 
 * PNG chart generation.
 
-All generated paths are collected inside the final controller result.
+All generated paths are collected inside the:
+
+`reports`
+
+dictionary.
+
+The structured analytical data itself remains available separately through:
+
+`analysis_result`
 
 #### TXT Report Coordination
 
@@ -4378,6 +4895,8 @@ A conceptual structure is:
     "resumen_mensual": Path(...),
     "resumen_mejores_vendidos_por_mes": Path(...),
     "resumen_categoria_mayor_ingreso_por_mes": Path(...),
+
+    # Optional
     "ciudad_resumen": Path(...),
     "metodo_de_pago_resumen": Path(...)
 }
@@ -4427,6 +4946,8 @@ Chart-generation logic remains inside the dedicated `chart_manager` module rathe
 
 The chart-generation stage occurs before PDF generation because the PDF workflow receives the generated chart-path dictionary.
 
+The same chart-path dictionary is later available to the graphical interface and can be reused by the sales dashboard.
+
 #### PDF Report Coordination
 
 The PDF report is generated using:
@@ -4467,11 +4988,19 @@ Because the PDF reporter receives `reports_path_charts`, chart generation must b
 
 The internal layout and formatting of the PDF remain the responsibility of the dedicated `pdf_reporter` module.
 
-#### Controller Result
+#### Generated-Output Dictionary
 
-The `generate_sales_report()` function returns a dictionary containing information about the complete workflow.
+The first value returned by:
 
-The result contains:
+`generate_sales_report()`
+
+is:
+
+`reports`
+
+This dictionary contains information about generated files and the completed workflow.
+
+It contains:
 
 * `total_rows`: Total number of processed sales records.
 * `total_valid_rows`: Number of records that passed validation.
@@ -4484,9 +5013,9 @@ The result contains:
 * `report_path_pdf`: Path pointing to the generated PDF report.
 * `execution_time`: Formatted string containing the total workflow execution time.
 
-#### Controller Result Structure
+#### Generated-Output Structure
 
-A simplified controller result follows this structure:
+A simplified `reports` dictionary follows this structure:
 
 ```python
 {
@@ -4526,6 +5055,86 @@ The city and payment-method CSV entries are optional.
 
 The exact chart keys are determined by the chart-generation module.
 
+#### Structured Analysis Result
+
+The second value returned by:
+
+`generate_sales_report()`
+
+is:
+
+`analysis_result`
+
+This is the original structured dictionary produced by:
+
+`analyzer.analyze_sales(validation_result)`
+
+It is returned separately from `reports` so presentation components can access the calculated sales information directly without reading exported files or repeating the analysis.
+
+The structure can contain:
+
+* `total_rows`
+* `total_valid_rows`
+* `total_invalid_rows`
+* `total_income`
+* `total_units_sold`
+* `product_summary`
+* `category_summary`
+* `monthly_summary`
+* `best_selling_product`
+* `highest_income_product`
+* `highest_income_category`
+* `top_5_best_selling_products`
+* `top_5_highest_income_products`
+* `monthly_best_selling_product`
+* `monthly_highest_income_category`
+
+Optional entries can include:
+
+* `city_summary`
+* `highest_income_city`
+* `payment_method_summary`
+* `highest_income_payment_method`
+
+The exact analytical structure is defined by the sales-analysis module.
+
+#### Controller Return Structure
+
+The complete return value follows this conceptual structure:
+
+```python
+return reports, analysis_result
+```
+
+or conceptually:
+
+```text
+generate_sales_report()
+        |
+        +---- reports
+        |       |
+        |       +-- processing totals
+        |       +-- TXT path
+        |       +-- JSON path
+        |       +-- CSV paths
+        |       +-- XLSX path
+        |       +-- PNG chart paths
+        |       +-- PDF path
+        |       +-- execution time
+        |
+        +---- analysis_result
+                |
+                +-- general metrics
+                +-- product summaries
+                +-- category summaries
+                +-- rankings
+                +-- monthly analysis
+                +-- optional city analysis
+                +-- optional payment-method analysis
+```
+
+This separation allows the caller to use generated-file information and structured analytical data independently.
+
 #### GUI Integration
 
 The controller acts as the primary backend entry point used by the graphical interface.
@@ -4539,9 +5148,22 @@ and provides:
 * Selected source CSV path.
 * Configured output directory.
 
-After processing, the GUI receives the controller-result dictionary.
+The graphical interface receives both returned dictionaries.
 
-Available generated-output information includes:
+Conceptually:
+
+```python
+self.data_analysis, self.analysis_result = control.generate_sales_report(
+    self.file_path,
+    self.output_folder
+)
+```
+
+The first returned dictionary is stored by the GUI as:
+
+`data_analysis`
+
+and provides generated-output information such as:
 
 * `report_path_txt`
 * `report_path_json`
@@ -4549,10 +5171,53 @@ Available generated-output information includes:
 * `report_path_xlsx`
 * `reports_path_charts`
 * `report_path_pdf`
+* `execution_time`
 
-The controller does not determine how these outputs are displayed or opened by the graphical interface.
+The second returned dictionary is stored as:
+
+`analysis_result`
+
+and contains the structured sales data calculated by the backend.
+
+The controller does not determine how generated outputs or analytical information are displayed by the graphical interface.
 
 This keeps the graphical interface separated from backend processing details.
+
+#### Dashboard Integration
+
+The controller does not create or display the graphical dashboard.
+
+Instead, it exposes the already calculated:
+
+`analysis_result`
+
+to the GUI.
+
+The GUI can then pass this structured analysis, together with generated chart paths, to the dedicated dashboard window.
+
+Conceptually:
+
+```text
+analyzer.analyze_sales()
+          |
+          v
+    analysis_result
+          |
+          +--------------------------+
+          |                          |
+          v                          v
+Report/File Generation          GUI Dashboard
+```
+
+This allows the dashboard to reuse the same analysis performed during report generation without:
+
+* Re-reading the CSV file.
+* Re-validating the records.
+* Recalculating sales totals.
+* Recalculating rankings.
+* Recalculating monthly metrics.
+
+The controller therefore acts as the connection point between backend analysis and presentation-layer reuse.
 
 #### Execution Time
 
@@ -4588,6 +5253,16 @@ For example:
 
 `Execution time: 0.0123 seconds`
 
+The execution time is stored inside the:
+
+`reports`
+
+dictionary.
+
+It is not added separately to:
+
+`analysis_result`
+
 #### Error Propagation
 
 The controller does not directly handle application-specific exceptions.
@@ -4614,7 +5289,10 @@ Unexpected Python exceptions may also propagate to the GUI, where they can be pr
 ##### `generate_sales_report()`
 
 * **Input:** Source CSV path as `str` and destination output directory as `str | Path`.
-* **Output:** Dictionary containing processing totals, TXT, JSON, CSV, XLSX, PNG chart, and PDF paths, together with total execution time.
+* **Output:** `Tuple[Dict[str, Any], Dict[str, Any]]` containing:
+
+  * A generated-output dictionary with processing totals, TXT, JSON, CSV, XLSX, PNG chart, and PDF paths, together with total execution time.
+  * The complete structured `analysis_result` generated by the sales-analysis module.
 
 #### Responsibilities
 
@@ -4636,7 +5314,10 @@ The controller is responsible for:
 * Coordinating PDF generation.
 * Ensuring charts are generated before the PDF stage that consumes their paths.
 * Measuring the total workflow execution time.
-* Returning generated-output paths and processing information to the caller.
+* Collecting generated-output paths and processing information in `reports`.
+* Returning `reports` to the caller.
+* Returning the complete `analysis_result` to the caller.
+* Making the existing structured analysis available for presentation-layer reuse.
 
 The controller is not responsible for:
 
@@ -4647,6 +5328,7 @@ The controller is not responsible for:
 * Creating report files directly.
 * Drawing chart images directly.
 * Building the PDF report layout directly.
+* Building the dashboard interface.
 * Displaying graphical interface elements.
 * Handling user interaction.
 
@@ -4658,13 +5340,15 @@ Those responsibilities belong to the specialized backend modules and graphical i
 
 The graphical user interface module provides the main desktop window for the Sales Report application using PySide6.
 
-It allows the user to select a source CSV file, choose an output directory, generate sales reports and charts through the backend controller, inspect generated TXT, JSON, CSV, XLSX, and PDF files, open generated PNG charts, and access the configured output directory directly from the application.
+It allows the user to select a source CSV file, choose an output directory, generate sales reports and charts through the backend controller, inspect generated TXT, JSON, CSV, XLSX, and PDF files, open generated PNG charts, access an interactive sales dashboard, and open the configured output directory directly from the application.
 
 TXT, JSON, and CSV files are displayed through dedicated read-only `FileViewerWindow` instances.
 
 XLSX files, PDF reports, and generated PNG charts are opened through the operating system's associated applications using `QDesktopServices`.
 
-The graphical layer separates widget creation, signal connection, layout construction, event handling, output access, and generated-result state management into independent methods.
+The generated structured sales analysis and chart paths can also be passed to a dedicated `DashboardWindow` for interactive sales visualization.
+
+The graphical layer separates widget creation, signal connection, layout construction, event handling, output access, dashboard access, and generated-result state management into independent methods.
 
 This structure reduces duplicated interface code and keeps the module modular, maintainable, and easier to extend.
 
@@ -4682,7 +5366,7 @@ The window is configured with:
 
 * Title: `Generador de Reportes de Ventas`
 * Width: `900`
-* Height: `950`
+* Height: `1000`
 * Default output folder: `reports/`
 
 The main window uses a central `QWidget` and a vertical `QVBoxLayout` to organize the application sections.
@@ -4699,6 +5383,8 @@ During initialization, the class creates the initial application state:
 * `xlsx_path`: `None`
 * `charts_paths`: Empty dictionary.
 * `pdf_path`: `None`
+* `analysis_result`: `None`
+* `data_analysis`: `None`
 
 The initialization process also:
 
@@ -4716,8 +5402,9 @@ The initialization process also:
 12. Builds the generated-files section.
 13. Builds the generated-charts section.
 14. Adds the output-folder access button.
-15. Disables generated-output controls through `off_buttons()`.
-16. Assigns the completed layout to the central widget.
+15. Adds the sales-dashboard access button.
+16. Disables generated-output controls through `off_buttons()`.
+17. Assigns the completed layout to the central widget.
 
 #### Interface Organization
 
@@ -4767,6 +5454,7 @@ User actions:
 * `open_report_pdf()`
 * `open_chart_graphic()`
 * `open_output_folder()`
+* `open_dashboard()`
 
 Interface-state management:
 
@@ -4811,6 +5499,11 @@ The interface currently provides buttons for:
 * Opening the PDF report.
 * Opening the selected generated chart.
 * Opening the output directory.
+* Opening the sales dashboard.
+
+The dashboard-access button is displayed as:
+
+`Abrir panel de ventas`
 
 The method creates the buttons and applies fixed sizes where required.
 
@@ -4832,6 +5525,7 @@ The current connections are:
 * `button_xlsx_show_report` → `open_report_xlsx()`
 * `button_see_chart` → `open_chart_graphic()`
 * `button_pdf_show_report` → `open_report_pdf()`
+* `button_open_dashboard` → `open_dashboard()`
 
 Separating widget creation from signal connection keeps interface initialization easier to understand and maintain.
 
@@ -4846,8 +5540,9 @@ The main application window contains the following primary sections:
 5. Generated report files.
 6. Generated charts.
 7. Output-folder access.
+8. Sales-dashboard access.
 
-The first six interface areas are organized using dedicated layouts and group boxes.
+The report and chart areas are organized through dedicated layouts and group boxes, while output-folder and dashboard access buttons are added directly to the main application layout.
 
 #### Source CSV File Selection
 
@@ -4874,10 +5569,11 @@ When a new source file is selected:
 
 1. Generated-output controls are disabled.
 2. Previously stored TXT, JSON, CSV, XLSX, PDF, and chart paths are cleared.
-3. Previously displayed generated-report and chart information is removed.
-4. The selected path is stored in `file_path`.
-5. The selected-file label is updated.
-6. The application status is updated according to the currently configured output directory.
+3. Previously stored controller and structured-analysis results are cleared.
+4. Previously displayed generated-report and chart information is removed.
+5. The selected path is stored in `file_path`.
+6. The selected-file label is updated.
+7. The application status is updated according to the currently configured output directory.
 
 If the dialog is canceled, the existing application state remains unchanged.
 
@@ -4908,10 +5604,11 @@ When a new output folder is selected:
 
 1. Generated-output controls are disabled.
 2. Previously stored TXT, JSON, CSV, XLSX, PDF, and chart paths are cleared.
-3. Previously displayed generated-report and chart information is removed.
-4. The selected directory is stored in `output_folder`.
-5. The output-folder label is updated.
-6. The application status is updated according to whether a source CSV file has already been selected.
+3. Previously stored controller and structured-analysis results are cleared.
+4. Previously displayed generated-report and chart information is removed.
+5. The selected directory is stored in `output_folder`.
+6. The output-folder label is updated.
+7. The application status is updated according to whether a source CSV file has already been selected.
 
 If the dialog is canceled, the existing output-folder configuration remains unchanged.
 
@@ -4941,23 +5638,52 @@ It performs the following operations:
 4. Stops the process and displays a message when no source file is available.
 5. Disables controls associated with previously generated outputs.
 6. Clears stored TXT, JSON, CSV, XLSX, PDF, and chart paths.
-7. Clears previously displayed output information.
-8. Calls `controller.generate_sales_report()`.
-9. Receives generated report and chart information from the controller.
-10. Stores and displays the generated TXT report path.
-11. Stores and displays the generated JSON analysis path.
-12. Stores and displays the generated XLSX report path.
-13. Stores and displays the generated PDF report path.
-14. Adds generated CSV summary names to the CSV selector.
-15. Creates labels containing generated CSV paths.
-16. Stores CSV summary names and paths in `csv_paths`.
-17. Adds generated chart names to the chart selector.
-18. Creates labels containing generated chart paths.
-19. Stores chart names and paths in `charts_paths`.
-20. Updates the application status after successful generation.
-21. Enables generated-output controls.
-22. Displays application-specific or unexpected errors when necessary.
-23. Re-enables the report-generation button after processing.
+7. Clears previous controller-result and structured-analysis state.
+8. Clears previously displayed output information.
+9. Calls `controller.generate_sales_report()`.
+10. Receives the controller result and structured sales-analysis result.
+11. Stores the generated-output information in `data_analysis`.
+12. Stores the structured sales-analysis information in `analysis_result`.
+13. Stores and displays the generated TXT report path.
+14. Stores and displays the generated JSON analysis path.
+15. Stores and displays the generated XLSX report path.
+16. Stores and displays the generated PDF report path.
+17. Adds generated CSV summary names to the CSV selector.
+18. Creates labels containing generated CSV paths.
+19. Stores CSV summary names and paths in `csv_paths`.
+20. Adds generated chart names to the chart selector.
+21. Creates labels containing generated chart paths.
+22. Stores chart names and paths in `charts_paths`.
+23. Updates the application status after successful generation.
+24. Enables generated-output and dashboard controls.
+25. Displays application-specific or unexpected errors when necessary.
+26. Re-enables the report-generation button after processing.
+
+#### Controller Result Storage
+
+The report-generation call currently assigns two returned structures:
+
+```python
+self.data_analysis, self.analysis_result = control.generate_sales_report(
+    self.file_path,
+    self.output_folder
+)
+```
+
+`data_analysis` contains the generated-output information used by the graphical interface.
+
+The GUI currently reads the following entries from `data_analysis`:
+
+* `report_path_txt`
+* `report_path_json`
+* `reports_path_csv`
+* `report_path_xlsx`
+* `reports_path_charts`
+* `report_path_pdf`
+
+`analysis_result` contains the structured sales-analysis result used by the dashboard.
+
+Keeping both structures available allows the main window to handle generated files while also supplying analytical information to `DashboardWindow`.
 
 #### Backend Controller Integration
 
@@ -4970,18 +5696,14 @@ The graphical interface provides:
 * `file_path`
 * `output_folder`
 
-The controller returns processing information and generated output paths.
+The resulting information is stored separately as:
 
-The GUI currently uses:
-
-* `report_path_txt`
-* `report_path_json`
-* `reports_path_csv`
-* `report_path_xlsx`
-* `reports_path_charts`
-* `report_path_pdf`
+* `data_analysis`: Generated report paths and controller output information.
+* `analysis_result`: Structured sales-analysis information.
 
 The backend remains responsible for validation, reading, analysis, report generation, chart generation, PDF generation, and file storage.
+
+The GUI uses these returned structures for output access and dashboard presentation rather than recalculating backend metrics itself.
 
 #### Application Status
 
@@ -5017,7 +5739,7 @@ The section contains independent layouts for:
 * CSV summaries.
 * Scrollable CSV path information.
 
-The output-directory button is not part of this group box. It is added separately to the main application layout.
+The output-directory and dashboard buttons are not part of this group box. They are added separately to the main application layout.
 
 #### TXT Report Layout
 
@@ -5267,6 +5989,8 @@ For each entry returned through `reports_path_charts`:
 3. The label is added to `chart_graphics_layout`.
 4. The chart path is stored in `charts_paths`.
 
+The same chart-path dictionary is later supplied to the sales dashboard.
+
 #### Generated Chart Access
 
 The `open_chart_graphic()` method opens the chart currently selected in:
@@ -5312,9 +6036,80 @@ The platform-specific mechanisms are:
 
 The button is positioned directly in the main application layout, outside the generated-files group box.
 
+#### Sales Dashboard Access
+
+The:
+
+`Abrir panel de ventas`
+
+button calls:
+
+`open_dashboard()`
+
+The dashboard button is enabled only after a report-generation process completes successfully.
+
+The `open_dashboard()` method creates:
+
+`DashboardWindow`
+
+using:
+
+* `analysis_result`
+* `charts_paths`
+
+Conceptually:
+
+```python
+self.ds_window = ds.DashboardWindow(
+    self.analysis_result,
+    self.charts_paths
+)
+```
+
+The dashboard window reference is stored in:
+
+`ds_window`
+
+and displayed through:
+
+```python
+self.ds_window.show()
+```
+
+The main GUI therefore acts as the connection point between the completed backend analysis and the dashboard presentation layer.
+
+The dashboard does not trigger a new report-generation process. It uses the structured analysis and chart paths already available from the most recent successful workflow.
+
+#### Dashboard Integration Architecture
+
+The dashboard integration follows this structure:
+
+```text
+controller.generate_sales_report()
+            |
+            v
+  +-----------------------+
+  |                       |
+  v                       v
+data_analysis       analysis_result
+  |                       |
+  |                       |
+  |                 +-----+
+  |                 |
+  v                 v
+Generated files   DashboardWindow
+                    ^
+                    |
+               charts_paths
+```
+
+`data_analysis` is used by the main GUI for generated-output access.
+
+`analysis_result` and `charts_paths` are supplied to the dashboard.
+
 #### Generated-Output Control Management
 
-The GUI centralizes enabling and disabling controls associated with generated reports and charts.
+The GUI centralizes enabling and disabling controls associated with generated reports, charts, and the sales dashboard.
 
 ##### `on_buttons()`
 
@@ -5329,6 +6124,7 @@ Enables:
 * PDF report access.
 * Chart selector.
 * Chart access button.
+* Sales-dashboard access.
 
 This method is called after successful report and chart generation.
 
@@ -5345,6 +6141,7 @@ Disables:
 * PDF report access.
 * Chart selector.
 * Chart access button.
+* Sales-dashboard access.
 
 This method is used when:
 
@@ -5355,11 +6152,11 @@ This method is used when:
 
 #### Generated-Output State Cleanup
 
-The GUI separates internal path cleanup from visual cleanup.
+The GUI separates internal state cleanup from visual cleanup.
 
 ##### `clean_paths()`
 
-Resets internal generated-output references:
+Resets internal generated-output and analysis references:
 
 * `txt_path` → `None`
 * `json_path` → `None`
@@ -5367,8 +6164,10 @@ Resets internal generated-output references:
 * `xlsx_path` → `None`
 * `charts_paths` → `{}`
 * `pdf_path` → `None`
+* `analysis_result` → `None`
+* `data_analysis` → `None`
 
-This prevents previously generated reports or charts from remaining associated with a new source file, output directory, or generation process.
+This prevents previously generated reports, charts, controller results, or analysis data from remaining associated with a new source file, output directory, or generation process.
 
 ##### `clean_labels()`
 
@@ -5408,8 +6207,10 @@ The `SalesReportWindow` class maintains the following primary state values:
 * `xlsx_path`: Generated XLSX workbook path.
 * `charts_paths`: Mapping between chart identifiers and generated PNG paths.
 * `pdf_path`: Generated PDF report path.
+* `analysis_result`: Structured analysis data from the most recent successful processing workflow.
+* `data_analysis`: Controller-result dictionary containing generated report paths and related output information.
 
-The class also maintains interface widgets, layouts, buttons, selectors, report-viewer windows, and generated-output controls.
+The class also maintains interface widgets, layouts, buttons, selectors, report-viewer windows, the dashboard window, and generated-output controls.
 
 #### PySide6 Components
 
@@ -5429,6 +6230,12 @@ The graphical interface currently uses:
 * `QDesktopServices`: Opening XLSX reports, PDF reports, and PNG charts through the operating system.
 * `QUrl`: Conversion of local XLSX, PDF, and PNG paths for `QDesktopServices`.
 
+The GUI also integrates the project-specific:
+
+`DashboardWindow`
+
+for displaying the generated sales-analysis dashboard.
+
 #### Current GUI Workflow
 
 The current graphical workflow is:
@@ -5439,26 +6246,30 @@ The current graphical workflow is:
 4. Use `reports/` when no custom directory is selected.
 5. Press `Crear reporte`.
 6. Verify that a source CSV file exists in the interface state.
-7. Disable previous generated-output controls.
-8. Clear previous report and chart state.
+7. Disable previous generated-output and dashboard controls.
+8. Clear previous report, chart, controller-result, and analysis state.
 9. Send the source CSV and output folder to `controller.generate_sales_report()`.
 10. Execute the complete backend workflow.
-11. Receive TXT, JSON, CSV, XLSX, PDF, and chart output paths.
-12. Display the generated TXT path.
-13. Display the generated JSON path.
-14. Display the generated XLSX path.
-15. Display the generated PDF path.
-16. Populate the CSV selector.
-17. Display CSV paths inside the CSV scroll area.
-18. Populate the chart selector.
-19. Display generated chart paths inside the chart scroll area.
-20. Enable generated-output controls.
-21. Allow TXT, JSON, and CSV reports to be inspected through `FileViewerWindow`.
-22. Allow the XLSX workbook to be opened through the operating system.
-23. Allow the PDF report to be opened through the operating system.
-24. Allow generated PNG charts to be opened through the operating system.
-25. Allow the configured output directory to be opened.
-26. Display the final success status or an error message.
+11. Receive generated-output information and the structured analysis result.
+12. Store the controller output in `data_analysis`.
+13. Store structured analysis in `analysis_result`.
+14. Display the generated TXT path.
+15. Display the generated JSON path.
+16. Display the generated XLSX path.
+17. Display the generated PDF path.
+18. Populate the CSV selector.
+19. Display CSV paths inside the CSV scroll area.
+20. Populate the chart selector.
+21. Display generated chart paths inside the chart scroll area.
+22. Store chart paths in `charts_paths`.
+23. Enable generated-output and dashboard controls.
+24. Allow TXT, JSON, and CSV reports to be inspected through `FileViewerWindow`.
+25. Allow the XLSX workbook to be opened through the operating system.
+26. Allow the PDF report to be opened through the operating system.
+27. Allow generated PNG charts to be opened through the operating system.
+28. Allow the configured output directory to be opened.
+29. Allow the sales dashboard to be opened using `analysis_result` and `charts_paths`.
+30. Display the final success status or an error message.
 
 #### Error Handling
 
@@ -5482,6 +6293,8 @@ The `open_chart_graphic()` method handles:
 * Empty chart selection through an informational message.
 * Missing PNG files through a warning message.
 
+The dashboard button remains disabled until successful report generation, preventing normal interface access to the dashboard before current analysis information is available.
+
 The graphical application remains open after handled errors so the user can correct the configuration or try again.
 
 #### Input and Output
@@ -5489,7 +6302,7 @@ The graphical application remains open after handled errors so the user can corr
 ##### `SalesReportWindow`
 
 * **Input:** User interaction through the graphical interface.
-* **Output:** Main desktop interface for configuring, generating, displaying, and accessing sales reports and charts.
+* **Output:** Main desktop interface for configuring, generating, displaying, and accessing sales reports, charts, and the sales dashboard.
 
 ##### `create_labels()`
 
@@ -5499,7 +6312,7 @@ The graphical application remains open after handled errors so the user can corr
 ##### `create_buttons()`
 
 * **Input:** None.
-* **Output:** Creates report, chart, file-selection, folder-selection, and output-access buttons.
+* **Output:** Creates report, chart, dashboard, file-selection, folder-selection, and output-access buttons.
 
 ##### `connect_buttons()`
 
@@ -5559,17 +6372,17 @@ The graphical application remains open after handled errors so the user can corr
 ##### `selected_file_path()`
 
 * **Input:** CSV file selected through `QFileDialog`.
-* **Output:** Updates the source-file state and resets previous generated-report and chart state.
+* **Output:** Updates the source-file state and resets previous generated-report, chart, and analysis state.
 
 ##### `selected_folder_path()`
 
 * **Input:** Directory selected through `QFileDialog`.
-* **Output:** Updates the output-folder state and resets previous generated-output state.
+* **Output:** Updates the output-folder state and resets previous generated-output and analysis state.
 
 ##### `generate_reports()`
 
 * **Input:** Selected CSV path and configured output directory.
-* **Output:** Generates reports and charts through the controller and updates the GUI with TXT, JSON, CSV, XLSX, PDF, and PNG chart information.
+* **Output:** Generates reports and charts through the controller, stores the returned structured analysis, and updates the GUI with TXT, JSON, CSV, XLSX, PDF, and PNG chart information.
 
 ##### `open_report_txt()`
 
@@ -5606,6 +6419,11 @@ The graphical application remains open after handled errors so the user can corr
 * **Input:** Configured output directory.
 * **Output:** Opens the directory through the operating-system file manager.
 
+##### `open_dashboard()`
+
+* **Input:** Current `analysis_result` and `charts_paths` stored by the main window.
+* **Output:** Creates and displays a `DashboardWindow` containing sales-analysis information and generated charts.
+
 ##### `clean_layout()`
 
 * **Input:** Qt layout containing dynamically generated widgets.
@@ -5619,21 +6437,21 @@ The graphical application remains open after handled errors so the user can corr
 ##### `clean_paths()`
 
 * **Input:** None.
-* **Output:** Resets stored TXT, JSON, CSV, XLSX, PDF, and chart paths.
+* **Output:** Resets stored TXT, JSON, CSV, XLSX, PDF, chart, controller-result, and structured-analysis state.
 
 ##### `on_buttons()`
 
 * **Input:** None.
-* **Output:** Enables controls associated with generated reports and charts.
+* **Output:** Enables controls associated with generated reports, charts, and dashboard access.
 
 ##### `off_buttons()`
 
 * **Input:** None.
-* **Output:** Disables controls associated with generated reports and charts.
+* **Output:** Disables controls associated with generated reports, charts, and dashboard access.
 
 #### Current Development Status
 
-The graphical interface is connected to the Sales Report backend workflow and supports report, PDF, and chart access.
+The graphical interface is connected to the Sales Report backend workflow and supports report, PDF, chart, and dashboard access.
 
 Currently available:
 
@@ -5643,6 +6461,7 @@ Currently available:
 * Default output directory.
 * Application status messages.
 * Backend controller integration.
+* Separate storage of controller output and structured analysis.
 * TXT report generation and access.
 * JSON analysis generation and access.
 * CSV summary generation and selection.
@@ -5652,6 +6471,10 @@ Currently available:
 * Generated PNG chart selection.
 * Scrollable chart path display.
 * Generated PNG chart opening.
+* Sales-dashboard access.
+* `DashboardWindow` integration.
+* Structured `analysis_result` transfer to the dashboard.
+* Generated chart-path transfer to the dashboard.
 * Read-only TXT, JSON, and CSV viewer integration.
 * Operating-system XLSX opening.
 * Operating-system PDF opening.
@@ -5664,7 +6487,10 @@ Currently available:
 * Dedicated PDF sub-layout.
 * Dedicated chart sub-layouts.
 * Generated-output state cleanup.
+* Controller-result state cleanup.
+* Structured-analysis state cleanup.
 * Generated-output control management.
+* Dashboard control management.
 * Application-specific error presentation.
 * Unexpected error presentation.
 * Missing-XLSX warning presentation.
@@ -5674,176 +6500,427 @@ Currently available:
 
 ---
 
-### Graphical Application Entry Point Module
+### Console Application Entry Point Module
 
-The graphical application entry point module initializes and launches the PySide6 desktop application.
+The console application entry point module provides a direct command-line execution path for the Sales Report application.
 
-It provides a dedicated `main()` function responsible for creating the Qt application environment, initializing the main Sales Report window, displaying the graphical interface, starting the Qt event loop, and returning the final application exit status to the operating system.
+It defines the source CSV file and output directory, delegates the complete Sales Report processing workflow to the controller, receives the generated-output information, and displays the resulting processing data and generated file paths in the console.
 
-Unlike the graphical user interface module, this module does not define interface layouts, controls, or backend processing logic. Its responsibility is to initialize and run the desktop application.
+The controller currently returns two structures:
 
-#### Main Function
+* `reports`: Generated-output information, processing totals, and execution information.
+* `analysis_result`: Complete structured sales-analysis data.
+
+The console entry point uses only the `reports` dictionary and intentionally ignores `analysis_result`, because the structured analysis is primarily reused by other application components such as the graphical sales dashboard.
+
+The module also handles application-specific errors derived from `AppError` and unexpected Python exceptions.
 
 The module currently provides the following function:
 
 * `main()`
 
-The `main()` function coordinates the graphical application startup process.
+#### Main Function
 
-It creates the `QApplication` instance, initializes `SalesReportWindow`, displays the main window, and starts the Qt event loop.
+The `main()` function coordinates the console execution workflow.
 
-#### Application Initialization
+It:
 
-The `main()` function creates a `QApplication` instance using:
+1. Defines the source CSV file.
+2. Defines the output directory.
+3. Calls `controller.generate_sales_report()`.
+4. Receives the generated-output dictionary and structured analysis result.
+5. Uses the generated-output dictionary.
+6. Ignores the structured analysis result.
+7. Iterates through the returned output information.
+8. Prints generated paths, processing totals, and execution information.
+9. Expands nested dictionaries so their individual entries can be displayed.
+10. Handles application-specific and unexpected exceptions.
 
-`QApplication(sys.argv)`
+#### Input Configuration
 
-The `QApplication` object manages the graphical application environment and receives command-line arguments provided when the program is executed.
+The current console entry point defines:
 
-#### Main Window Initialization
+```python
+input_file_path = "data/sales.csv"
+output_folder = "reports"
+```
 
-The main application window is created using:
+The source CSV file is therefore expected at:
 
-`main_window.SalesReportWindow()`
+`data/sales.csv`
 
-The graphical window module is imported from:
+The configured destination directory is:
 
-`src.gui.main_window`
+`reports`
 
-The `SalesReportWindow` class provides the main desktop interface.
+These values are passed directly to:
 
-This keeps application startup logic separated from the graphical interface implementation and backend processing workflow.
+`controller.generate_sales_report()`
 
-#### Window Display
+#### Controller Integration
 
-After the main window is created, the application calls:
+The console entry point delegates the complete backend workflow to:
 
-`window.show()`
+`controller.generate_sales_report()`
 
-This displays the Sales Report graphical interface to the user.
+The call follows:
 
-#### Qt Event Loop
+```python
+reports, _ = controller.generate_sales_report(
+    input_file_path,
+    output_folder
+)
+```
 
-The application starts the Qt event loop using:
+The controller returns:
 
-`app.exec()`
+```text
+reports, analysis_result
+```
 
-The event loop keeps the graphical application running and processes user interactions such as:
+The first value is stored in:
 
-* Button clicks.
-* File-selection dialogs.
-* Folder-selection dialogs.
-* Report-generation actions.
-* Report-viewer windows.
-* Message boxes.
-* Window events.
-* Application closing events.
+`reports`
 
-#### Application Exit
+The second value is intentionally discarded using:
 
-The result returned by the Qt event loop is passed to:
+`_`
 
-`sys.exit()`
+This is appropriate for the console entry point because it does not require direct access to the structured analytical data used by other presentation components.
 
-This allows the application to terminate using the exit status returned by PySide6.
+#### Generated-Output Result
+
+The `reports` dictionary contains information produced by the complete backend workflow.
+
+It can include:
+
+* `total_rows`
+* `total_valid_rows`
+* `total_invalid_rows`
+* `report_path_txt`
+* `report_path_json`
+* `reports_path_csv`
+* `report_path_xlsx`
+* `reports_path_charts`
+* `report_path_pdf`
+* `execution_time`
+
+The exact generation and structure of these values are controlled by the Sales Report controller and its specialized backend modules.
+
+#### Ignored Analysis Result
+
+The controller also returns the complete:
+
+`analysis_result`
+
+produced by the sales-analysis module.
+
+This structure contains calculated sales metrics, summaries, rankings, monthly analyses, and optional analytical results.
+
+The console entry point does not use this structure directly.
+
+It is ignored through:
+
+```python
+reports, _ = controller.generate_sales_report(
+    input_file_path,
+    output_folder
+)
+```
+
+This avoids unnecessary local state while preserving the controller's shared return contract with other application components.
+
+The structured analysis can instead be reused by components such as the graphical sales dashboard.
+
+#### Console Output
+
+After successful processing, the module iterates through:
+
+`reports`
+
+using:
+
+```python
+for item, value in reports.items():
+```
+
+Each top-level result is inspected before being printed.
+
+#### Simple Result Values
+
+When a returned value is not a dictionary, the entry is printed directly using:
+
+```python
+print(f"{item}: {value}")
+```
+
+This applies to values such as:
+
+* Processing totals.
+* TXT path.
+* JSON path.
+* XLSX path.
+* PDF path.
+* Execution time.
+
+#### Nested Result Dictionaries
+
+Some controller results are dictionaries containing multiple generated outputs.
+
+Examples include:
+
+* `reports_path_csv`
+* `reports_path_charts`
+
+When the current value is a dictionary, the module performs a nested iteration:
+
+```python
+for report, path in value.items():
+    print(f"{report}: {path}")
+```
+
+This allows every generated CSV summary and chart path to be displayed independently.
+
+The console entry point therefore does not require special printing logic for each individual nested output type.
+
+#### Console Output Workflow
+
+The output-display process can be represented as:
+
+```text
+reports
+   |
+   v
+for item, value in reports.items()
+   |
+   +-- value is dict?
+   |       |
+   |       +-- Yes
+   |       |     |
+   |       |     v
+   |       |  iterate nested entries
+   |       |     |
+   |       |     v
+   |       |  print name + path
+   |       |
+   |       +-- No
+   |             |
+   |             v
+   |          print item + value
+```
+
+This generic structure allows new nested output dictionaries to be displayed without creating a separate print block for every output type.
+
+#### Backend Workflow
+
+The console module does not perform the Sales Report processing logic itself.
+
+The controller is responsible for coordinating:
+
+* Source-file validation.
+* CSV reading.
+* DataFrame normalization.
+* Sales-record validation.
+* Sales analysis.
+* Plain-text report generation.
+* TXT export.
+* JSON export.
+* CSV summary export.
+* XLSX generation.
+* PNG chart generation.
+* PDF generation.
+* Execution-time measurement.
+
+The console entry point only supplies the initial configuration, invokes the controller, and displays the returned information.
+
+#### Error Handling
+
+The `main()` function wraps the application workflow inside a `try` block.
+
+Application-specific exceptions derived from:
+
+`AppError`
+
+are handled through:
+
+```python
+except AppError as error:
+    print(error)
+```
+
+This allows application-specific error messages to be displayed in the console without producing an unhandled traceback during normal error conditions.
+
+#### Unexpected Exceptions
+
+Unexpected Python exceptions are also caught:
+
+```python
+except Exception as error:
+    print(error)
+```
+
+The corresponding exception message is printed to the console.
+
+This provides a final protection layer for errors that are not part of the application's custom exception hierarchy.
 
 #### Application Entry Point
 
-The module uses the standard Python application entry-point pattern:
+The module uses the standard Python direct-execution pattern:
 
 ```python
 if __name__ == "__main__":
     main()
 ```
 
-This ensures that the graphical application starts when the module is executed directly.
+This ensures that:
 
-The startup logic itself remains contained inside `main()` instead of being executed directly at module level.
+`main()`
 
-#### Application Startup Workflow
+is executed when the module is run directly.
 
-The graphical application starts using the following process:
+Importing the module from another Python module does not automatically execute the Sales Report workflow.
 
-1. Imports the Python `sys` module.
-2. Imports `QApplication` from PySide6.
-3. Imports `main_window` from `src.gui`.
-4. Reaches the `if __name__ == "__main__":` application entry point.
-5. Calls `main()`.
-6. Creates the `QApplication` instance.
-7. Creates an instance of `SalesReportWindow`.
-8. Displays the main application window.
-9. Starts the Qt event loop.
-10. Processes graphical user interactions while the application remains open.
-11. Returns the Qt exit status to the operating system when the application closes.
+#### Application Execution Workflow
+
+The complete console workflow is:
+
+1. Execute the module directly.
+2. Reach the `if __name__ == "__main__":` condition.
+3. Call `main()`.
+4. Define `data/sales.csv` as the source CSV file.
+5. Define `reports` as the output directory.
+6. Call `controller.generate_sales_report()`.
+7. Execute the complete backend workflow.
+8. Receive `reports`.
+9. Receive the complete `analysis_result`.
+10. Ignore `analysis_result` through `_`.
+11. Iterate through the generated-output dictionary.
+12. Detect nested dictionaries.
+13. Print nested output entries individually.
+14. Print non-dictionary values directly.
+15. Handle application-specific errors when necessary.
+16. Handle unexpected exceptions when necessary.
 
 #### Module Coordination
 
-The graphical application entry point interacts directly with:
+The console application entry point interacts directly with:
 
-* `PySide6.QtWidgets.QApplication`: Creates and manages the Qt application environment.
-* `src.gui.main_window`: Provides the `SalesReportWindow` graphical interface.
+* `src.controller`: Executes the complete Sales Report backend workflow.
+* `src.errors.AppError`: Provides the base application-specific exception used by the console error handler.
 
-The entry point does not interact directly with the sales-report backend modules.
+The module does not interact directly with:
 
-Backend processing is initiated through `SalesReportWindow`, which communicates with the Sales Report controller when the user starts the report-generation process.
+* `validator`
+* `csv_reader`
+* `analyzer`
+* `reporter`
+* `file_manager`
+* `chart_manager`
+* `pdf_reporter`
+
+Those modules are coordinated internally by the controller.
+
+#### Console Entry Point Relationship
+
+The application relationship can be represented as:
+
+```text
+Console Application Entry Point
+            |
+            v
+          main()
+            |
+            v
+controller.generate_sales_report()
+            |
+            +---------------------------+
+            |                           |
+            v                           v
+         reports                  analysis_result
+            |                           |
+            v                           v
+    Console output                  ignored (_)
+```
+
+The controller continues internally through the complete backend pipeline:
+
+```text
+Console Entry Point
+        |
+        v
+Controller
+        |
+        +--> Validator
+        |
+        +--> CSV Reader
+        |
+        +--> Analyzer
+        |
+        +--> Reporter
+        |
+        +--> File Manager
+        |
+        +--> Chart Manager
+        |
+        +--> PDF Reporter
+        |
+        v
+reports + analysis_result
+        |
+        v
+Console Entry Point
+```
 
 #### Input and Output
 
 ##### `main()`
 
-* **Input:** Command-line arguments received through `sys.argv`.
-* **Output:** Launches the PySide6 desktop application and passes the final Qt exit status to the operating system through `sys.exit()`.
+* **Input:** Uses the configured source CSV path `data/sales.csv` and output directory `reports`.
+* **Output:** Executes the Sales Report backend workflow and displays processing information and generated output paths in the console.
 
-Subsequent application input is provided through user interaction with `SalesReportWindow`.
+The function itself returns:
+
+`None`
 
 #### Responsibilities
 
 This module is responsible for:
 
-* Providing the graphical application `main()` function.
-* Creating the Qt application environment.
-* Creating the main Sales Report window.
-* Displaying the graphical interface.
-* Starting the Qt event loop.
-* Keeping the graphical application active while events are processed.
-* Passing the final Qt exit status to the operating system.
-* Providing the direct execution entry point for the desktop application.
+* Providing the console application `main()` function.
+* Defining the console source CSV path.
+* Defining the console output directory.
+* Calling the Sales Report controller.
+* Receiving the controller's two return values.
+* Using the generated-output dictionary.
+* Intentionally ignoring the structured `analysis_result`.
+* Printing top-level processing information.
+* Iterating nested output dictionaries.
+* Printing generated CSV paths.
+* Printing generated chart paths.
+* Printing generated report paths.
+* Printing execution information.
+* Handling application-specific exceptions.
+* Handling unexpected exceptions.
+* Providing the direct Python execution entry point.
 
 This module is not responsible for:
 
+* Creating the PySide6 application environment.
+* Creating graphical windows.
 * Building graphical interface layouts.
-* Selecting CSV files.
-* Selecting output folders.
-* Displaying generated report contents.
-* Validating sales data.
-* Analyzing sales records.
-* Generating reports.
-* Saving output files.
-* Handling the internal backend workflow.
+* Opening the sales dashboard.
+* Selecting files through graphical dialogs.
+* Validating source files.
+* Reading CSV files.
+* Validating sales records.
+* Calculating sales metrics.
+* Generating reports directly.
+* Generating charts directly.
+* Building PDF reports directly.
+* Saving output files directly.
+* Implementing the internal backend workflow.
 
-These responsibilities belong to the graphical interface, controller, and specialized backend modules.
-
-#### Application Relationship
-
-The graphical application startup and processing relationship can be represented as:
-
-`Graphical Application Entry Point`
-
-→ `main()`
-
-→ `QApplication`
-
-→ `src.gui.main_window.SalesReportWindow`
-
-→ Graphical user interaction
-
-→ `controller.generate_sales_report()`
-
-→ Sales Report backend workflow
-
-The application entry point only initializes and runs the graphical environment.
-
-The communication with the backend controller is performed by the `SalesReportWindow` graphical interface.
+Those responsibilities belong to the graphical application, controller, and specialized backend modules.
 
 ---
 
@@ -7712,5 +8789,888 @@ Those responsibilities belong to the corresponding validation, reading, analysis
 #### Related Exception
 
 * `PDFGenerationError`
+
+---
+
+### Sales Dashboard Module
+
+The Sales Dashboard module provides a dedicated PySide6 window for visually presenting previously calculated sales-analysis results and generated chart images.
+
+The dashboard receives two structures:
+
+* `analysis_result`: Complete structured sales-analysis information produced by the analysis workflow.
+* `chart_paths`: Dictionary mapping generated chart identifiers to their PNG file paths.
+
+The module does not read CSV files, validate sales records, calculate sales metrics, or generate chart images.
+
+Its responsibility is exclusively to present existing analysis information through a graphical dashboard.
+
+The dashboard currently displays:
+
+* General sales KPIs.
+* Best-selling product results.
+* Highest-income product results.
+* Highest-income category results.
+* Generated sales charts through an interactive selector.
+
+The module currently provides the following class:
+
+* `DashboardWindow`
+
+#### Dashboard Window
+
+The `DashboardWindow` class inherits from PySide6 `QMainWindow` and represents the interactive sales-analysis dashboard.
+
+The window is configured with:
+
+* Title: `Panel de ventas`
+* Width: `1500`
+* Height: `900`
+
+The dashboard receives:
+
+```python
+analysis_result
+chart_paths
+```
+
+during initialization.
+
+These structures are stored as:
+
+* `self.analysis_result`
+* `self.chart_paths`
+
+The dashboard uses a central `QWidget` and a primary vertical `QVBoxLayout` to organize its visual sections.
+
+#### Dashboard Initialization
+
+The `DashboardWindow` constructor receives:
+
+```python
+DashboardWindow(
+    analysis_result,
+    chart_paths
+)
+```
+
+The initialization process:
+
+1. Stores the structured analysis result.
+2. Stores the generated chart paths.
+3. Configures the window title.
+4. Configures the fixed window size.
+5. Creates the central widget.
+6. Creates the main vertical layout.
+7. Adds the general KPI section.
+8. Adds the highlighted best-result section.
+9. Adds the chart section.
+10. Assigns the completed layout to the central widget.
+11. Assigns the central widget to the dashboard window.
+
+#### Dashboard Structure
+
+The dashboard is divided into three main visual areas:
+
+```text
+DashboardWindow
+│
+├── General KPI Section
+│
+├── Best Results Section
+│
+└── Charts Section
+```
+
+The corresponding layout-building methods are:
+
+* `build_general_kpis_layout()`
+* `build_best_result_layout()`
+* `build_charts_layout()`
+
+#### Analysis Result Integration
+
+The dashboard uses the existing:
+
+`analysis_result`
+
+generated by the Sales Analysis module.
+
+It does not calculate these metrics internally.
+
+The current dashboard consumes:
+
+* `total_income`
+* `total_units_sold`
+* `total_valid_rows`
+* `total_invalid_rows`
+* `best_selling_product`
+* `highest_income_product`
+* `highest_income_category`
+
+These values have already been calculated by the backend analysis workflow before the dashboard is opened.
+
+#### Chart Path Integration
+
+The dashboard also receives:
+
+`chart_paths`
+
+This dictionary maps chart identifiers to generated PNG file paths.
+
+Conceptually:
+
+```python
+{
+    "grafica_de_ingresos_mensuales": Path(...),
+    "grafica_de_unidades_vendidas_mensualmente": Path(...),
+    "...": Path(...)
+}
+```
+
+The dashboard does not generate these charts.
+
+The PNG images are created previously by the Chart Generation module and are passed to the dashboard through the graphical application workflow.
+
+#### General KPI Section
+
+The general KPI section is created through:
+
+`build_general_kpis_layout()`
+
+This method creates a horizontal layout containing the primary sales indicators.
+
+The current KPIs are:
+
+* `INGRESO TOTAL`
+* `UNIDADES VENDIDAS`
+* `FILAS VÁLIDAS`
+* `FILAS INVÁLIDAS`
+
+The corresponding analysis values are obtained from:
+
+```python
+analysis_result["total_income"]
+analysis_result["total_units_sold"]
+analysis_result["total_valid_rows"]
+analysis_result["total_invalid_rows"]
+```
+
+Total income is formatted as currency using:
+
+* A currency symbol.
+* Thousands separators.
+* Two decimal places.
+
+For example:
+
+```text
+$125,450.75
+```
+
+Each KPI is represented by an independent visual card.
+
+#### KPI Card Creation
+
+The `create_kpi_card()` method creates a reusable visual card for a general KPI.
+
+It receives:
+
+* `title`
+* `value`
+
+and returns:
+
+`QFrame`
+
+The frame uses:
+
+```python
+QFrame.Shape.Box
+```
+
+to visually separate the KPI from surrounding dashboard content.
+
+Each card contains:
+
+* A title label.
+* A value label.
+
+#### KPI Title Style
+
+The KPI title uses:
+
+```text
+Font size: 20px
+Font weight: bold
+Font family: Arial
+```
+
+The title is centered inside the card using:
+
+`Qt.AlignmentFlag.AlignCenter`
+
+#### KPI Value Style
+
+The KPI value uses:
+
+```text
+Font size: 30px
+Font weight: bold
+Font family: Arial
+```
+
+The value is also centered.
+
+The larger font size gives greater visual emphasis to the KPI value than to its title.
+
+#### General KPI Layout
+
+`build_general_kpis_layout()` creates a dictionary containing the formatted KPI values.
+
+Conceptually:
+
+```python
+{
+    "INGRESO TOTAL": ...,
+    "UNIDADES VENDIDAS": ...,
+    "FILAS VÁLIDAS": ...,
+    "FILAS INVÁLIDAS": ...
+}
+```
+
+For every entry:
+
+1. The KPI title is obtained.
+2. The corresponding formatted value is obtained.
+3. `create_kpi_card()` creates the visual frame.
+4. The frame is added to the horizontal layout.
+
+The result is a row of independent KPI cards.
+
+#### Best Results Section
+
+The highlighted sales-results section is created through:
+
+`build_best_result_layout()`
+
+This section currently displays:
+
+* Best-selling product or products.
+* Highest-income product or products.
+* Highest-income category or categories.
+
+The data is obtained from:
+
+```python
+analysis_result["best_selling_product"]
+analysis_result["highest_income_product"]
+analysis_result["highest_income_category"]
+```
+
+#### Best-Selling Product
+
+The:
+
+`PRODUCTO MÁS VENDIDO`
+
+card displays:
+
+* Product name.
+* Units sold.
+
+The value is formatted conceptually as:
+
+```text
+Product Name
+150 Unidades.
+```
+
+The dashboard supports multiple records when more than one product shares the highest number of units sold.
+
+#### Highest-Income Product
+
+The:
+
+`PRODUCTO CON MAYOR INGRESO`
+
+card displays:
+
+* Product name.
+* Total income generated.
+
+Income is formatted as currency using thousands separators and two decimal places.
+
+For example:
+
+```text
+Product Name
+$25,450.75
+```
+
+Multiple products can be displayed when tied for the maximum income value.
+
+#### Highest-Income Category
+
+The:
+
+`CATEGORÍA CON MAYOR INGRESO`
+
+card displays:
+
+* Category name.
+* Total income generated.
+
+Income is formatted using the same currency representation used by the highest-income product result.
+
+Multiple categories can be displayed when tied for the maximum income value.
+
+#### Result Card Creation
+
+The `create_result_card()` method creates reusable cards for highlighted sales-analysis results.
+
+It receives:
+
+* `title`
+* `list_values`
+
+The `list_values` parameter is represented as:
+
+`List[List[str]]`
+
+This nested structure allows each analytical record to contain multiple display values.
+
+For example:
+
+```python
+[
+    ["Producto A", "25 Unidades."],
+    ["Producto B", "25 Unidades."]
+]
+```
+
+This allows tied analysis records to be displayed without discarding any of the maximum-value results.
+
+#### Result Card Style
+
+The result-card title uses:
+
+```text
+Font size: 20px
+Font weight: bold
+Font family: Arial
+```
+
+Each displayed result value uses:
+
+```text
+Font size: 30px
+Font weight: bold
+Font family: Arial
+```
+
+Both titles and result values are centered using:
+
+`Qt.AlignmentFlag.AlignCenter`
+
+#### Tie Preservation
+
+The dashboard preserves the tie-handling behavior established by the Sales Analysis module.
+
+The following structures can contain more than one record:
+
+* `best_selling_product`
+* `highest_income_product`
+* `highest_income_category`
+
+`build_best_result_layout()` converts every record into display values.
+
+`create_result_card()` then iterates through all supplied records and all their values.
+
+This means the dashboard does not reduce tied results to a single product or category.
+
+#### Chart Section
+
+The dashboard chart section is created through:
+
+`build_charts_layout()`
+
+The method creates a horizontal layout and adds the chart card generated by:
+
+`create_chart_card()`
+
+The chart card provides:
+
+* A chart-selection label.
+* A `QComboBox`.
+* A chart-image display area.
+
+#### Chart Card Creation
+
+The `create_chart_card()` method creates the interactive chart area.
+
+The chart card contains:
+
+```text
+Gráfica:
+[ Chart Selector ]
+
+[ Selected Chart Image ]
+```
+
+The chart identifier selector is implemented using:
+
+`QComboBox`
+
+The image display area is implemented using:
+
+`QLabel`
+
+#### Chart Selector
+
+The dashboard populates the combo box using the keys contained in:
+
+`chart_paths`
+
+The current implementation iterates through:
+
+```python
+for name_path, _ in self.chart_paths.items():
+```
+
+and adds:
+
+`name_path`
+
+to the selector.
+
+The combo box therefore contains chart identifiers rather than direct file paths.
+
+#### Chart Selector Style
+
+The chart selector currently uses:
+
+```text
+Font size: 12pt
+Font weight: bold
+Font family: Arial
+```
+
+The selector is positioned beside the:
+
+`Gráfica:`
+
+label.
+
+#### Initial Chart Display
+
+After the chart selector is populated, the dashboard immediately calls:
+
+`show_chart_card()`
+
+using:
+
+`self.combo_box.currentText()`
+
+This causes the first available chart to be displayed when the dashboard chart card is created.
+
+#### Interactive Chart Selection
+
+The combo box signal:
+
+`currentTextChanged`
+
+is connected to:
+
+`show_chart_card()`
+
+Conceptually:
+
+```python
+self.combo_box.currentTextChanged.connect(
+    self.show_chart_card
+)
+```
+
+When the user selects another chart:
+
+1. The selected chart identifier changes.
+2. `show_chart_card()` receives the new identifier.
+3. The corresponding PNG path is retrieved.
+4. The image is loaded.
+5. The dashboard chart display is updated.
+
+No backend recalculation is required when switching charts.
+
+#### Chart Display
+
+The `show_chart_card()` method receives a chart identifier.
+
+Although the parameter is named:
+
+`path_chart`
+
+the current implementation uses it as a key in:
+
+`chart_paths`
+
+Conceptually:
+
+```python
+self.chart_paths[path_chart]
+```
+
+The actual image path is therefore retrieved from the dictionary before the chart is loaded.
+
+#### QPixmap Integration
+
+The selected PNG image is loaded through:
+
+`QPixmap`
+
+Conceptually:
+
+```python
+pixmap = QPixmap(
+    str(self.chart_paths[path_chart])
+)
+```
+
+The path is converted to a string before being passed to `QPixmap`.
+
+#### Chart Scaling
+
+The loaded chart is scaled using:
+
+```text
+Maximum width: 500
+Maximum height: 400
+```
+
+The scaling operation uses:
+
+`Qt.AspectRatioMode.KeepAspectRatio`
+
+This prevents the original chart proportions from being distorted.
+
+The dashboard also uses:
+
+`Qt.TransformationMode.SmoothTransformation`
+
+to improve the visual quality of the resized image.
+
+#### Chart Image Display
+
+After scaling, the image is assigned to:
+
+`chart_image`
+
+through:
+
+```python
+self.chart_image.setPixmap(pixmap_scale)
+```
+
+The chart-image label is centered in the dashboard chart card.
+
+#### Empty Chart Identifier Handling
+
+`show_chart_card()` verifies:
+
+```python
+path_chart.strip() != ""
+```
+
+before attempting to retrieve or display an image.
+
+If the supplied chart identifier is empty, the method performs no image update.
+
+#### Main GUI Integration
+
+The dashboard is opened from the main Sales Report graphical interface.
+
+The main GUI stores:
+
+* `analysis_result`
+* `charts_paths`
+
+after a successful report-generation workflow.
+
+When the user selects:
+
+`Abrir panel de ventas`
+
+the main interface creates:
+
+```python
+DashboardWindow(
+    self.analysis_result,
+    self.charts_paths
+)
+```
+
+The dashboard therefore operates on the same analysis information and generated charts already available in the application.
+
+#### Controller Integration
+
+The dashboard does not communicate directly with the controller.
+
+The relationship is indirect:
+
+```text
+Controller
+    |
+    v
+analysis_result
+    |
+    v
+Main GUI
+    |
+    v
+DashboardWindow
+```
+
+The controller returns the structured sales-analysis result to the main graphical interface.
+
+The main interface then forwards that information to the dashboard.
+
+#### Analyzer Integration
+
+The dashboard depends on structures previously calculated by the Sales Analysis module.
+
+Current analytical dependencies include:
+
+```text
+total_income
+total_units_sold
+total_valid_rows
+total_invalid_rows
+
+best_selling_product
+highest_income_product
+highest_income_category
+```
+
+The dashboard does not alter these structures.
+
+It only formats and displays their existing values.
+
+#### Chart Manager Integration
+
+Generated chart files originate from the Chart Generation module.
+
+The relationship is:
+
+```text
+Chart Manager
+      |
+      v
+reports_path_charts
+      |
+      v
+Main GUI
+      |
+      v
+chart_paths
+      |
+      v
+DashboardWindow
+```
+
+The Dashboard module therefore does not depend on Matplotlib directly.
+
+It displays existing PNG files through PySide6 `QPixmap`.
+
+#### Dashboard Data Flow
+
+The complete data flow can be represented as:
+
+```text
+Source CSV
+    |
+    v
+Validation
+    |
+    v
+Sales Analysis
+    |
+    +------------------------+
+    |                        |
+    v                        v
+analysis_result         Chart Manager
+    |                        |
+    |                        v
+    |                   chart_paths
+    |                        |
+    +------------+-----------+
+                 |
+                 v
+           Main GUI
+                 |
+                 v
+         DashboardWindow
+                 |
+       +---------+---------+
+       |         |         |
+       v         v         v
+     KPIs   Best Results  Charts
+```
+
+#### PySide6 Components
+
+The dashboard currently uses:
+
+* `QMainWindow`: Dashboard window.
+* `QWidget`: Central dashboard container.
+* `QVBoxLayout`: Main vertical organization and internal card layouts.
+* `QHBoxLayout`: Horizontal KPI, result, and chart organization.
+* `QLabel`: KPI titles, values, result text, chart labels, and chart image display.
+* `QComboBox`: Interactive chart selection.
+* `QFrame`: Visual KPI, result, and chart cards.
+* `QPixmap`: PNG chart loading and rendering.
+* `Qt.AlignmentFlag`: Widget alignment.
+* `Qt.AspectRatioMode`: Aspect-ratio-preserving image scaling.
+* `Qt.TransformationMode`: Smooth image transformation.
+
+#### Dashboard Workflow
+
+The current dashboard workflow is:
+
+1. Receive `analysis_result`.
+2. Receive `chart_paths`.
+3. Create `DashboardWindow`.
+4. Configure the window as `1500 × 900`.
+5. Create the general KPI section.
+6. Read general metrics from `analysis_result`.
+7. Create individual KPI cards.
+8. Create the highlighted result section.
+9. Read best-performing records from `analysis_result`.
+10. Preserve and display tied maximum-value records.
+11. Create the chart section.
+12. Populate the chart selector from `chart_paths`.
+13. Display the first available chart.
+14. Listen for chart-selection changes.
+15. Load the selected PNG through `QPixmap`.
+16. Scale the image while preserving aspect ratio.
+17. Display the selected chart in the dashboard.
+
+#### Input and Output
+
+##### `DashboardWindow`
+
+* **Input:** Structured sales-analysis dictionary and generated chart-path dictionary.
+* **Output:** Interactive PySide6 sales dashboard window.
+
+##### `create_kpi_card()`
+
+* **Input:** KPI title and formatted value.
+* **Output:** `QFrame` containing the formatted KPI card.
+
+##### `build_general_kpis_layout()`
+
+* **Input:** Uses general values stored in `analysis_result`.
+* **Output:** `QHBoxLayout` containing the general sales KPI cards.
+
+##### `create_result_card()`
+
+* **Input:** Result-card title and nested list containing formatted analytical values.
+* **Output:** `QFrame` containing one or more highlighted results.
+
+##### `build_best_result_layout()`
+
+* **Input:** Uses maximum-value result structures stored in `analysis_result`.
+* **Output:** `QHBoxLayout` containing best-selling, highest-income product, and highest-income category cards.
+
+##### `create_chart_card()`
+
+* **Input:** Uses the generated chart identifiers and paths stored in `chart_paths`.
+* **Output:** `QFrame` containing the chart selector and image display area.
+
+##### `build_charts_layout()`
+
+* **Input:** None directly.
+* **Output:** `QHBoxLayout` containing the dashboard chart card.
+
+##### `show_chart_card()`
+
+* **Input:** Selected chart identifier.
+* **Output:** Updates `chart_image` with the corresponding scaled PNG chart.
+
+#### Responsibilities
+
+The Sales Dashboard module is responsible for:
+
+* Creating the sales dashboard window.
+* Receiving structured sales-analysis results.
+* Receiving generated chart paths.
+* Displaying general KPI values.
+* Formatting total income for presentation.
+* Displaying total units sold.
+* Displaying valid-row totals.
+* Displaying invalid-row totals.
+* Displaying the best-selling product or products.
+* Displaying the highest-income product or products.
+* Displaying the highest-income category or categories.
+* Preserving tied maximum-value records in the visual presentation.
+* Creating reusable KPI cards.
+* Creating reusable result cards.
+* Creating the chart-selection interface.
+* Populating the chart selector.
+* Loading PNG charts through `QPixmap`.
+* Scaling chart images.
+* Preserving chart aspect ratio.
+* Updating the displayed chart interactively.
+* Presenting existing analytical information without recalculating it.
+
+The Sales Dashboard module is not responsible for:
+
+* Reading CSV files.
+* Validating source paths.
+* Validating sales records.
+* Normalizing sales data.
+* Calculating total income.
+* Calculating total units sold.
+* Calculating rankings.
+* Determining maximum-value records.
+* Performing monthly analysis.
+* Generating PNG chart files.
+* Generating TXT reports.
+* Generating JSON files.
+* Generating CSV summaries.
+* Generating XLSX workbooks.
+* Generating PDF reports.
+* Managing report filenames.
+* Saving generated reports.
+* Coordinating the complete backend workflow.
+
+Those responsibilities belong to the corresponding validation, reading, analysis, reporting, file-management, chart-generation, PDF-reporting, controller, and main graphical-interface modules.
+
+#### Current Development Status
+
+The Sales Dashboard currently provides:
+
+* Dedicated `DashboardWindow`.
+* Fixed `1500 × 900` dashboard window.
+* General KPI visualization.
+* Total-income KPI.
+* Total-units-sold KPI.
+* Valid-row KPI.
+* Invalid-row KPI.
+* Best-selling product visualization.
+* Highest-income product visualization.
+* Highest-income category visualization.
+* Support for tied best-performing records.
+* Reusable KPI cards.
+* Reusable result cards.
+* Generated-chart selector.
+* Automatic first-chart display.
+* Interactive chart switching.
+* PNG loading through `QPixmap`.
+* Aspect-ratio-preserving chart scaling.
+* Smooth image transformation.
+* Integration with `analysis_result`.
+* Integration with generated chart paths.
+* Integration with the main graphical interface.
+* Reuse of existing backend analysis without recalculation.
 
 ---

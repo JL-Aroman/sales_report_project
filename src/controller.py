@@ -8,11 +8,15 @@ generation modules.
 
 The controller receives the source CSV path and output directory, processes
 the sales data, generates all supported report files and chart images, measures
-the total execution time, and returns a structured dictionary containing
-processing totals, generated output paths, and execution information.
+the total execution time, and returns both the generated-output information
+and the complete structured sales-analysis result.
 
 The generated outputs currently include TXT, JSON, CSV, XLSX, PDF, and PNG
 chart files.
+
+The returned structured analysis result can also be reused by presentation
+components such as the graphical sales dashboard without recalculating the
+sales metrics.
 
 The module acts as the orchestration layer between the application interface
 and the specialized backend processing modules.
@@ -21,10 +25,10 @@ and the specialized backend processing modules.
 from src import validator, csv_reader, analyzer, reporter, file_manager, chart_manager, pdf_reporter
 import time
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 
 
-def generate_sales_report(input_file_path: str, output_folder: str | Path) -> Dict[str, Any]:
+def generate_sales_report(input_file_path: str, output_folder: str | Path) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Execute the complete sales-report generation workflow.
 
     Coordinates the specialized backend modules to validate the source CSV
@@ -48,7 +52,11 @@ def generate_sales_report(input_file_path: str, output_folder: str | Path) -> Di
       generated charts.
 
     The total workflow execution time is measured and included in the
-    returned result.
+    generated-output dictionary.
+
+    The complete structured `analysis_result` is also returned separately so
+    other application components, such as the graphical dashboard, can reuse
+    the calculated sales information without executing the analysis again.
 
     Args:
         input_file_path: Path of the source CSV file to process.
@@ -56,10 +64,14 @@ def generate_sales_report(input_file_path: str, output_folder: str | Path) -> Di
             images will be stored.
 
     Returns:
-        A dictionary containing processing totals, generated output paths,
-        and execution information.
+        A tuple containing:
 
-        The dictionary contains:
+        - A dictionary with processing totals, generated output paths, and
+          execution information.
+        - The complete structured sales-analysis result produced by
+          `analyzer.analyze_sales()`.
+
+        The generated-output dictionary contains:
 
         - `total_rows`: Total number of processed sales records.
         - `total_valid_rows`: Number of records that passed validation.
@@ -75,6 +87,10 @@ def generate_sales_report(input_file_path: str, output_folder: str | Path) -> Di
         - `report_path_pdf`: Path of the generated PDF report.
         - `execution_time`: Formatted string containing the total workflow
           execution time.
+
+        The second dictionary is the complete `analysis_result`, containing
+        the calculated sales metrics, summaries, rankings, monthly analyses,
+        and optional city and payment-method results.
     """
     start = time.perf_counter()
     reports = {}
@@ -101,4 +117,4 @@ def generate_sales_report(input_file_path: str, output_folder: str | Path) -> Di
     end = time.perf_counter()
     total_time = end - start
     reports["execution_time"] = f"Execution time: {total_time:.4f} seconds"
-    return reports
+    return reports, analysis_result
